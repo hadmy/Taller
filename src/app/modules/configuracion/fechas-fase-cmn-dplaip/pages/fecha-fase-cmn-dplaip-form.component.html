@@ -1,0 +1,117 @@
+<siaf-page-shell [breadcrumbs]="breadcrumbs">
+  <siaf-page-header pageHeader title="Configuración de fechas de fase del CMN - DPLAIP" />
+
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg rounded-siaf-md bg-surface p-siaf-lg">
+    <header class="flex items-center justify-between">
+      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Fechas de fase en la entidad</h2>
+      <div class="flex gap-siaf-sm">
+        <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+        <siaf-button variant="filled" icon="save" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="grabar()">
+          Grabar
+        </siaf-button>
+      </div>
+    </header>
+
+    <!--
+      Alto de la tarjeta fijo (lo da siaf-page-shell: 100vh menos navbar); Cancelar/Grabar quedan siempre visibles y
+      solo este bloque interno scrollea con overflow-y-auto cuando el formulario no entra completo, mostrando el
+      scroll a la derecha de la pantalla (Figma, nodo 3686:124564) en vez de estirar toda la página.
+    -->
+    <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg overflow-y-auto">
+      <div>
+        <p class="m-0 mb-siaf-xs text-xs font-bold uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-high)]">Búsqueda por año</p>
+        <div class="max-w-xs">
+          <siaf-input
+            label="Año"
+            placeholder="Selecciona"
+            type="select"
+            [options]="opcionesAnio"
+            [value]="anioSeleccionado()"
+            (valueChange)="seleccionarAnio($any($event).toString())"
+          />
+        </div>
+      </div>
+
+      @if (anioSeleccionado()) {
+        <div class="flex flex-col gap-siaf-md">
+          <p class="m-0 text-xs font-bold uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-high)]">Fecha por fase</p>
+
+        <!--
+          Una sola tabla para las tres fases (sin envolver cada fase en su propio recuadro): así no queda espacio en
+          blanco entre fases y la grilla se ve como un único bloque continuo y uniforme.
+          Sin overflow en el contenedor (ver fecha-fase-cmn-entidad-form): el calendario de siaf-date-time-picker es
+          `absolute` y un ancestro con overflow lo recorta. `w-full` + columnas iguales evita el espacio en blanco
+          sin necesitar overflow-x.
+        -->
+        <div class="rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+          <table class="w-full table-fixed border-collapse text-sm">
+            <colgroup>
+              <col class="w-[21%]" /><col class="w-[31%]" /><col class="w-[24%]" /><col class="w-[24%]" />
+            </colgroup>
+            <!--
+              Todo en un solo <tbody> (sin <thead>): un <th rowspan> declarado en <thead> no reserva su columna en
+              las filas de <tbody> — son secciones de tabla distintas y el navegador no coordina el rowspan entre
+              ellas, así que las celdas de las filas siguientes «pisan» la columna del rowspan en vez de correrse a
+              la derecha. Con todas las filas (de las tres fases) en la misma sección, el rowspan funciona como se
+              espera.
+            -->
+            <tbody>
+              @for (fase of fases; track fase.key; let primeraFase = $first) {
+                <tr>
+                  <th
+                    class="border-r border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)] px-siaf-md py-siaf-sm text-center align-middle text-sm"
+                    [class.border-t]="!primeraFase"
+                    rowspan="4"
+                  >
+                    <p class="m-0 font-bold uppercase text-[var(--sys-color-text-neutral-high)]">{{ fase.titulo }}</p>
+                    @if (rangoResumen(fase.key)) {
+                      <p class="m-0 mt-siaf-xxs text-xs font-normal text-[var(--sys-color-text-neutral-medium)]">{{ rangoResumen(fase.key) }}</p>
+                    }
+                  </th>
+                  <th class="border-r border-[var(--sys-color-divider-default)]" [class.border-t]="!primeraFase"></th>
+                  <th
+                    class="border-r border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)] px-siaf-md py-siaf-sm text-center text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]"
+                    [class.border-t]="!primeraFase"
+                  >
+                    Fecha inicio
+                  </th>
+                  <th
+                    class="border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)] px-siaf-md py-siaf-sm text-center text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]"
+                    [class.border-t]="!primeraFase"
+                  >
+                    Fecha fin
+                  </th>
+                </tr>
+                @for (etapa of etapas; track etapa.key; let ultima = $last) {
+                  <tr [class.border-b]="!ultima" class="border-[var(--sys-color-divider-default)]">
+                    <td class="border-r border-[var(--sys-color-divider-default)] px-siaf-md py-siaf-sm text-center align-middle">
+                      <p class="m-0 font-bold uppercase text-[var(--sys-color-text-neutral-high)]">{{ etapa.titulo }}</p>
+                      <p class="m-0 text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">{{ etapa.anexo }}</p>
+                    </td>
+                    <td class="border-r border-[var(--sys-color-divider-default)] p-siaf-md">
+                      <siaf-date-time-picker
+                        [value]="$any(fase.key === 'fase1' ? fase1() : fase.key === 'fase2' ? fase2() : fase3())[etapa.key].inicio"
+                        [defaultToToday]="false"
+                        [fullWidth]="true"
+                        (valueChange)="actualizarEtapa(fase.key, etapa.key, 'inicio', $event)"
+                      />
+                    </td>
+                    <td class="p-siaf-md">
+                      <siaf-date-time-picker
+                        [value]="$any(fase.key === 'fase1' ? fase1() : fase.key === 'fase2' ? fase2() : fase3())[etapa.key].fin"
+                        [defaultToToday]="false"
+                        [fullWidth]="true"
+                        (valueChange)="actualizarEtapa(fase.key, etapa.key, 'fin', $event)"
+                      />
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+</siaf-page-shell>

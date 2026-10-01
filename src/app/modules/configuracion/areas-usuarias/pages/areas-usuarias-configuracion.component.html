@@ -1,0 +1,62 @@
+<siaf-page-shell [breadcrumbs]="breadcrumbs">
+  <siaf-page-header pageHeader title="Configuración de áreas usuarias">
+    <siaf-button actions variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+    <siaf-button actions variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
+      Grabar
+    </siaf-button>
+  </siaf-page-header>
+
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md">
+    <siaf-form-table-search
+      [value]="busqueda()"
+      placeholder="Buscar área usuaria"
+      ariaLabel="Buscar área usuaria"
+      (valueChange)="buscar($event)"
+    />
+
+    <div class="min-h-0 flex-1 overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+      <table class="w-full min-w-[720px] border-collapse text-sm">
+        <thead>
+          <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+            <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
+            <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código área</th>
+            <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Denominación</th>
+            @for (bandera of banderas; track bandera.key) {
+              <th class="w-28 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">{{ bandera.label }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (area of areasFiltradas(); track area.id) {
+            <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
+              <td class="p-siaf-sm"></td>
+              <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.codigo }}</td>
+              <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.denominacion }}</td>
+              @for (bandera of banderas; track bandera.key) {
+                <td class="px-siaf-md py-siaf-sm text-center">
+                  <input
+                    class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                    type="checkbox"
+                    [attr.aria-label]="bandera.label + ' — ' + area.denominacion"
+                    [checked]="$any(area)[bandera.key]"
+                    (change)="alternar(area.id, bandera.key, $any($event.target).checked)"
+                  />
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="3 + banderas.length">
+                @if (cargando()) {
+                  Cargando áreas usuarias…
+                } @else {
+                  No se encontraron áreas usuarias.
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</siaf-page-shell>

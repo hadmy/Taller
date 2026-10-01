@@ -1,0 +1,98 @@
+<siaf-modal
+  [open]="modalEliminarAbierto()"
+  variant="custom"
+  icon="delete"
+  title="¿Eliminar el CUBSO seleccionado?"
+  [description]="descripcionEliminar()"
+  confirmLabel="Eliminar"
+  confirmVariant="primary"
+  [confirmDisabled]="eliminando()"
+  (canceled)="cerrarModalEliminar()"
+  (closed)="cerrarModalEliminar()"
+  (confirmed)="confirmarEliminar()"
+/>
+
+<siaf-page-shell [breadcrumbs]="breadcrumbs">
+  <siaf-page-header pageHeader title="Configuración de precios diferenciados" />
+
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
+    <header class="flex items-center justify-between">
+      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Gestión de precios diferenciados por áreas</h2>
+      <siaf-button variant="filled" icon="add" [iconOnly]="true" ariaLabel="Agregar CUBSO" />
+    </header>
+
+    <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar CUBSO" (valueChange)="buscar($event)" />
+
+    <!-- Barra de selección: checkbox «todos» + eliminar lo marcado. -->
+    <div class="flex items-center gap-siaf-xs">
+      <input
+        class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+        type="checkbox"
+        aria-label="Seleccionar todos los CUBSO"
+        [checked]="todosVisiblesSeleccionados()"
+        [indeterminate]="algunosVisiblesSeleccionados()"
+        [disabled]="cubsosPaginados().length === 0"
+        (change)="alternarSeleccionVisibles($any($event.target).checked)"
+      />
+      @if (hayAlgunoSeleccionado()) {
+        <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" ariaLabel="Eliminar" siafTooltip="Eliminar" tooltipMode="always" (click)="abrirModalEliminar()" />
+      }
+    </div>
+
+    <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+      <table class="w-full min-w-[640px] border-collapse text-sm">
+        <thead>
+          <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+            <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
+            <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código CUBSO</th>
+            <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
+            <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">N° de precios generado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (cubso of cubsosPaginados(); track cubso.id) {
+            <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
+              <td class="p-siaf-sm">
+                <input
+                  class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                  type="checkbox"
+                  [attr.aria-label]="'Seleccionar CUBSO ' + cubso.codigoCubso"
+                  [checked]="seleccionados().has(cubso.id)"
+                  (change)="alternarSeleccion(cubso.id, $any($event.target).checked)"
+                />
+              </td>
+              <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ cubso.codigoCubso }}</td>
+              <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ cubso.descripcion }}</td>
+              <td class="px-siaf-md py-siaf-sm text-center text-[var(--sys-color-text-neutral-medium)]">{{ cubso.numPreciosGenerados }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" colspan="4">
+                @if (cargando()) {
+                  Cargando CUBSO…
+                } @else {
+                  No se encontraron CUBSO.
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <siaf-pagination
+      navigation="Activate"
+      position="Bottom"
+      [rowPage]="true"
+      [page]="page()"
+      [pageSize]="rowsPerPage()"
+      [totalItems]="cubsosFiltrados().length"
+      [totalPages]="totalPages()"
+      [rowsPerPage]="rowsPerPage()"
+      [rowsPerPageOptions]="rowsPerPageOptions"
+      (previous)="paginaAnterior()"
+      (next)="paginaSiguiente()"
+      (rowsPerPageChange)="cambiarFilasPorPagina($event)"
+    />
+  </div>
+</siaf-page-shell>

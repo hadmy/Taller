@@ -1,0 +1,142 @@
+<siaf-page-shell [breadcrumbs]="breadcrumbs">
+  <siaf-page-header pageHeader title="Distribución interna de presupuesto" />
+
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg rounded-siaf-md bg-surface p-siaf-lg">
+    <header class="flex items-center justify-between">
+      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+        Configurar distribución interna del techo presupuestal por genérica
+      </h2>
+      @if (anioSeleccionado()) {
+        <div class="flex gap-siaf-sm">
+          <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+          <siaf-button variant="filled" icon="save" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="grabar()">
+            Grabar
+          </siaf-button>
+        </div>
+      }
+    </header>
+
+    <!--
+      pt-siaf-xs: la etiqueta flotante de siaf-input se dibuja con `top` negativo, por encima del propio campo: sin
+      este margen queda pegada al borde superior del contenedor con scroll y `overflow-y-auto` se la recorta.
+    -->
+    <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg overflow-y-auto pt-siaf-xs">
+      @if (!anioSeleccionado()) {
+        <!-- Paso 1: elegir el año (Figma, nodo 4129:285438) -->
+        <div class="max-w-xl">
+          <siaf-input
+            placeholder="Seleccione"
+            type="select"
+            [options]="opcionesAnio"
+            [value]="anioSeleccionado()"
+            (valueChange)="seleccionarAnio($any($event).toString())"
+          />
+        </div>
+      } @else {
+        <!-- Paso 2: con el año elegido, aparece el presupuesto de fase (Figma, nodo 4216:225574) -->
+        <div class="flex flex-wrap gap-siaf-lg">
+          <div class="max-w-xs flex-1">
+            <siaf-input
+              label="Año"
+              type="select"
+              [options]="opcionesAnio"
+              [value]="anioSeleccionado()"
+              (valueChange)="seleccionarAnio($any($event).toString())"
+            />
+          </div>
+          <div class="max-w-xs flex-1">
+            <siaf-input
+              label="Presupuesto de fase"
+              placeholder="Selecciona"
+              type="select"
+              [disabled]="cargando()"
+              [options]="opcionesPresupuestoFase"
+              [value]="presupuestoFaseSeleccionado()"
+              (valueChange)="seleccionarPresupuestoFase($any($event).toString())"
+            />
+          </div>
+        </div>
+      }
+
+      @if (presupuestoFaseSeleccionado() && areaUsuariaTitular()) {
+        <div class="border-t border-[var(--sys-color-divider-default)]"></div>
+
+        <div class="flex flex-wrap gap-siaf-md">
+          <div class="min-w-[260px] flex-[2]">
+            <readonly-field caption="Área Usuaria titular que recibió la APM" [value]="areaUsuariaTitular()!.codigo + ' - ' + areaUsuariaTitular()!.denominacion" />
+          </div>
+          <div class="min-w-[180px] flex-1">
+            <readonly-field caption="Entidad / UE" [value]="entidadUe()" />
+          </div>
+          <div class="min-w-[100px]">
+            <readonly-field caption="Periodo" [value]="periodo()?.toString() ?? ''" />
+          </div>
+          <div class="min-w-[160px]">
+            <readonly-field caption="Genéricas habilitadas" [value]="genericasHabilitadas()" />
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-siaf-md">
+          @for (generica of genericas(); track generica.codigo) {
+            <div class="min-w-[220px] flex-1 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-lowest)] p-siaf-md">
+              <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">Genérica {{ generica.codigo }}</p>
+              <p class="m-0 mt-siaf-xs text-xs text-[var(--sys-color-text-neutral-medium)]">Presupuesto recibido</p>
+              <p class="m-0 mt-siaf-xxs text-lg font-bold text-[var(--sys-color-text-neutral-high)]">S/ {{ generica.presupuestoRecibido | number: '1.2-2' }}</p>
+            </div>
+          }
+        </div>
+
+        <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" (valueChange)="buscar($event)" />
+
+        <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+          <table class="w-full min-w-[720px] border-collapse text-sm">
+            <thead>
+              <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código OU</th>
+                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Denominación</th>
+                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Rol</th>
+                @for (generica of genericas(); track generica.codigo) {
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Genérica {{ generica.codigo }}</th>
+                }
+                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Total asignado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (fila of filasFiltradas(); track fila.id) {
+                <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.codigoOu }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.denominacion }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.rol }}</td>
+                  @for (generica of genericas(); track generica.codigo) {
+                    <td class="px-siaf-md py-siaf-sm">
+                      <siaf-input
+                        type="decimal"
+                        placeholder="0.00"
+                        [disabled]="fila.esTitular"
+                        [value]="fila.montos[generica.codigo]"
+                        (valueChange)="actualizarMonto(fila.id, generica.codigo, $any($event).toString())"
+                      />
+                    </td>
+                  }
+                  <td class="px-siaf-md py-siaf-sm">
+                    <div class="flex h-10 items-center rounded-siaf-md border border-[var(--sys-color-border-states-disabled)] bg-[var(--sys-color-bg-surfaces-disabled)] px-siaf-md text-sm font-bold text-[var(--sys-color-text-neutral-high)]">
+                      S/ {{ totalAsignado(fila) | number: '1.2-2' }}
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="4 + genericas().length">
+                    No se encontraron áreas usuarias.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <siaf-pagination navigation="Inactive" position="Bottom" [rowPage]="true" [page]="1" [pageSize]="filasFiltradas().length || 1" [totalItems]="filasFiltradas().length" [totalPages]="1" [rowsPerPage]="filasFiltradas().length || 25" [rowsPerPageOptions]="[25]" />
+      }
+    </div>
+  </div>
+</siaf-page-shell>

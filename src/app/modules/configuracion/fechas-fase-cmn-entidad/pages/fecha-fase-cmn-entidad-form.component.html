@@ -1,0 +1,81 @@
+<siaf-page-shell [breadcrumbs]="breadcrumbs">
+  <siaf-page-header pageHeader title="Configuración de fechas de fase del CMN para la entidad" />
+
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg rounded-siaf-md bg-surface p-siaf-lg">
+    <header class="flex items-center justify-between">
+      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Fechas de fase en la entidad</h2>
+      <div class="flex gap-siaf-sm">
+        <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+        <siaf-button variant="filled" icon="save" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="grabar()">
+          Grabar
+        </siaf-button>
+      </div>
+    </header>
+
+    <div class="max-w-xs">
+      <siaf-input
+        label="Búsqueda por año"
+        placeholder="Selecciona"
+        type="select"
+        [options]="opcionesAnio"
+        [value]="anioSeleccionado()"
+        (valueChange)="seleccionarAnio($any($event).toString())"
+      />
+    </div>
+
+    @if (anioSeleccionado()) {
+      <!--
+        Sin overflow (ni siquiera solo `overflow-x`): el calendario de siaf-date-time-picker se posiciona
+        `absolute` respecto de su celda, y el navegador fuerza `overflow-y: auto` en cualquier ancestro con
+        `overflow-x: auto` aunque se pida `overflow-y: visible` (así lo resuelve el spec de CSS) — eso recortaba
+        el calendario y obligaba a scrollear para verlo entero.
+        `w-full` + columnas iguales: la tabla ocupa todo el ancho de la tarjeta (sin espacios en blanco) y, al
+        repartirse en 6 columnas iguales, la última columna nunca queda pegada al borde real de la ventana.
+      -->
+      <div class="rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+        <table class="w-full table-fixed border-collapse text-sm">
+          <colgroup>
+            <col class="w-1/6" /><col class="w-1/6" /><col class="w-1/6" /><col class="w-1/6" /><col class="w-1/6" /><col class="w-1/6" />
+          </colgroup>
+          <thead>
+            <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+              <th class="border-b border-r border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center" colspan="2">Fase 1</th>
+              <th class="border-b border-r border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center" colspan="2">Fase 2</th>
+              <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center" colspan="2">Fase 3</th>
+            </tr>
+            <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+              <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Fecha inicio</th>
+              <th class="border-b border-r border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Fecha fin</th>
+              <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Fecha inicio</th>
+              <th class="border-b border-r border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Fecha fin</th>
+              <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Fecha inicio</th>
+              <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Fecha fin</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border-r border-[var(--sys-color-divider-default)] p-siaf-md">
+                <siaf-date-time-picker [value]="fase1().inicio" [defaultToToday]="false" [fullWidth]="true" (valueChange)="actualizarFase('fase1', 'inicio', $event)" />
+              </td>
+              <td class="p-siaf-md">
+                <siaf-date-time-picker [value]="fase1().fin" [defaultToToday]="false" [fullWidth]="true" (valueChange)="actualizarFase('fase1', 'fin', $event)" />
+              </td>
+              <td class="border-r border-[var(--sys-color-divider-default)] p-siaf-md">
+                <siaf-date-time-picker [value]="fase2().inicio" [defaultToToday]="false" [fullWidth]="true" (valueChange)="actualizarFase('fase2', 'inicio', $event)" />
+              </td>
+              <td class="p-siaf-md">
+                <siaf-date-time-picker [value]="fase2().fin" [defaultToToday]="false" [fullWidth]="true" (valueChange)="actualizarFase('fase2', 'fin', $event)" />
+              </td>
+              <td class="border-r border-[var(--sys-color-divider-default)] p-siaf-md">
+                <siaf-date-time-picker [value]="fase3().inicio" [defaultToToday]="false" [fullWidth]="true" (valueChange)="actualizarFase('fase3', 'inicio', $event)" />
+              </td>
+              <td class="p-siaf-md">
+                <siaf-date-time-picker [value]="fase3().fin" [defaultToToday]="false" [fullWidth]="true" (valueChange)="actualizarFase('fase3', 'fin', $event)" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</siaf-page-shell>

@@ -6,14 +6,13 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { TabItem, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
 import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
-import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../shared/utils/form-snapshot.util';
 import { AreasUsuariasApiService } from '../api/areas-usuarias-api.service';
 import { AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE } from '../config/areas-usuarias.rutas';
-import { BuscarItemsDialogComponent } from '../components/buscar-items-dialog.component';
+import { BuscarItemsPanelComponent } from '../components/buscar-items-panel.component';
 import { AreaUsuaria, AreaUsuariaItem, BANDERAS_AREA_USUARIA_DETALLE, CatalogoItem } from '../models/area-usuaria.model';
 
 const TAB_ATIENDE = 'atiende';
@@ -31,10 +30,9 @@ const TAB_NECESIDADES = 'necesidades';
   selector: 'siaf-area-usuaria-detalle',
   standalone: true,
   imports: [
-    BuscarItemsDialogComponent,
+    BuscarItemsPanelComponent,
     ButtonComponent,
     EmptyStateComponent,
-    FormTableSearchComponent,
     PageHeaderComponent,
     PageShellComponent,
     TabsComponent,
@@ -52,7 +50,6 @@ export class AreaUsuariaDetalleComponent implements OnInit {
   readonly cargando = signal(false);
   readonly guardando = signal(false);
   readonly notFound = signal(false);
-  readonly busqueda = signal('');
   readonly area = signal<AreaUsuaria | null>(null);
   readonly items = signal<AreaUsuariaItem[]>([]);
   private readonly snapshotInicial = signal<string | null>(null);
@@ -89,13 +86,16 @@ export class AreaUsuariaDetalleComponent implements OnInit {
   /** Commodities/ítems de la pestaña activa. */
   readonly itemsFiltrados = computed(() => this.items().filter((i) => i.tipo === this.tabActiva()));
 
+  /** Sin ítems en la pestaña no hay tabla: se muestra el aviso para elegir con la lupa. */
+  readonly hayItemsEnPestana = computed(() => this.items().some((i) => i.tipo === this.tabActiva()));
+
   readonly opcionesVigente: TextFieldOption[] = [
     { label: 'Sí', value: 'si' },
     { label: 'No', value: 'no' },
   ];
 
-  // «Buscar commodities u ítems»: catálogo (se trae al abrir por primera vez) sin lo que la pestaña ya tiene.
-  readonly dialogoAbierto = signal(false);
+  // Panel «Buscar commodities u ítems»: catálogo (se trae al abrir por primera vez) sin lo que la pestaña ya tiene.
+  readonly panelAbierto = signal(false);
   private readonly catalogo = signal<CatalogoItem[]>([]);
   private contadorNuevos = 0;
 
@@ -135,15 +135,14 @@ export class AreaUsuariaDetalleComponent implements OnInit {
     this.area.set({ ...actual, [bandera]: marcado });
   }
 
-  /** Lupa (o Enter) del buscador: abre «Buscar commodities u ítems» con lo escrito como filtro inicial. */
-  buscar(texto: string): void {
-    this.busqueda.set(texto);
+  /** Lupa roja de «Comodities»: abre el panel lateral «Buscar commodities u ítems». */
+  abrirPanel(): void {
     if (!this.catalogo().length) this.api.listarCatalogo().subscribe((c) => this.catalogo.set(c));
-    this.dialogoAbierto.set(true);
+    this.panelAbierto.set(true);
   }
 
-  cerrarDialogo(): void {
-    this.dialogoAbierto.set(false);
+  cerrarPanel(): void {
+    this.panelAbierto.set(false);
   }
 
   /** «Aceptar» del diálogo: los ítems marcados pasan a la tabla de la pestaña activa, vigentes. */
@@ -162,7 +161,7 @@ export class AreaUsuariaDetalleComponent implements OnInit {
       vigente: true,
     }));
     this.items.update((lista) => [...lista, ...nuevos]);
-    this.dialogoAbierto.set(false);
+    this.panelAbierto.set(false);
   }
 
   cambiarVigente(itemId: string, valor: string | number | string[]): void {

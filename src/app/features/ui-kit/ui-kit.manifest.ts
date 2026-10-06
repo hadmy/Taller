@@ -11257,7 +11257,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-icon",
       "siaf-side-nav"
     ],
-    "sinUso": true
+    "sinUso": false
   },
   {
     "selector": "siaf-sidebar",

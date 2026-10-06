@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
-import { SwitchComponent } from '../../../../shared/ui/switch/switch.component';
 import { TabItem, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
+import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
 import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
@@ -12,22 +13,33 @@ import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.ut
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../shared/utils/form-snapshot.util';
 import { AreasUsuariasApiService } from '../api/areas-usuarias-api.service';
 import { AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE } from '../config/areas-usuarias.rutas';
-import { AreaUsuaria, AreaUsuariaItem, BANDERAS_AREA_USUARIA_DETALLE } from '../models/area-usuaria.model';
+import { BuscarItemsDialogComponent } from '../components/buscar-items-dialog.component';
+import { AreaUsuaria, AreaUsuariaItem, BANDERAS_AREA_USUARIA_DETALLE, CatalogoItem } from '../models/area-usuaria.model';
 
-const TAB_COMMODITIES = 'commodities';
+const TAB_ATIENDE = 'atiende';
+const TAB_PUEDE_PEDIR = 'puede-pedir';
 const TAB_NECESIDADES = 'necesidades';
 
 /**
- * Detalle de un área usuaria (Figma «CMN Programación · Configuración», nodo 3857:397142
- * «Conf-Areas usuarias-03»): las cuatro banderas del área y, en pestañas, sus commodities/ítems a pedir en el
- * Cuadro Multianual de Necesidades. Se llega acá buscando el área por código o denominación con la lupa de
- * `AreasUsuariasConfiguracionComponent` (navega al primer resultado). «Necesidades Estratégicas» queda
- * deshabilitada, igual que en el diseño.
+ * Detalle de un área usuaria (Figma «CMN Programación · Configuración», nodo 5053:75133
+ * «Conf-Areas usuarias-03»): tarjeta con el nombre del área, «Cancelar» / «Grabar», las cuatro banderas y, en
+ * pestañas, los commodities/ítems que atiende y que puede pedir en el Cuadro Multianual de Necesidades. Se llega acá
+ * con «Editar» sobre el área marcada en `AreasUsuariasConfiguracionComponent` (o buscándola con la lupa).
+ * «Necesidades Estratégicas» queda deshabilitada, igual que en el diseño.
  */
 @Component({
   selector: 'siaf-area-usuaria-detalle',
   standalone: true,
-  imports: [ButtonComponent, EmptyStateComponent, FormTableSearchComponent, PageHeaderComponent, PageShellComponent, SwitchComponent, TabsComponent],
+  imports: [
+    BuscarItemsDialogComponent,
+    ButtonComponent,
+    EmptyStateComponent,
+    FormTableSearchComponent,
+    PageHeaderComponent,
+    PageShellComponent,
+    TabsComponent,
+    TextFieldComponent,
+  ],
   templateUrl: './area-usuaria-detalle.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -37,12 +49,6 @@ export class AreaUsuariaDetalleComponent implements OnInit {
   private readonly api = inject(AreasUsuariasApiService);
 
   readonly banderas = BANDERAS_AREA_USUARIA_DETALLE;
-  readonly tabs: TabItem[] = [
-    { id: TAB_COMMODITIES, label: 'Commodities u Items a pedir' },
-    { id: TAB_NECESIDADES, label: 'Necesidades Estratégicas', disabled: true },
-  ];
-  readonly tabActiva = signal(TAB_COMMODITIES);
-
   readonly cargando = signal(false);
   readonly guardando = signal(false);
   readonly notFound = signal(false);
@@ -55,15 +61,52 @@ export class AreaUsuariaDetalleComponent implements OnInit {
     buildProcessBreadcrumbs(AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE, this.area()?.denominacion ?? ''),
   );
 
-  readonly itemsFiltrados = computed(() => {
-    const texto = this.busqueda().trim().toLowerCase();
-    if (!texto) return this.items();
-    return this.items().filter((i) =>
-      [i.commodity, i.descripcionCommodity, i.item, i.descripcionItem].some((valor) => valor.toLowerCase().includes(texto)),
-    );
+  /**
+   * Regla de pestañas: un área que genera CMN **y** es ATE ve las tres; cualquier otra ve solo «puede pedir» y
+   * «Necesidades Estratégicas», ambas activas.
+   */
+  readonly tabs = computed<TabItem[]>(() => {
+    const area = this.area();
+    const atiende = !!area?.generaCmn && !!area?.esAte;
+    return [
+      ...(atiende ? [{ id: TAB_ATIENDE, label: 'Commodities o Items que atiende' }] : []),
+      { id: TAB_PUEDE_PEDIR, label: 'Commodities o Items que puede pedir' },
+      { id: TAB_NECESIDADES, label: 'Necesidades Estratégicas' },
+    ];
   });
 
-  readonly huboCambios = computed(() => hayCambiosRespectoAlSnapshot(this.snapshotInicial(), crearSnapshotFormulario(this.area())));
+  private readonly tabElegida = signal('');
+  /** Pestaña elegida, o la primera disponible si la elegida ya no existe (p. ej. al desmarcar ATE). */
+  readonly tabActiva = computed(() => {
+    const elegida = this.tabElegida();
+    return this.tabs().some((t) => t.id === elegida) ? elegida : this.tabs()[0].id;
+  });
+
+  seleccionarTab(id: string): void {
+    this.tabElegida.set(id);
+  }
+
+  /** Commodities/ítems de la pestaña activa. */
+  readonly itemsFiltrados = computed(() => this.items().filter((i) => i.tipo === this.tabActiva()));
+
+  readonly opcionesVigente: TextFieldOption[] = [
+    { label: 'Sí', value: 'si' },
+    { label: 'No', value: 'no' },
+  ];
+
+  // «Buscar commodities u ítems»: catálogo (se trae al abrir por primera vez) sin lo que la pestaña ya tiene.
+  readonly dialogoAbierto = signal(false);
+  private readonly catalogo = signal<CatalogoItem[]>([]);
+  private contadorNuevos = 0;
+
+  readonly catalogoDisponible = computed(() => {
+    const ya = new Set(this.itemsFiltrados().map((i) => `${i.commodity}|${i.item}`));
+    return this.catalogo().filter((c) => !ya.has(`${c.commodity}|${c.item}`));
+  });
+
+  readonly huboCambios = computed(() =>
+    hayCambiosRespectoAlSnapshot(this.snapshotInicial(), crearSnapshotFormulario({ area: this.area(), items: this.items() })),
+  );
 
   ngOnInit(): void {
     const areaId = this.route.snapshot.paramMap.get('areaId');
@@ -76,7 +119,7 @@ export class AreaUsuariaDetalleComponent implements OnInit {
       next: ({ area, items }) => {
         this.area.set(area);
         this.items.set(items);
-        this.snapshotInicial.set(crearSnapshotFormulario(area));
+        this.snapshotInicial.set(crearSnapshotFormulario({ area, items }));
         this.cargando.set(false);
       },
       error: () => {
@@ -92,6 +135,44 @@ export class AreaUsuariaDetalleComponent implements OnInit {
     this.area.set({ ...actual, [bandera]: marcado });
   }
 
+  /** Lupa (o Enter) del buscador: abre «Buscar commodities u ítems» con lo escrito como filtro inicial. */
+  buscar(texto: string): void {
+    this.busqueda.set(texto);
+    if (!this.catalogo().length) this.api.listarCatalogo().subscribe((c) => this.catalogo.set(c));
+    this.dialogoAbierto.set(true);
+  }
+
+  cerrarDialogo(): void {
+    this.dialogoAbierto.set(false);
+  }
+
+  /** «Aceptar» del diálogo: los ítems marcados pasan a la tabla de la pestaña activa, vigentes. */
+  agregarItems(elegidos: CatalogoItem[]): void {
+    const areaId = this.area()?.id;
+    if (!areaId) return;
+    const tipo = this.tabActiva() as AreaUsuariaItem['tipo'];
+    const nuevos: AreaUsuariaItem[] = elegidos.map((c) => ({
+      id: `nuevo-${++this.contadorNuevos}`,
+      areaUsuariaId: areaId,
+      tipo,
+      commodity: c.commodity,
+      descripcionCommodity: c.descripcionCommodity,
+      item: c.item,
+      descripcionItem: c.descripcionItem,
+      vigente: true,
+    }));
+    this.items.update((lista) => [...lista, ...nuevos]);
+    this.dialogoAbierto.set(false);
+  }
+
+  cambiarVigente(itemId: string, valor: string | number | string[]): void {
+    this.items.update((lista) => lista.map((i) => (i.id === itemId ? { ...i, vigente: valor === 'si' } : i)));
+  }
+
+  quitarItem(itemId: string): void {
+    this.items.update((lista) => lista.filter((i) => i.id !== itemId));
+  }
+
   cancelar(): void {
     void this.router.navigateByUrl(AREAS_USUARIAS_ROUTE);
   }
@@ -101,10 +182,11 @@ export class AreaUsuariaDetalleComponent implements OnInit {
     if (!actual || !this.huboCambios() || this.guardando()) return;
     this.guardando.set(true);
     const { id, generaCmn, esAte, esOa, esAga } = actual;
-    this.api.guardar([{ id, generaCmn, esAte, esOa, esAga }]).subscribe({
+    forkJoin([this.api.guardar([{ id, generaCmn, esAte, esOa, esAga }]), this.api.guardarItems(id, this.items())]).subscribe({
       next: () => {
-        this.snapshotInicial.set(crearSnapshotFormulario(actual));
+        this.snapshotInicial.set(crearSnapshotFormulario({ area: actual, items: this.items() }));
         this.guardando.set(false);
+        void this.router.navigateByUrl(AREAS_USUARIAS_ROUTE);
       },
       error: () => this.guardando.set(false),
     });

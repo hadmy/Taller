@@ -2,4 +2,4 @@
 export const AREAS_USUARIAS_ROUTE = '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-area-usuaria';
 
 /** Hoja del árbol de procesos: arma las migas de pan. */
-export const AREAS_USUARIAS_PROCESS_ID = 'cuadro-multianual-necesidades-configuracion-fechas-cierre-fase-area-usuaria';
+export const AREAS_USUARIAS_PROCESS_ID = 'cuadro-multianual-necesidades-configuracion-areas-usuarias';

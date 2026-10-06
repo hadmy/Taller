@@ -10,22 +10,32 @@
   </siaf-page-shell>
 } @else if (area(); as area) {
   <siaf-page-shell [breadcrumbs]="breadcrumbs()">
-    <siaf-page-header pageHeader [title]="area.denominacion">
-      <siaf-button actions variant="outline" (click)="cancelar()">Cancelar</siaf-button>
-      <siaf-button actions variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
-        Grabar
-      </siaf-button>
-    </siaf-page-header>
+    <siaf-page-header pageHeader title="Configuración de áreas usuarias" />
 
-    <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg overflow-auto">
+    <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg overflow-auto rounded-siaf-md bg-surface p-siaf-lg">
+      <header class="flex items-center justify-between">
+        <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">{{ area.denominacion }}</h2>
+        <div class="flex gap-siaf-sm">
+          <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+          <siaf-button variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
+            Grabar
+          </siaf-button>
+        </div>
+      </header>
+
       <div class="flex flex-wrap gap-siaf-md">
         @for (bandera of banderas; track bandera.key) {
-          <div
-            class="flex min-h-20 min-w-[290px] flex-1 items-center gap-siaf-md rounded-siaf-md border border-[var(--sys-color-divider-strong)] bg-surface px-siaf-lg py-siaf-md"
+          <label
+            class="flex min-h-20 min-w-[290px] flex-1 cursor-pointer items-center gap-siaf-md rounded-siaf-md border border-[var(--sys-color-divider-strong)] bg-surface px-siaf-lg py-siaf-md"
           >
-            <siaf-switch [checked]="$any(area)[bandera.key]" [ariaLabel]="bandera.label" (checkedChange)="alternar(bandera.key, $event)" />
+            <input
+              class="size-5 accent-[var(--sys-color-icon-states-enabled)]"
+              type="checkbox"
+              [checked]="$any(area)[bandera.key]"
+              (change)="alternar(bandera.key, $any($event.target).checked)"
+            />
             <span class="text-sm font-medium uppercase text-[var(--sys-color-text-neutral-high)]">{{ bandera.label }}</span>
-          </div>
+          </label>
         }
       </div>
 
@@ -34,42 +44,66 @@
           [value]="busqueda()"
           placeholder="Buscar"
           ariaLabel="Buscar commodity o ítem"
-          (valueChange)="busqueda.set($event)"
+          (valueChange)="buscar($event)"
         />
 
-        <siaf-tabs [tabs]="tabs" [activeId]="tabActiva()" (activeIdChange)="tabActiva.set($event)" ariaLabel="Contenido del área usuaria" />
+        <siaf-tabs [tabs]="tabs()" [activeId]="tabActiva()" (activeIdChange)="seleccionarTab($event)" ariaLabel="Contenido del área usuaria" />
 
-        @if (tabActiva() === 'commodities') {
-          @if (itemsFiltrados().length) {
-            <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
-              <table class="w-full min-w-[720px] border-collapse text-sm">
-                <thead>
-                  <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Commodity</th>
-                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción commodity</th>
-                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Ítem</th>
-                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción ítem</th>
-                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigente</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (item of itemsFiltrados(); track item.id) {
-                    <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
-                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.commodity }}</td>
-                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionCommodity }}</td>
-                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.item }}</td>
-                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionItem }}</td>
-                      <td class="px-siaf-md py-siaf-sm text-center text-[var(--sys-color-text-neutral-medium)]">{{ item.vigente ? 'Sí' : 'No' }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <siaf-empty-state illustration="no-data" title="Sin elementos agregados" />
-          }
-        }
+        <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+          <table class="w-full min-w-[720px] border-collapse text-sm">
+            <thead>
+              <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Commodity</th>
+                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción commodity</th>
+                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Item</th>
+                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción ítem</th>
+                <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigente</th>
+                <th class="w-14 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of itemsFiltrados(); track item.id) {
+                <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.commodity }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionCommodity }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.item }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionItem }}</td>
+                  <td class="px-siaf-md py-siaf-xs">
+                    <siaf-input
+                      type="select"
+                      [options]="opcionesVigente"
+                      [value]="item.vigente ? 'si' : 'no'"
+                      (valueChange)="cambiarVigente(item.id, $event)"
+                    />
+                  </td>
+                  <td class="p-siaf-xs text-center">
+                    <siaf-button
+                      variant="text"
+                      size="sm"
+                      icon="delete"
+                      [iconOnly]="true"
+                      ariaLabel="Quitar ítem"
+                      (click)="quitarItem(item.id)"
+                    />
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="p-siaf-xl text-center text-sm font-bold text-[var(--sys-color-text-neutral-low)]" colspan="6">Sin elementos agregados</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
+
+    <siaf-buscar-items-dialog
+      [open]="dialogoAbierto()"
+      [catalogo]="catalogoDisponible()"
+      [textoInicial]="busqueda()"
+      (confirmed)="agregarItems($event)"
+      (canceled)="cerrarDialogo()"
+    />
   </siaf-page-shell>
 }

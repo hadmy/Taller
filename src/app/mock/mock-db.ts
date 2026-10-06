@@ -20,7 +20,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 11;
+const VERSION = 14;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol. */
@@ -134,15 +134,28 @@ function cuenta(banco: string, tipo: 'CORRIENTE' | 'AHORROS', moneda: 'PEN' | 'U
 
 /** Áreas usuarias del pliego demo: jerarquía corta por código (`01`, `01.01`, `01.01.01`…). */
 const AREAS_USUARIAS_SEMILLA: Omit<AreaUsuaria, 'id'>[] = [
-  { codigo: '01', denominacion: 'ALTA DIRECCIÓN', generaCmn: true, esAte: false, esOa: false, esAga: false },
-  { codigo: '01.01', denominacion: 'RECTORADO', generaCmn: true, esAte: false, esOa: false, esAga: false },
-  { codigo: '01.01.01', denominacion: 'SECRETARÍA GENERAL', generaCmn: true, esAte: true, esOa: false, esAga: false },
-  { codigo: '01.02', denominacion: 'OFICINA DE IMAGEN INSTITUCIONAL', generaCmn: true, esAte: false, esOa: false, esAga: false },
-  { codigo: '02', denominacion: 'OFICINA GENERAL DE ADMINISTRACIÓN', generaCmn: true, esAte: false, esOa: true, esAga: true },
-  { codigo: '02.01', denominacion: 'UNIDAD DE LOGÍSTICA Y PATRIMONIO', generaCmn: true, esAte: false, esOa: true, esAga: false },
-  { codigo: '02.02', denominacion: 'UNIDAD DE TESORERÍA', generaCmn: false, esAte: false, esOa: false, esAga: false },
-  { codigo: '03', denominacion: 'VICERRECTORADO ACADÉMICO', generaCmn: true, esAte: false, esOa: false, esAga: false },
-];
+  ['01', 'ALTA DIRECCIÓN'],
+  ['01.01', 'RECTORADO'],
+  ['01.01.01', 'SECRETARÍA GENERAL'],
+  ['01.01.01.01', 'OFICINA ADMINISTRATIVA'],
+  ['01.01.01.01.01', 'MESA DE PARTES'],
+  ['01.01.01.01.01.02', 'UNIDAD DE GRADOS Y TÍTULOS'],
+  ['01.01.01.02.01', 'REGISTRO DE DIPLOMAS'],
+  ['01.01.01.01.01.02', 'UNIDAD DE GRADOS Y TÍTULOS'],
+  ['01.01.02', 'OFICINA DE IMAGEN INSTITUCIONAL'],
+  ['01.01.02.01', 'UNIDAD DE COMUNICACIONES'],
+  ['01.01.02.02', 'UNIDAD DE PROTOCOLO Y EVENTOS'],
+  ['01.02', 'VICERRECTORADO ACADÉMICO'],
+  // «Mesa de partes» y «Vicerrectorado académico» están en el pliego pero la lista los recibe al pulsar «Sincronizar».
+].map(([codigo, denominacion]) => ({
+  codigo,
+  denominacion,
+  generaCmn: true,
+  esAte: false,
+  esOa: false,
+  esAga: false,
+  pendiente: ['01.01.01.01.01', '01.02'].includes(codigo),
+}));
 
 const SEMILLAS: Semilla[] = [
   { creada: '2026-01-16', estado: 'APROBADO', justificacion: 'Cuenta para la recaudación de tasas por procedimientos administrativos.', datos: cuenta('018', 'CORRIENTE', 'PEN', 1, 'Recaudación de tasas administrativas', '2026-01-15', true) },

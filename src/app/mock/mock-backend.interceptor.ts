@@ -398,7 +398,54 @@ const registrosCuentas: Manejador = ({ datos, sesion }) =>
 
 // ─── Configuración: áreas usuarias del CMN ─────────────────────────
 
-const listarAreasUsuarias: Manejador = ({ datos }) => ok(datos.areasUsuarias);
+const listarAreasUsuarias: Manejador = ({ datos }) => ok(datos.areasUsuarias.filter((a) => !a.pendiente));
+
+/** Catálogo de commodities/ítems de «Buscar commodities u ítems» (Figma «Conf-Areas usuarias-06»); «—» donde el catálogo no tiene dato. */
+const CATALOGO_COMMODITIES_ITEMS = (
+  [
+    ['78101800', 'Papel y cartón', '78101801', 'Papel bond A4 75gr'],
+    ['78101800', 'Papel y cartón', '78101802', 'Papel bond A4 80gr'],
+    ['44121700', 'Suministros de oficina', '44121701', 'Lapicero tinta azul'],
+    ['44121700', 'Suministros de oficina', '44121702', 'Lápiz grafito N°2'],
+    ['44121700', 'Suministros de oficina', '44121703', 'Folder manila A4'],
+    ['43211500', 'Equipos de cómputo', '43211502', 'Monitor LED 24 pulgadas'],
+    ['43211500', 'Equipos de cómputo', '43211503', 'Impresora multifuncional láser'],
+    ['46181500', 'Equipos de protección personal', '—', '—'],
+    ['81112200', 'Servicios de soporte informático', '—', '—'],
+    ['—', '—', '73152108', 'Servicio de mantenimiento de equipos'],
+    ['—', '—', '84131600', 'Servicio de fotocopiado externo'],
+  ] as const
+).map(([commodity, descripcionCommodity, item, descripcionItem], i) => ({
+  id: `cat-${i + 1}`,
+  commodity,
+  descripcionCommodity,
+  item,
+  descripcionItem,
+}));
+
+const catalogoItemsAreaUsuaria: Manejador = () => ok(CATALOGO_COMMODITIES_ITEMS);
+
+const guardarItemsAreaUsuaria: Manejador = ({ req, datos, params }) => {
+  const area = datos.areasUsuarias.find((a) => a.id === params[0]);
+  if (!area) return error(404, 'El área usuaria no existe.');
+  const { items } = (req.body ?? {}) as { items?: (typeof datos.itemsAreaUsuaria)[number][] };
+  datos.itemsAreaUsuaria = [
+    ...datos.itemsAreaUsuaria.filter((i) => i.areaUsuariaId !== area.id),
+    ...(items ?? []).map((i) => ({ ...i, id: i.id.startsWith('nuevo-') ? nuevoId(datos, 'aui') : i.id, areaUsuariaId: area.id })),
+  ];
+  guardarDatos(datos);
+  return ok({ message: 'Ítems guardados' });
+};
+
+/** «Sincronizar»: trae del pliego la siguiente área que la lista aún no tiene, marcada como nueva; `null` si no hay más. */
+const sincronizarAreasUsuarias: Manejador = ({ datos }) => {
+  const area = datos.areasUsuarias.find((a) => a.pendiente);
+  if (!area) return ok({ area: null });
+  area.pendiente = false;
+  area.nuevo = true;
+  guardarDatos(datos);
+  return ok({ area });
+};
 
 const detalleAreaUsuaria: Manejador = ({ datos, params }) => {
   const area = datos.areasUsuarias.find((a) => a.id === params[0]);
@@ -601,9 +648,18 @@ const eliminarPrecioDiferenciado: Manejador = ({ datos, params }) => {
 
 const guardarAreasUsuarias: Manejador = ({ req, datos }) => {
   const { areas } = (req.body ?? {}) as { areas?: { id: string; generaCmn: boolean; esAte: boolean; esOa: boolean; esAga: boolean }[] };
+  // Regla AGA: solo un área puede serlo. La que se acaba de marcar (antes no lo era) desplaza a la anterior.
+  let nuevaAga: string | null = null;
   for (const cambio of areas ?? []) {
     const area = datos.areasUsuarias.find((a) => a.id === cambio.id);
-    if (area) Object.assign(area, cambio);
+    if (!area) continue;
+    if (cambio.esAga && !area.esAga) nuevaAga = area.id;
+    Object.assign(area, cambio, { nuevo: false, configurada: true });
+  }
+  if (nuevaAga) {
+    for (const area of datos.areasUsuarias) {
+      if (area.id !== nuevaAga) area.esAga = false;
+    }
   }
   guardarDatos(datos);
   return ok({ message: 'Configuración guardada' });
@@ -639,6 +695,9 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/cuentas-bancarias$/, registrosCuentas],
   ['GET', /^\/configuracion\/areas-usuarias$/, listarAreasUsuarias],
   ['PUT', /^\/configuracion\/areas-usuarias$/, guardarAreasUsuarias],
+  ['POST', /^\/configuracion\/areas-usuarias\/sincronizar$/, sincronizarAreasUsuarias],
+  ['GET', /^\/configuracion\/areas-usuarias\/catalogo-items$/, catalogoItemsAreaUsuaria],
+  ['PUT', /^\/configuracion\/areas-usuarias\/([^/]+)\/items$/, guardarItemsAreaUsuaria],
   ['GET', /^\/configuracion\/areas-usuarias\/([^/]+)\/detalle$/, detalleAreaUsuaria],
   ['GET', /^\/configuracion\/fechas-fase-cmn-entidad$/, listarFechasFaseCmnEntidad],
   ['PUT', /^\/configuracion\/fechas-fase-cmn-entidad$/, guardarFechaFaseCmnEntidad],

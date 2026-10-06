@@ -66,39 +66,34 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
             comingSoon: true,
             children: [
               {
-                id: 'cuadro-multianual-necesidades-configuracion-fechas-cierre-fase-area-usuaria',
-                label: 'Configuración de fechas de cierre de fase del CMN por área usuaria',
+                id: 'cuadro-multianual-necesidades-configuracion-areas-usuarias',
+                label: 'Configuración de Áreas Usuarias',
                 moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-area-usuaria',
               },
               {
                 id: 'cuadro-multianual-necesidades-configuracion-servicios-basicos-excluidos-ley',
-                label: 'Configuración de servicios básicos excluidos de ley',
+                label: 'Configuración de Servicios Básicos Excluidos de la Ley',
                 comingSoon: true,
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-distribucion-interna-presupuestaria',
-                label: 'Configuración de distribución interna presupuestaria',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/distribucion-interna-presupuesto',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-areas-usuarias',
-                label: 'Configuración de áreas usuarias',
-                comingSoon: true,
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-precios-diferenciados',
-                label: 'Configuración de precios diferenciados',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/precios-diferenciados',
               },
               {
                 id: 'cuadro-multianual-necesidades-configuracion-fechas-fase-dplaip',
-                label: 'Configuración de fechas de fase del CMN - DPLAIP',
+                label: 'Configuración de fechas de Fase del CMN - DPLAIP',
                 moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-cmn-dplaip',
               },
               {
                 id: 'cuadro-multianual-necesidades-configuracion-fechas-fase-entidad',
-                label: 'Configuración de fechas de fase del CMN para la entidad',
+                label: 'Configuración de fechas de Fase del CMN por Entidad',
                 moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-cmn-entidad',
+              },
+              {
+                id: 'cuadro-multianual-necesidades-configuracion-precios-diferenciados',
+                label: 'Configuración de Precios Diferenciados',
+                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/precios-diferenciados',
+              },
+              {
+                id: 'cuadro-multianual-necesidades-configuracion-distribucion-interna-presupuestaria',
+                label: 'Configuración de Distribución Interna Presupuestario',
+                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/distribucion-interna-presupuesto',
               },
             ],
           },

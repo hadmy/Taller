@@ -1,44 +1,100 @@
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración de áreas usuarias">
-    <siaf-button actions variant="outline" (click)="cancelar()">Cancelar</siaf-button>
-    <siaf-button actions variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
-      Grabar
-    </siaf-button>
-  </siaf-page-header>
+  <siaf-page-header pageHeader title="Configuración de áreas usuarias" />
 
-  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md">
-    <siaf-form-table-search
-      [value]="busqueda()"
-      placeholder="Buscar área usuaria"
-      ariaLabel="Buscar área usuaria"
-      (valueChange)="buscar($event)"
-    />
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
+    <header class="flex items-center justify-between">
+      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Fechas de fase en la entidad</h2>
+      <div class="flex gap-siaf-sm">
+        <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+        <siaf-button variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
+          Grabar
+        </siaf-button>
+      </div>
+    </header>
+
+    <div class="flex items-center justify-between">
+      <h3 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Registros</h3>
+      <siaf-button
+        variant="filled"
+        icon="sync"
+        [iconOnly]="true"
+        ariaLabel="Sincronizar registros"
+        siafTooltip="Sincronizar"
+        tooltipMode="always"
+        [disabled]="cargando() || sincronizando()"
+        (click)="sincronizar()"
+      />
+    </div>
+
+    <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" (valueChange)="buscar($event)" />
+
+    <!-- Barra de selección: checkbox «todas» + Editar cuando hay exactamente un área marcada. -->
+    <div class="flex h-10 items-center gap-siaf-xs">
+      <input
+        class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+        type="checkbox"
+        aria-label="Seleccionar todas las áreas"
+        [checked]="todasVisiblesSeleccionadas()"
+        [indeterminate]="algunasVisiblesSeleccionadas()"
+        [disabled]="areasPaginadas().length === 0"
+        (change)="alternarSeleccionVisibles($any($event.target).checked)"
+      />
+      @if (areaParaEditar()) {
+        <siaf-button variant="text" size="sm" icon="edit" [iconOnly]="true" ariaLabel="Editar" siafTooltip="Editar" tooltipMode="always" (click)="editarSeleccionada()" />
+      }
+    </div>
 
     <div class="min-h-0 flex-1 overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
       <table class="w-full min-w-[720px] border-collapse text-sm">
-        <thead>
+        <!--
+          `sticky` va en cada th. El gris del encabezado (`surface-high`) es translúcido: sin una base opaca debajo
+          (`bg-surface`), las filas que pasan por detrás se transparentan al hacer scroll.
+        -->
+        <thead
+          class="[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-surface [&_th]:bg-[linear-gradient(var(--sys-color-bg-surfaces-surface-high),var(--sys-color-bg-surfaces-surface-high))] [&_th]:shadow-[inset_0_-1px_0_var(--sys-color-divider-strong)]"
+        >
           <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
             <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
             <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código área</th>
             <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Denominación</th>
             @for (bandera of banderas; track bandera.key) {
-              <th class="w-28 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">{{ bandera.label }}</th>
+              <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">{{ bandera.label }}</th>
             }
           </tr>
         </thead>
         <tbody>
-          @for (area of areasFiltradas(); track area.id) {
-            <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
-              <td class="p-siaf-sm"></td>
+          @for (area of areasPaginadas(); track area.id) {
+            <tr
+              class="border-b border-[var(--sys-color-divider-default)] last:border-b-0"
+              [class.bg-[var(--sys-color-bg-states-light-selected)]]="seleccionadas().has(area.id)"
+            >
+              <td class="p-siaf-sm">
+                <input
+                  class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                  type="checkbox"
+                  [attr.aria-label]="'Seleccionar ' + area.denominacion"
+                  [checked]="seleccionadas().has(area.id)"
+                  (change)="alternarSeleccion(area.id, $any($event.target).checked)"
+                />
+              </td>
               <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.codigo }}</td>
-              <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.denominacion }}</td>
+              <td class="px-siaf-md py-siaf-sm uppercase text-[var(--sys-color-text-neutral-medium)]">
+                <span class="flex items-center gap-siaf-sm">
+                  {{ area.denominacion }}
+                  @if (area.nuevo) {
+                    <siaf-status-tag tone="info" appearance="solid" size="small">Nuevo</siaf-status-tag>
+                  }
+                </span>
+              </td>
               @for (bandera of banderas; track bandera.key) {
                 <td class="px-siaf-md py-siaf-sm text-center">
+                  <!-- `!`: la regla global `:disabled:checked` (styles.css) pinta de gris; aquí lo marcado va en azul también inactivo. -->
                   <input
-                    class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                    class="size-4 accent-[var(--sys-color-icon-states-enabled)] disabled:checked:border-[var(--sys-color-icon-states-active)]! disabled:checked:bg-[var(--sys-color-icon-states-active)]!"
                     type="checkbox"
                     [attr.aria-label]="bandera.label + ' — ' + area.denominacion"
                     [checked]="$any(area)[bandera.key]"
+                    [disabled]="!area.configurada"
                     (change)="alternar(area.id, bandera.key, $any($event.target).checked)"
                   />
                 </td>
@@ -58,5 +114,20 @@
         </tbody>
       </table>
     </div>
+
+    <siaf-pagination
+      navigation="Activate"
+      position="Bottom"
+      [rowPage]="true"
+      [page]="page()"
+      [pageSize]="rowsPerPage()"
+      [totalItems]="areasFiltradas().length"
+      [totalPages]="totalPages()"
+      [rowsPerPage]="rowsPerPage()"
+      [rowsPerPageOptions]="rowsPerPageOptions"
+      (previous)="paginaAnterior()"
+      (next)="paginaSiguiente()"
+      (rowsPerPageChange)="cambiarFilasPorPagina($event)"
+    />
   </div>
 </siaf-page-shell>

@@ -130,6 +130,7 @@ export { DEFAULT_PROCESS_TREE, findProcessPathById } from '../../shared/utils/pr
 
               <span
                 class="min-w-0 flex-1 text-sm leading-normal"
+                [class.ml-[36px]]="level > 0 && !hasChildren(node)"
                 [class.font-bold]="level === 0"
                 [class.font-normal]="level > 0"
                 [class.tracking-[-0.02px]]="level === 0"
@@ -137,7 +138,7 @@ export { DEFAULT_PROCESS_TREE, findProcessPathById } from '../../shared/utils/pr
                 [class.text-[var(--sys-color-text-neutral-activated)]]="isNodeHighlighted(node, level)"
                 [class.text-[var(--sys-color-text-neutral-medium)]]="!isNodeHighlighted(node, level)"
               >
-                {{ node.label }}
+                @for (parte of partesEtiqueta(node.label); track $index) {<span [class.font-bold]="parte.coincide">{{ parte.texto }}</span>}
               </span>
             </button>
 
@@ -217,6 +218,30 @@ export class ProcessMenuTreeComponent implements OnChanges, OnInit {
 
   isNodeHighlighted(node: ProcessMenuNode, level: number): boolean {
     return this.selectedId === node.id || (level === 0 && this.activeAncestorIds.has(node.id));
+  }
+
+  /** Parte la etiqueta en tramos para pintar en negrita las palabras que coinciden con la búsqueda (sin tildes ni mayúsculas). */
+  partesEtiqueta(label: string): { texto: string; coincide: boolean }[] {
+    const busqueda = this.normalize(this.query);
+    if (!busqueda) return [{ texto: label, coincide: false }];
+
+    // Normaliza carácter por carácter para que cada posición siga correspondiendo a la de `label`.
+    const normalizado = Array.from(label, (c) => c.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()).join('');
+    if (normalizado.length !== label.length) return [{ texto: label, coincide: false }];
+
+    const partes: { texto: string; coincide: boolean }[] = [];
+    let desde = 0;
+    for (let i = normalizado.indexOf(busqueda, desde); i !== -1; i = normalizado.indexOf(busqueda, desde)) {
+      // La coincidencia se extiende a la palabra completa («config» resalta «Configuración»).
+      const inicio = Math.max(desde, normalizado.lastIndexOf(' ', i) + 1);
+      const finEspacio = normalizado.indexOf(' ', i + busqueda.length);
+      const fin = finEspacio === -1 ? label.length : finEspacio;
+      if (inicio > desde) partes.push({ texto: label.slice(desde, inicio), coincide: false });
+      partes.push({ texto: label.slice(inicio, fin), coincide: true });
+      desde = fin;
+    }
+    if (desde < label.length) partes.push({ texto: label.slice(desde), coincide: false });
+    return partes;
   }
 
   onQuery(value: string): void {

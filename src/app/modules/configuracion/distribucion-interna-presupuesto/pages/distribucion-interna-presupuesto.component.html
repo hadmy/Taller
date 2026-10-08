@@ -67,7 +67,12 @@
               </td>
               <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ anio.anio }}</td>
               <td class="px-siaf-md py-siaf-sm">
-                <siaf-record-status-tag [status]="anio.estado" />
+                @if (anio.estado === 'Validado') {
+                  <!-- Figma de esta pantalla: «Validado» con fondo suave azul y check en círculo. -->
+                  <siaf-status-tag tone="info" appearance="soft" icon="check_circle" size="small">Validado</siaf-status-tag>
+                } @else {
+                  <siaf-record-status-tag [status]="anio.estado" />
+                }
               </td>
             </tr>
           } @empty {

@@ -26,7 +26,7 @@
       />
     </div>
 
-    <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" (valueChange)="buscar($event)" />
+    <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" [showActions]="false" (typing)="filtrar($event)" (valueChange)="buscar($event)" />
 
     <!-- Barra de selección: checkbox «todas» + Editar cuando hay exactamente un área marcada. -->
     <div class="flex h-10 items-center gap-siaf-xs">
@@ -58,7 +58,9 @@
             <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código área</th>
             <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Denominación</th>
             @for (bandera of banderas; track bandera.key) {
-              <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">{{ bandera.label }}</th>
+              <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">
+                <span class="cursor-help" [siafTooltip]="bandera.descripcion" tooltipMode="always">{{ bandera.label }}</span>
+              </th>
             }
           </tr>
         </thead>

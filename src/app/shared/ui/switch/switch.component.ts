@@ -8,8 +8,8 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
  * Admite `[(checked)]` y formularios (`formControl`/`ngModel`). Se opera con el teclado como un
  * checkbox (Tab y Espacio) y se anuncia con `role="switch"`.
  *
- * Sin consumidores: ninguna pantalla usa switch. Las preguntas Sí/No se resuelven con
- * `siaf-radio-group` y su `[inline]` para dejarlas en una sola línea.
+ * Lo usa la columna «Vigente» de los commodities/ítems en el detalle de un área usuaria. Las preguntas Sí/No de una
+ * solicitud se resuelven con `siaf-radio-group` y su `[inline]` para dejarlas en una sola línea.
  *
  * @usar
  * - Para activar o desactivar una opción con efecto inmediato, sin pasar por Grabar (por ejemplo, «Notificar por

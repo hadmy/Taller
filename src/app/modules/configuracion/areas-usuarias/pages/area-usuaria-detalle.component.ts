@@ -5,7 +5,8 @@ import { forkJoin } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { TabItem, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
-import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
+import { TooltipDirective } from '../../../../shared/ui/tooltip/tooltip.directive';
+import { SwitchComponent } from '../../../../shared/ui/switch/switch.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
@@ -35,8 +36,9 @@ const TAB_NECESIDADES = 'necesidades';
     EmptyStateComponent,
     PageHeaderComponent,
     PageShellComponent,
+    SwitchComponent,
     TabsComponent,
-    TextFieldComponent,
+    TooltipDirective,
   ],
   templateUrl: './area-usuaria-detalle.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -88,11 +90,6 @@ export class AreaUsuariaDetalleComponent implements OnInit {
 
   /** Sin ítems en la pestaña no hay tabla: se muestra el aviso para elegir con la lupa. */
   readonly hayItemsEnPestana = computed(() => this.items().some((i) => i.tipo === this.tabActiva()));
-
-  readonly opcionesVigente: TextFieldOption[] = [
-    { label: 'Sí', value: 'si' },
-    { label: 'No', value: 'no' },
-  ];
 
   // Panel «Buscar commodities u ítems»: catálogo (se trae al abrir por primera vez) sin lo que la pestaña ya tiene.
   readonly panelAbierto = signal(false);
@@ -164,12 +161,9 @@ export class AreaUsuariaDetalleComponent implements OnInit {
     this.panelAbierto.set(false);
   }
 
-  cambiarVigente(itemId: string, valor: string | number | string[]): void {
-    this.items.update((lista) => lista.map((i) => (i.id === itemId ? { ...i, vigente: valor === 'si' } : i)));
-  }
-
-  quitarItem(itemId: string): void {
-    this.items.update((lista) => lista.filter((i) => i.id !== itemId));
+  /** Switch de la columna «Vigente»: el cambio se guarda con «Grabar». */
+  cambiarVigente(itemId: string, vigente: boolean): void {
+    this.items.update((lista) => lista.map((i) => (i.id === itemId ? { ...i, vigente } : i)));
   }
 
   cancelar(): void {
@@ -180,8 +174,8 @@ export class AreaUsuariaDetalleComponent implements OnInit {
     const actual = this.area();
     if (!actual || !this.huboCambios() || this.guardando()) return;
     this.guardando.set(true);
-    const { id, generaCmn, esAte, esOa, esAga } = actual;
-    forkJoin([this.api.guardar([{ id, generaCmn, esAte, esOa, esAga }]), this.api.guardarItems(id, this.items())]).subscribe({
+    const { id, generaCmn, esAte, esOa, esMaa } = actual;
+    forkJoin([this.api.guardar([{ id, generaCmn, esAte, esOa, esMaa }]), this.api.guardarItems(id, this.items())]).subscribe({
       next: () => {
         this.snapshotInicial.set(crearSnapshotFormulario({ area: actual, items: this.items() }));
         this.guardando.set(false);

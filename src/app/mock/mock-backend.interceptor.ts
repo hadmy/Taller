@@ -540,9 +540,9 @@ function plantillaBaseDistribucion() {
     entidadUe: 'MEF / Administración General',
     periodo: new Date().getFullYear(),
     genericas: [
-      { codigo: '3', presupuestoRecibido: 550000 },
-      { codigo: '4', presupuestoRecibido: 100000 },
-      { codigo: '7', presupuestoRecibido: 400000 },
+      { codigo: '3', presupuestoRecibido: 1200000 },
+      { codigo: '4', presupuestoRecibido: 300000 },
+      { codigo: '7', presupuestoRecibido: 900000 },
     ],
     filas: [
       {
@@ -604,6 +604,13 @@ const guardarDistribucionInternaPresupuesto: Manejador = ({ req, datos }) => {
     return { ...fila, montos: cambio ? { ...cambio.montos } : { ...fila.montos } };
   });
 
+  // Regla APM: lo asignado a las áreas no titulares de cada genérica no puede superar su presupuesto recibido.
+  for (const generica of contexto.genericas) {
+    const asignado = filas.filter((f) => !f.esTitular).reduce((suma, f) => suma + (f.montos[generica.codigo] || 0), 0);
+    const exceso = asignado - generica.presupuestoRecibido;
+    if (exceso > 0) return error(400, `Genérica ${generica.codigo}: Excede la APM recibida en S/ ${exceso.toFixed(2)}.`);
+  }
+
   if (existente) {
     existente.filas = filas;
     guardarDatos(datos);
@@ -638,6 +645,80 @@ const eliminarDistribucionInternaPresupuesto: Manejador = ({ datos, params }) =>
 
 const listarPreciosDiferenciados: Manejador = ({ datos }) => ok(datos.preciosDiferenciados);
 
+/** Catálogo CUBSO del que se elige en «Seleccionar ítems» (Figma, nodo 4683:867558). */
+const CATALOGO_CUBSO = (
+  [
+    ['5311000100021482', 'Servicio de vigilancia diurna sin armas'],
+    ['5311000100021483', 'Servicio de seguridad para transporte'],
+    ['7412000300019920', 'Servicios de monitoreo'],
+    ['5311000100021490', 'Servicio de vigilancia nocturna con armas'],
+    ['7611150100014561', 'Servicio de limpieza de oficinas'],
+    ['7611150100014562', 'Servicio de limpieza de ambientes hospitalarios'],
+    ['7810180100003311', 'Servicio de transporte de personal'],
+    ['8111220100007781', 'Servicio de soporte técnico informático'],
+    ['8213150100002201', 'Servicio de impresión de documentos'],
+    ['9010150100004410', 'Servicio de alimentación para personal'],
+  ] as const
+).map(([codigoCubso, descripcion], i) => ({ id: `cubso-${i + 1}`, codigoCubso, descripcion }));
+
+const catalogoCubso: Manejador = () => ok(CATALOGO_CUBSO);
+
+/**
+ * «Grabar» de la pantalla: los CUBSO elegidos no se guardan uno por uno, sino como un solo registro con el primero
+ * (código y descripción) y, en «N° de precios generado», el total de CUBSO elegidos. Si ese código ya estaba, el
+ * total se suma al suyo.
+ */
+const agregarPreciosDiferenciados: Manejador = ({ req, datos }) => {
+  const { cubsos } = (req.body ?? {}) as { cubsos?: { codigoCubso: string; descripcion: string }[] };
+  if (!cubsos?.length) return error(400, 'Seleccione al menos un CUBSO.');
+  const [primero] = cubsos;
+  const existente = datos.preciosDiferenciados.find((p) => p.codigoCubso === primero.codigoCubso);
+  if (existente) {
+    existente.numPreciosGenerados += cubsos.length;
+  } else {
+    datos.preciosDiferenciados.push({
+      id: nuevoId(datos, 'pd'),
+      codigoCubso: primero.codigoCubso,
+      descripcion: primero.descripcion,
+      numPreciosGenerados: cubsos.length,
+      precios: [],
+    });
+  }
+  guardarDatos(datos);
+  return ok(datos.preciosDiferenciados);
+};
+
+const obtenerPrecioDiferenciado: Manejador = ({ datos, params }) => {
+  const cubso = datos.preciosDiferenciados.find((p) => p.id === params[0]);
+  if (!cubso) return error(404, 'El CUBSO no existe.');
+  return ok(cubso);
+};
+
+/**
+ * «Grabar» de «Editar precios diferenciados»: reemplaza los precios por área (cada uno necesita área y monto) y deja
+ * en «N° de precios generado» la cantidad de precios vigentes.
+ */
+const guardarPreciosArea: Manejador = ({ req, datos, params }) => {
+  const cubso = datos.preciosDiferenciados.find((p) => p.id === params[0]);
+  if (!cubso) return error(404, 'El CUBSO no existe.');
+  const { precios } = (req.body ?? {}) as { precios?: { area: string; descripcion: string; monto: number | null; vigente: boolean }[] };
+  const lista = precios ?? [];
+  if (lista.some((p) => !p.area?.trim() || p.monto === null || !(p.monto > 0))) {
+    return error(400, 'Cada precio necesita un área y un monto mayor que cero.');
+  }
+  cubso.precios = lista.map((p) => ({
+    id: nuevoId(datos, 'pa'),
+    area: p.area.trim(),
+    descripcion: p.descripcion?.trim() ?? '',
+    monto: p.monto,
+    vigente: !!p.vigente,
+  }));
+  // Solo cuentan los precios vigentes: apagar la vigencia de uno lo descuenta del total.
+  cubso.numPreciosGenerados = cubso.precios.filter((p) => p.vigente).length;
+  guardarDatos(datos);
+  return ok(cubso);
+};
+
 const eliminarPrecioDiferenciado: Manejador = ({ datos, params }) => {
   const existe = datos.preciosDiferenciados.some((p) => p.id === params[0]);
   if (!existe) return error(404, 'El CUBSO no existe.');
@@ -647,19 +728,20 @@ const eliminarPrecioDiferenciado: Manejador = ({ datos, params }) => {
 };
 
 const guardarAreasUsuarias: Manejador = ({ req, datos }) => {
-  const { areas } = (req.body ?? {}) as { areas?: { id: string; generaCmn: boolean; esAte: boolean; esOa: boolean; esAga: boolean }[] };
-  // Regla AGA: solo un área puede serlo. La que se acaba de marcar (antes no lo era) desplaza a la anterior.
-  let nuevaAga: string | null = null;
+  const { areas } = (req.body ?? {}) as { areas?: { id: string; generaCmn: boolean; esAte: boolean; esOa: boolean; esMaa: boolean }[] };
+  // Reglas MAA y OA: solo un área puede serlo. La que se acaba de marcar (antes no lo era) desplaza a la anterior.
+  let nuevaMaa: string | null = null;
+  let nuevaOa: string | null = null;
   for (const cambio of areas ?? []) {
     const area = datos.areasUsuarias.find((a) => a.id === cambio.id);
     if (!area) continue;
-    if (cambio.esAga && !area.esAga) nuevaAga = area.id;
+    if (cambio.esMaa && !area.esMaa) nuevaMaa = area.id;
+    if (cambio.esOa && !area.esOa) nuevaOa = area.id;
     Object.assign(area, cambio, { nuevo: false, configurada: true });
   }
-  if (nuevaAga) {
-    for (const area of datos.areasUsuarias) {
-      if (area.id !== nuevaAga) area.esAga = false;
-    }
+  for (const area of datos.areasUsuarias) {
+    if (nuevaMaa && area.id !== nuevaMaa) area.esMaa = false;
+    if (nuevaOa && area.id !== nuevaOa) area.esOa = false;
   }
   guardarDatos(datos);
   return ok({ message: 'Configuración guardada' });
@@ -710,6 +792,10 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['PUT', /^\/configuracion\/distribucion-interna-presupuesto$/, guardarDistribucionInternaPresupuesto],
   ['DELETE', /^\/configuracion\/distribucion-interna-presupuesto\/([^/]+)$/, eliminarDistribucionInternaPresupuesto],
   ['GET', /^\/configuracion\/precios-diferenciados$/, listarPreciosDiferenciados],
+  ['GET', /^\/configuracion\/precios-diferenciados\/catalogo-cubso$/, catalogoCubso],
+  ['POST', /^\/configuracion\/precios-diferenciados$/, agregarPreciosDiferenciados],
+  ['GET', /^\/configuracion\/precios-diferenciados\/([^/]+)$/, obtenerPrecioDiferenciado],
+  ['PUT', /^\/configuracion\/precios-diferenciados\/([^/]+)\/precios$/, guardarPreciosArea],
   ['DELETE', /^\/configuracion\/precios-diferenciados\/([^/]+)$/, eliminarPrecioDiferenciado],
 ];
 

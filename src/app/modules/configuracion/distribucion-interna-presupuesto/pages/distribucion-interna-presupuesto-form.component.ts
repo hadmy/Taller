@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
+import { AlertComponent } from '../../../../shared/ui/alert/alert.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ReadonlyFieldComponent } from '../../../../shared/ui/readonly-field/readonly-field.component';
 import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
@@ -33,7 +34,7 @@ import {
 @Component({
   selector: 'siaf-distribucion-interna-presupuesto-form',
   standalone: true,
-  imports: [ButtonComponent, DecimalPipe, FormTableSearchComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, ReadonlyFieldComponent, TextFieldComponent],
+  imports: [AlertComponent, ButtonComponent, DecimalPipe, FormTableSearchComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, ReadonlyFieldComponent, TextFieldComponent],
   templateUrl: './distribucion-interna-presupuesto-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -61,11 +62,11 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
   readonly genericas = signal<DistribucionGenerica[]>([]);
   readonly filas = signal<DistribucionFilaOu[]>([]);
 
-  /** Años del selector: el anterior y los cuatro siguientes al actual. */
+  /** Años del selector: el actual y los cuatro siguientes (sin años pasados). */
   readonly opcionesAnio: TextFieldOption[] = (() => {
     const actual = new Date().getFullYear();
     const anios: TextFieldOption[] = [];
-    for (let anio = actual - 1; anio <= actual + 4; anio++) {
+    for (let anio = actual; anio <= actual + 4; anio++) {
       anios.push({ label: String(anio), value: String(anio) });
     }
     return anios;
@@ -90,7 +91,19 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
     return `${codigos.slice(0, -1).join(', ')} y ${codigos[codigos.length - 1]}`;
   });
 
-  readonly puedeGrabar = computed(() => !!this.anioSeleccionado() && !!this.presupuestoFaseSeleccionado() && !this.guardando());
+  /**
+   * Genéricas en las que lo asignado a las áreas no titulares supera el presupuesto recibido (la APM), con el monto
+   * del exceso. Mientras haya alguna, se muestra el aviso y no se puede grabar.
+   */
+  readonly excesos = computed(() =>
+    this.genericas()
+      .map((g) => ({ codigo: g.codigo, exceso: this.asignadoNoTitular(this.filas(), g.codigo) - g.presupuestoRecibido }))
+      .filter((e) => e.exceso > 0),
+  );
+
+  readonly puedeGrabar = computed(
+    () => !!this.anioSeleccionado() && !!this.presupuestoFaseSeleccionado() && this.excesos().length === 0 && !this.guardando(),
+  );
 
   ngOnInit(): void {
     this.cargando.set(true);
@@ -125,11 +138,28 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
     const existente = this.anios().find((a) => String(a.anio) === this.anioSeleccionado() && a.presupuestoFase === valor);
     this.genericas.set(plantilla.genericas);
     this.filas.set(
-      plantilla.filas.map((fila) => {
-        const existenteFila = existente?.filas.find((f) => f.id === fila.id);
-        return { ...fila, montos: existenteFila ? { ...existenteFila.montos } : { ...fila.montos } };
-      }),
+      this.conSaldoTitular(
+        plantilla.filas.map((fila) => {
+          const existenteFila = existente?.filas.find((f) => f.id === fila.id);
+          return { ...fila, montos: existenteFila ? { ...existenteFila.montos } : { ...fila.montos } };
+        }),
+      ),
     );
+  }
+
+  /** Suma de lo asignado en una genérica a las áreas que no son la titular. */
+  private asignadoNoTitular(filas: DistribucionFilaOu[], codigo: string): number {
+    return filas.filter((f) => !f.esTitular).reduce((suma, f) => suma + (f.montos[codigo] || 0), 0);
+  }
+
+  /**
+   * El área titular se queda con el saldo de cada genérica: lo recibido menos lo asignado a las demás áreas (nunca
+   * negativo; si se excede, queda en 0 y el exceso se avisa).
+   */
+  private conSaldoTitular(filas: DistribucionFilaOu[]): DistribucionFilaOu[] {
+    const saldos: Record<string, number> = {};
+    for (const g of this.genericas()) saldos[g.codigo] = Math.max(0, g.presupuestoRecibido - this.asignadoNoTitular(filas, g.codigo));
+    return filas.map((f) => (f.esTitular ? { ...f, montos: { ...f.montos, ...saldos } } : f));
   }
 
   buscar(texto: string): void {
@@ -143,7 +173,9 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
   actualizarMonto(filaId: string, codigoGenerica: string, valor: string): void {
     const numero = Number(valor);
     this.filas.update((lista) =>
-      lista.map((f) => (f.id === filaId ? { ...f, montos: { ...f.montos, [codigoGenerica]: Number.isFinite(numero) ? numero : 0 } } : f)),
+      this.conSaldoTitular(
+        lista.map((f) => (f.id === filaId ? { ...f, montos: { ...f.montos, [codigoGenerica]: Number.isFinite(numero) ? numero : 0 } } : f)),
+      ),
     );
   }
 

@@ -34,7 +34,9 @@
               [checked]="$any(area)[bandera.key]"
               (change)="alternar(bandera.key, $any($event.target).checked)"
             />
-            <span class="text-sm font-medium uppercase text-[var(--sys-color-text-neutral-high)]">{{ bandera.label }}</span>
+            <span class="text-sm font-medium uppercase text-[var(--sys-color-text-neutral-high)]" [siafTooltip]="bandera.descripcion" tooltipMode="always">{{
+              bandera.label
+            }}</span>
           </label>
         }
       </div>
@@ -61,7 +63,6 @@
                 <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Item</th>
                 <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción ítem</th>
                 <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigente</th>
-                <th class="w-14 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
               </tr>
             </thead>
             <tbody>
@@ -71,28 +72,17 @@
                   <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionCommodity }}</td>
                   <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.item }}</td>
                   <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionItem }}</td>
-                  <td class="px-siaf-md py-siaf-xs">
-                    <siaf-input
-                      type="select"
-                      [options]="opcionesVigente"
-                      [value]="item.vigente ? 'si' : 'no'"
-                      (valueChange)="cambiarVigente(item.id, $event)"
-                    />
-                  </td>
-                  <td class="p-siaf-xs text-center">
-                    <siaf-button
-                      variant="text"
-                      size="sm"
-                      icon="delete"
-                      [iconOnly]="true"
-                      ariaLabel="Quitar ítem"
-                      (click)="quitarItem(item.id)"
+                  <td class="px-siaf-md py-siaf-xs text-center">
+                    <siaf-switch
+                      [checked]="item.vigente"
+                      [ariaLabel]="'Vigente: ' + item.descripcionItem"
+                      (checkedChange)="cambiarVigente(item.id, $event)"
                     />
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td class="p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-low)]" colspan="6">No se encontraron ítems.</td>
+                  <td class="p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-low)]" colspan="5">No se encontraron ítems.</td>
                 </tr>
               }
             </tbody>

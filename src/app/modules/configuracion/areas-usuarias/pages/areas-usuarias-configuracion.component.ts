@@ -17,7 +17,7 @@ import { AreaUsuaria, BANDERAS_AREA_USUARIA } from '../models/area-usuaria.model
 /**
  * Configuración de áreas usuarias (Figma «CMN Programación · Configuración», nodos 3813:375072 y 3997:188462):
  * tarjeta con «Cancelar» / «Grabar» y la sección «Registros», con la tabla de áreas del pliego y cuatro banderas
- * (¿Genera CMN?, ¿Es ATE?, ¿Es OA?, ¿Es AGA?) que definen su participación en el Cuadro Multianual de Necesidades.
+ * (¿Genera CMN?, ¿Es ATE?, ¿Es OA?, ¿Es MAA?) que definen su participación en el Cuadro Multianual de Necesidades.
  * Las banderas de un área están inactivas hasta que su configuración se graba (en el detalle con «Editar», o con
  * «Grabar» de esta pantalla); desde entonces aparecen activas. Los checks de selección, antes del código de área,
  * siempre están activos.
@@ -126,10 +126,15 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
     });
   }
 
-  /** Lupa (o Enter) del buscador: filtra la tabla y navega al detalle de la primera área que coincida con lo escrito. */
-  buscar(texto: string): void {
+  /** Mientras se escribe en el buscador: filtra la tabla por código o denominación, sin esperar la lupa. */
+  filtrar(texto: string): void {
     this.busqueda.set(texto);
     this.page.set(1);
+  }
+
+  /** Lupa (o Enter) del buscador: filtra la tabla y navega al detalle de la primera área que coincida con lo escrito. */
+  buscar(texto: string): void {
+    this.filtrar(texto);
     const encontrada = this.primeraCoincidencia(texto);
     if (encontrada) void this.router.navigateByUrl(`${AREAS_USUARIAS_ROUTE}/${encontrada.id}`);
   }
@@ -179,8 +184,16 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
     if (area) void this.router.navigateByUrl(`${AREAS_USUARIAS_ROUTE}/${area.id}`);
   }
 
+  /** Cambia una bandera del área. «¿Es OA?» es exclusiva: marcarla en un área la desmarca en la que la tenía. */
   alternar(areaId: string, bandera: keyof AreaUsuaria, marcado: boolean): void {
-    this.areas.update((lista) => lista.map((a) => (a.id === areaId ? { ...a, [bandera]: marcado } : a)));
+    const exclusiva = bandera === 'esOa' && marcado;
+    this.areas.update((lista) =>
+      lista.map((a) => {
+        if (a.id === areaId) return { ...a, [bandera]: marcado };
+        if (exclusiva && a.esOa) return { ...a, esOa: false };
+        return a;
+      }),
+    );
   }
 
   cancelar(): void {
@@ -190,11 +203,11 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
   grabar(): void {
     if (!this.huboCambios() || this.guardando()) return;
     this.guardando.set(true);
-    const cambios = this.areas().map(({ id, generaCmn, esAte, esOa, esAga }) => ({ id, generaCmn, esAte, esOa, esAga }));
+    const cambios = this.areas().map(({ id, generaCmn, esAte, esOa, esMaa }) => ({ id, generaCmn, esAte, esOa, esMaa }));
     this.api.guardar(cambios).subscribe({
       next: () => {
         this.guardando.set(false);
-        // El servidor aplica reglas al grabar (solo un área AGA, se limpia «Nuevo»): se vuelve a leer su resultado.
+        // El servidor aplica reglas al grabar (solo un área MAA, se limpia «Nuevo»): se vuelve a leer su resultado.
         this.cargar();
       },
       error: () => this.guardando.set(false),

@@ -20,7 +20,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 14;
+const VERSION = 16;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol. */
@@ -153,7 +153,7 @@ const AREAS_USUARIAS_SEMILLA: Omit<AreaUsuaria, 'id'>[] = [
   generaCmn: true,
   esAte: false,
   esOa: false,
-  esAga: false,
+  esMaa: false,
   pendiente: ['01.01.01.01.01', '01.02'].includes(codigo),
 }));
 
@@ -231,9 +231,9 @@ function crearDatosIniciales(): DatosTaller {
       entidadUe: 'MEF / Administración General',
       periodo: 2026,
       genericas: [
-        { codigo: '3', presupuestoRecibido: 550000 },
-        { codigo: '4', presupuestoRecibido: 100000 },
-        { codigo: '7', presupuestoRecibido: 400000 },
+        { codigo: '3', presupuestoRecibido: 1200000 },
+        { codigo: '4', presupuestoRecibido: 300000 },
+        { codigo: '7', presupuestoRecibido: 900000 },
       ],
       filas: [
         {
@@ -272,9 +272,28 @@ function crearDatosIniciales(): DatosTaller {
     },
   ];
   datos.preciosDiferenciados = [
-    { id: nuevoId(datos, 'pd'), codigoCubso: '5311000100021482', descripcion: 'Servicio de vigilancia diurna sin armas', numPreciosGenerados: 2 },
-    { id: nuevoId(datos, 'pd'), codigoCubso: '5311000100021483', descripcion: 'Servicio de seguridad para transporte', numPreciosGenerados: 3 },
-    { id: nuevoId(datos, 'pd'), codigoCubso: '7412000300019920', descripcion: 'Servicios de monitoreo', numPreciosGenerados: 0 },
+    {
+      id: nuevoId(datos, 'pd'),
+      codigoCubso: '5311000100021482',
+      descripcion: 'Servicio de vigilancia diurna sin armas',
+      numPreciosGenerados: 2,
+      precios: [
+        { id: nuevoId(datos, 'pa'), area: 'Oficina de Seguridad y Vigilancia', descripcion: 'Servicio de vigilancia diurna sin armas', monto: 7000, vigente: true },
+        { id: nuevoId(datos, 'pa'), area: 'Oficina de Seguridad y Vigilancia', descripcion: 'Servicio de vigilancia diurna sin armas', monto: 9000, vigente: true },
+      ],
+    },
+    {
+      id: nuevoId(datos, 'pd'),
+      codigoCubso: '5311000100021483',
+      descripcion: 'Servicio de seguridad para transporte',
+      numPreciosGenerados: 3,
+      precios: [
+        { id: nuevoId(datos, 'pa'), area: 'Oficina de Abastecimiento', descripcion: 'Seguridad para transporte de valores', monto: 12000, vigente: true },
+        { id: nuevoId(datos, 'pa'), area: 'Oficina de Tesorería', descripcion: 'Seguridad para transporte de documentos', monto: 4500, vigente: true },
+        { id: nuevoId(datos, 'pa'), area: 'Unidad de Logística', descripcion: 'Seguridad para transporte de bienes', monto: 6800, vigente: true },
+      ],
+    },
+    { id: nuevoId(datos, 'pd'), codigoCubso: '7412000300019920', descripcion: 'Servicios de monitoreo', numPreciosGenerados: 0, precios: [] },
   ];
   const ana = USUARIOS_DEMO[0];
   const luis = USUARIOS_DEMO[1];

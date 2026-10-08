@@ -103,7 +103,7 @@ export type TextFieldState = 'enabled' | 'error' | 'success';
   template: `
     <label class="grid w-full min-w-0 gap-1.5">
       <span class="relative block w-full min-w-0">
-        @if (floatingLabel) {
+        @if (floatingLabel && !hideLabel) {
           <span class="absolute -top-2.5 left-3 z-[1] rounded-siaf-sm bg-surface px-siaf-xxs text-xs font-medium leading-normal" [class]="labelClass">
             {{ labelText }}@if (required) { <span class="text-[var(--sys-color-text-feedback-danger)]">*</span> }
           </span>
@@ -230,7 +230,8 @@ export type TextFieldState = 'enabled' | 'error' | 'success';
               class="min-w-0 flex-1 bg-transparent text-sm leading-6 tracking-[0.0249px] text-[var(--sys-color-text-neutral-medium)] outline-none placeholder:text-[var(--sys-color-text-neutral-low)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)]"
               [type]="inputType"
               [attr.inputmode]="inputMode"
-              [placeholder]="floatingLabel || required ? '' : labelText"
+              [placeholder]="(hideLabel ? hasValue : floatingLabel) || required ? '' : labelText"
+              [attr.aria-label]="hideLabel ? labelText : null"
               [attr.aria-required]="required"
               [disabled]="disabled"
               [value]="internalValue"
@@ -290,6 +291,11 @@ export class TextFieldComponent implements OnChanges, ControlValueAccessor {
   @Input() required = false;
   /** Mantiene el borde neutro después de escribir cuando el contexto no representa una validación. */
   @Input() autoSuccess = true;
+  /**
+   * Sin etiqueta flotante sobre el borde (p. ej. campos dentro de una tabla, donde el encabezado de la columna ya
+   * nombra el dato): `label`/`placeholder` queda como texto guía mientras el campo está vacío y como `aria-label`.
+   */
+  @Input() hideLabel = false;
   /** Decimales admitidos cuando `type="decimal"` (importes contables: 2). */
   @Input() decimals = 2;
   /**

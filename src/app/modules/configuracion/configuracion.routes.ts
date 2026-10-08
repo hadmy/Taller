@@ -74,4 +74,11 @@ export const CONFIGURACION_ROUTES: Routes = [
         (m) => m.PreciosDiferenciadosComponent,
       ),
   },
+  {
+    path: `${PRECIOS_DIFERENCIADOS_ROUTE.slice(1)}/:cubsoId`,
+    loadComponent: () =>
+      import('./precios-diferenciados/pages/precio-diferenciado-editar.component').then(
+        (m) => m.PrecioDiferenciadoEditarComponent,
+      ),
+  },
 ];

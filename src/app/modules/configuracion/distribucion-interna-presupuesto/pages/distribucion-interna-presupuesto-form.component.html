@@ -86,6 +86,10 @@
           }
         </div>
 
+        @for (e of excesos(); track e.codigo) {
+          <siaf-alert tone="warning" [description]="'Genérica ' + e.codigo + ': Excede la APM recibida en S/ ' + (e.exceso | number: '1.2-2')" />
+        }
+
         <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" (valueChange)="buscar($event)" />
 
         <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
@@ -112,6 +116,7 @@
                       <siaf-input
                         type="decimal"
                         placeholder="0.00"
+                        [hideLabel]="true"
                         [disabled]="fila.esTitular"
                         [value]="fila.montos[generica.codigo]"
                         (valueChange)="actualizarMonto(fila.id, generica.codigo, $any($event).toString())"

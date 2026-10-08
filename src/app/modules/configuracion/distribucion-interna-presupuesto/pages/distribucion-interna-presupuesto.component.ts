@@ -5,6 +5,7 @@ import { forkJoin } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { RecordStatusTagComponent } from '../../../../shared/ui/record-status-tag/record-status-tag.component';
+import { StatusTagComponent } from '../../../../shared/ui/status-tag/status-tag.component';
 import { TooltipDirective } from '../../../../shared/ui/tooltip/tooltip.directive';
 import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
@@ -35,6 +36,7 @@ import { DistribucionInternaPresupuesto } from '../models/distribucion-interna-p
     PageShellComponent,
     PaginationComponent,
     RecordStatusTagComponent,
+    StatusTagComponent,
     TooltipDirective,
   ],
   templateUrl: './distribucion-interna-presupuesto.component.html',

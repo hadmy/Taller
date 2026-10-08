@@ -5644,7 +5644,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "components",
     "importacion": "@siaf/shared/components/form-table-search/form-table-search.component",
     "archivo": "src/app/shared/components/form-table-search/form-table-search.component.ts",
-    "descripcion": "Buscador de tabla: un `siaf-input` con lupa a todo el ancho y, a la derecha, dos botones de ícono: Filtrar y Más\nopciones, que emiten `filter` y `more`.\n\nCon `variant=\"reports\"` es el buscador de Consultas y reportes (Figma «Guía de Estructura de Pantallas», nodo\n22402:16457 «Search for table»): el segundo botón pasa a ser Columnas (`view_column`), que emite `columns`.\n\nEscribir solo registra el texto: la búsqueda sale por `valueChange` al pulsar Enter o la lupa, y lo tecleado se\ndescarta si el padre reescribe `value`.\n\nTiene además otra variante, como componente aparte, para Documentos y registros y la Bandeja de Documentos:\n`siaf-records-search-toolbar`, el mismo campo con las acciones de la derecha proyectadas (los menús Campos, Favorito\ny Más opciones) en vez de estos dos botones fijos.",
+    "descripcion": "Buscador de tabla: un `siaf-input` con lupa a todo el ancho y, a la derecha, dos botones de ícono: Filtrar y Más\nopciones, que emiten `filter` y `more`. Con `[showActions]=\"false\"` se ocultan los dos botones (Configuración de\náreas usuarias).\n\nCon `variant=\"reports\"` es el buscador de Consultas y reportes (Figma «Guía de Estructura de Pantallas», nodo\n22402:16457 «Search for table»): el segundo botón pasa a ser Columnas (`view_column`), que emite `columns`.\n\nLa búsqueda sale por `valueChange` al pulsar Enter o la lupa, y lo tecleado se descarta si el padre reescribe\n`value`. Para filtrar mientras se escribe, escuchar `typing`, que emite a cada tecla.\n\nTiene además otra variante, como componente aparte, para Documentos y registros y la Bandeja de Documentos:\n`siaf-records-search-toolbar`, el mismo campo con las acciones de la derecha proyectadas (los menús Campos, Favorito\ny Más opciones) en vez de estos dos botones fijos.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
@@ -5691,6 +5691,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "showActions",
+        "tipo": "boolean",
+        "porDefecto": "true",
+        "requerida": false,
+        "descripcion": "Con `false` el buscador queda solo: sin los botones Filtrar y Más opciones (o Columnas)."
+      },
+      {
         "nombre": "value",
         "tipo": "string",
         "porDefecto": "''",
@@ -5720,6 +5727,11 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "nombre": "more",
         "tipo": "void",
         "descripcion": null
+      },
+      {
+        "nombre": "typing",
+        "tipo": "string",
+        "descripcion": "Emite lo escrito a cada tecla, para filtrar en vivo sin esperar Enter ni la lupa."
       },
       {
         "nombre": "valueChange",
@@ -6088,6 +6100,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "''",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "hideLabel",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Sin etiqueta flotante sobre el borde (p. ej. campos dentro de una tabla, donde el encabezado de la columna ya nombra el dato): `label`/`placeholder` queda como texto guía mientras el campo está vacío y como `aria-label`."
       },
       {
         "nombre": "hint",
@@ -13071,7 +13090,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "ui",
     "importacion": "@siaf/ui/switch/switch.component",
     "archivo": "src/app/shared/ui/switch/switch.component.ts",
-    "descripcion": "Interruptor on/off con etiqueta al costado. Al pulsarlo el círculo se desliza y el riel cambia de\ncolor con una transición de 200 ms (sin animación si el sistema pide reducir movimiento).\n\nAdmite `[(checked)]` y formularios (`formControl`/`ngModel`). Se opera con el teclado como un\ncheckbox (Tab y Espacio) y se anuncia con `role=\"switch\"`.\n\nSin consumidores: ninguna pantalla usa switch. Las preguntas Sí/No se resuelven con\n`siaf-radio-group` y su `[inline]` para dejarlas en una sola línea.",
+    "descripcion": "Interruptor on/off con etiqueta al costado. Al pulsarlo el círculo se desliza y el riel cambia de\ncolor con una transición de 200 ms (sin animación si el sistema pide reducir movimiento).\n\nAdmite `[(checked)]` y formularios (`formControl`/`ngModel`). Se opera con el teclado como un\ncheckbox (Tab y Espacio) y se anuncia con `role=\"switch\"`.\n\nLo usa la columna «Vigente» de los commodities/ítems en el detalle de un área usuaria. Las preguntas Sí/No de una\nsolicitud se resuelven con `siaf-radio-group` y su `[inline]` para dejarlas en una sola línea.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [

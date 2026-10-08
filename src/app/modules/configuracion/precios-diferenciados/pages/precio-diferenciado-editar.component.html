@@ -1,0 +1,88 @@
+<siaf-modal
+  [open]="modalGrabarAbierto()"
+  variant="save"
+  [showIllustration]="true"
+  title="¿Grabar registro?"
+  description="El registro se grabará"
+  [confirmDisabled]="guardando()"
+  (canceled)="modalGrabarAbierto.set(false)"
+  (closed)="modalGrabarAbierto.set(false)"
+  (confirmed)="confirmarGrabar()"
+/>
+
+@if (notFound()) {
+  <siaf-page-shell [breadcrumbs]="breadcrumbs">
+    <siaf-empty-state
+      illustration="no-data"
+      title="El CUBSO no existe"
+      description="Vuelva a la configuración de precios diferenciados."
+      actionLabel="Volver"
+      (actionClicked)="cancelar()"
+    />
+  </siaf-page-shell>
+} @else {
+  <siaf-page-shell [breadcrumbs]="breadcrumbs">
+    <siaf-page-header pageHeader title="Configuración de precios diferenciados" />
+
+    <div class="flex min-h-0 flex-1 flex-col gap-siaf-md overflow-auto rounded-siaf-md bg-surface p-siaf-lg">
+      <header class="flex items-center justify-between gap-siaf-md">
+        <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Editar precios diferenciados</h2>
+        <div class="flex gap-siaf-sm">
+          <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+          <siaf-button variant="filled" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="abrirModalGrabar()">Grabar</siaf-button>
+        </div>
+      </header>
+
+      <div class="overflow-auto">
+        <table class="w-full min-w-[900px] border-collapse text-sm">
+          <thead>
+            <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+              <th class="w-48 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código CUBSO</th>
+              <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Área</th>
+              <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
+              <th class="w-64 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Monto</th>
+              <th class="w-28 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (precio of precios(); track precio.id) {
+              <tr class="border-b border-[var(--sys-color-divider-default)]">
+                <td class="px-siaf-md py-siaf-xs text-[var(--sys-color-text-neutral-medium)]">{{ cubso()?.codigoCubso }}</td>
+                <td class="px-siaf-md py-siaf-xs">
+                  <siaf-input placeholder="Área" [hideLabel]="true" [value]="precio.area" (valueChange)="cambiarTexto(precio.id, 'area', $event)" />
+                </td>
+                <td class="px-siaf-md py-siaf-xs">
+                  <siaf-input placeholder="Descripción" [hideLabel]="true" [value]="precio.descripcion" (valueChange)="cambiarTexto(precio.id, 'descripcion', $event)" />
+                </td>
+                <td class="px-siaf-md py-siaf-xs">
+                  <siaf-input type="decimal" placeholder="S/ 0.00" [hideLabel]="true" [value]="precio.monto ?? ''" (valueChange)="cambiarMonto(precio.id, $event)" />
+                </td>
+                <td class="px-siaf-md py-siaf-xs text-center">
+                  <siaf-switch
+                    [checked]="precio.vigente"
+                    [ariaLabel]="'Vigencia del precio ' + ($index + 1)"
+                    (checkedChange)="cambiarVigencia(precio.id, $event)"
+                  />
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" colspan="5">
+                  @if (cargando()) {
+                    Cargando precios…
+                  } @else {
+                    Este CUBSO todavía no tiene precios. Use «Añadir» para registrar el primero.
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <siaf-button variant="text" icon="add" [disabled]="cargando()" (click)="anadirFila()">Añadir</siaf-button>
+      </div>
+    </div>
+  </siaf-page-shell>
+}

@@ -5,13 +5,14 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
 
 /**
  * Buscador de tabla: un `siaf-input` con lupa a todo el ancho y, a la derecha, dos botones de ícono: Filtrar y Más
- * opciones, que emiten `filter` y `more`.
+ * opciones, que emiten `filter` y `more`. Con `[showActions]="false"` se ocultan los dos botones (Configuración de
+ * áreas usuarias).
  *
  * Con `variant="reports"` es el buscador de Consultas y reportes (Figma «Guía de Estructura de Pantallas», nodo
  * 22402:16457 «Search for table»): el segundo botón pasa a ser Columnas (`view_column`), que emite `columns`.
  *
- * Escribir solo registra el texto: la búsqueda sale por `valueChange` al pulsar Enter o la lupa, y lo tecleado se
- * descarta si el padre reescribe `value`.
+ * La búsqueda sale por `valueChange` al pulsar Enter o la lupa, y lo tecleado se descarta si el padre reescribe
+ * `value`. Para filtrar mientras se escribe, escuchar `typing`, que emite a cada tecla.
  *
  * Tiene además otra variante, como componente aparte, para Documentos y registros y la Bandeja de Documentos:
  * `siaf-records-search-toolbar`, el mismo campo con las acciones de la derecha proyectadas (los menús Campos, Favorito
@@ -71,6 +72,7 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
         (trailingAction)="onLupa()"
       />
 
+      @if (showActions) {
       <div class="flex shrink-0 items-start gap-siaf-xs">
         <button
           class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
@@ -93,6 +95,7 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
           <siaf-icon [name]="variant === 'reports' ? 'view_column' : 'more_vert'" [size]="24" />
         </button>
       </div>
+      }
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -117,8 +120,12 @@ export class FormTableSearchComponent implements OnChanges {
   /** Nombre accesible del botón Columnas de la variante `reports`. */
   @Input() columnsLabel = 'Ocultar o mostrar columnas';
   @Input() disabled = false;
+  /** Con `false` el buscador queda solo: sin los botones Filtrar y Más opciones (o Columnas). */
+  @Input() showActions = true;
 
   @Output() valueChange = new EventEmitter<string>();
+  /** Emite lo escrito a cada tecla, para filtrar en vivo sin esperar Enter ni la lupa. */
+  @Output() typing = new EventEmitter<string>();
   @Output() filter = new EventEmitter<void>();
   @Output() more = new EventEmitter<void>();
   /** Botón Columnas de la variante `reports`. */
@@ -127,9 +134,10 @@ export class FormTableSearchComponent implements OnChanges {
   /** Último texto tecleado; se emite recién al confirmar (Enter o lupa). */
   private lastTyped: string | null = null;
 
-  /** El siaf-input interno emite al tipear; aquí solo se registra el texto. */
+  /** El siaf-input interno emite al tipear: se registra el texto y se avisa por `typing`. */
   onTyped(value: string | number | string[]): void {
     this.lastTyped = String(value ?? '');
+    this.typing.emit(this.lastTyped);
   }
 
   onSubmit(event: Event): void {

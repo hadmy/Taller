@@ -29,7 +29,7 @@ export class AreasUsuariasApiService {
   }
 
   /** Reemplaza las cuatro banderas de las áreas indicadas. */
-  guardar(cambios: Pick<AreaUsuaria, 'id' | 'generaCmn' | 'esAte' | 'esOa' | 'esAga'>[]): Observable<{ message: string }> {
+  guardar(cambios: Pick<AreaUsuaria, 'id' | 'generaCmn' | 'esAte' | 'esOa' | 'esMaa'>[]): Observable<{ message: string }> {
     return this.http.put<{ message: string }>(`${this.base}/configuracion/areas-usuarias`, { areas: cambios });
   }
 

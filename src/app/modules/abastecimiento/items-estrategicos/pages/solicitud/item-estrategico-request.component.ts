@@ -164,8 +164,6 @@ export class ItemEstrategicoRequestComponent implements OnInit {
 
   // ── Panel «Seleccionar ítems estratégicos» ────────────────────────
   private readonly catalogo = signal<ItemEstrategicoCatalogo[]>([]);
-  /** Códigos que la entidad ya tiene vigentes como estratégicos: se ven pero no se pueden elegir. */
-  private readonly codigosVigentes = signal<Set<string>>(new Set());
   readonly panelItemsAbierto = signal(false);
   readonly busquedaPanel = signal('');
   readonly seleccionPanel = signal<string[]>([]);
@@ -191,9 +189,8 @@ export class ItemEstrategicoRequestComponent implements OnInit {
     const inicio = (this.paginaPanel() - 1) * this.filasPorPaginaPanel();
     return this.catalogoDisponible().slice(inicio, inicio + this.filasPorPaginaPanel());
   });
-  readonly idsDeshabilitadosPanel = computed(() =>
-    this.catalogo().filter((c) => this.codigosVigentes().has(c.codigo)).map((c) => c.id),
-  );
+  // Todas las filas del panel se pueden elegir: ninguna va deshabilitada.
+  readonly idsDeshabilitadosPanel = computed<string[]>(() => []);
   private readonly elegiblesPaginaPanel = computed(() => {
     const deshabilitados = new Set(this.idsDeshabilitadosPanel());
     return this.filasPanel().filter((f) => !deshabilitados.has(f.id));
@@ -265,9 +262,6 @@ export class ItemEstrategicoRequestComponent implements OnInit {
   ngOnInit(): void {
     this.catalogosApi.listarTiposDocumento().subscribe((tipos) => (this.tiposDocumento = tipos));
     this.itemsApi.listarCatalogo().subscribe((catalogo) => this.catalogo.set(catalogo));
-    this.itemsApi.listarRegistros().subscribe((registros) =>
-      this.codigosVigentes.set(new Set(registros.filter((r) => r.vigente).map((r) => r.codigo))),
-    );
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.cargar(id);
 

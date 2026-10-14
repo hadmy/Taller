@@ -5,8 +5,9 @@ import {
   DISTRIBUCION_INTERNA_PRESUPUESTO_FORM_ROUTE,
   DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE,
 } from './distribucion-interna-presupuesto/config/distribucion-interna-presupuesto.rutas';
-import { FECHAS_FASE_CMN_DPLAIP_FORM_ROUTE, FECHAS_FASE_CMN_DPLAIP_ROUTE } from './fechas-fase-cmn-dplaip/config/fechas-fase-cmn-dplaip.rutas';
-import { FECHAS_FASE_CMN_ENTIDAD_FORM_ROUTE, FECHAS_FASE_CMN_ENTIDAD_ROUTE } from './fechas-fase-cmn-entidad/config/fechas-fase-cmn-entidad.rutas';
+import { FECHAS_FASE_CMN_DPLAIP_FORM_ROUTE, FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE, FECHAS_FASE_CMN_DPLAIP_ROUTE } from './fechas-fase-cmn-dplaip/config/fechas-fase-cmn-dplaip.rutas';
+import { FECHAS_FASE_CMN_ENTIDAD_FORM_ROUTE, FECHAS_FASE_CMN_ENTIDAD_LISTA_ROUTE, FECHAS_FASE_CMN_ENTIDAD_ROUTE } from './fechas-fase-cmn-entidad/config/fechas-fase-cmn-entidad.rutas';
+import { SERVICIOS_BASICOS_EXCLUIDOS_ROUTE } from './servicios-basicos-excluidos/config/servicios-basicos-excluidos.rutas';
 import { PRECIOS_DIFERENCIADOS_ROUTE } from './precios-diferenciados/config/precios-diferenciados.rutas';
 
 /** Módulo de pantallas de configuración transversales (no siguen el ciclo de una solicitud). */
@@ -26,7 +27,8 @@ export const CONFIGURACION_ROUTES: Routes = [
       ),
   },
   {
-    path: FECHAS_FASE_CMN_ENTIDAD_ROUTE.slice(1),
+    // La pantalla de entrada de «por Entidad» es la lista de años (Figma 5110:411128).
+    path: FECHAS_FASE_CMN_ENTIDAD_LISTA_ROUTE.slice(1),
     loadComponent: () =>
       import('./fechas-fase-cmn-entidad/pages/fechas-fase-cmn-entidad.component').then(
         (m) => m.FechasFaseCmnEntidadComponent,
@@ -41,6 +43,13 @@ export const CONFIGURACION_ROUTES: Routes = [
   },
   {
     path: FECHAS_FASE_CMN_DPLAIP_ROUTE.slice(1),
+    loadComponent: () =>
+      import('./fechas-fase-cmn-dplaip/pages/fecha-fase-cmn-dplaip-form.component').then(
+        (m) => m.FechaFaseCmnDplaipFormComponent,
+      ),
+  },
+  {
+    path: FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE.slice(1),
     loadComponent: () =>
       import('./fechas-fase-cmn-dplaip/pages/fechas-fase-cmn-dplaip.component').then(
         (m) => m.FechasFaseCmnDplaipComponent,
@@ -65,6 +74,13 @@ export const CONFIGURACION_ROUTES: Routes = [
     loadComponent: () =>
       import('./distribucion-interna-presupuesto/pages/distribucion-interna-presupuesto-form.component').then(
         (m) => m.DistribucionInternaPresupuestoFormComponent,
+      ),
+  },
+  {
+    path: SERVICIOS_BASICOS_EXCLUIDOS_ROUTE.slice(1),
+    loadComponent: () =>
+      import('./servicios-basicos-excluidos/pages/servicios-basicos-excluidos.component').then(
+        (m) => m.ServiciosBasicosExcluidosComponent,
       ),
   },
   {

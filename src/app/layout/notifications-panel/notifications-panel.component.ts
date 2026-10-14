@@ -185,8 +185,11 @@ export class NotificationsPanelComponent {
    * Prefiere el código (estable) sobre el nombre.
    */
   private resolveRoute(codigo: string, _nombre: string): string {
-    // Taller: el único documento es la Solicitud de Registro de Cuenta Bancaria (SRCB).
-    const rutas: Record<string, string> = { SRCB: '/procesos/registro-cuentas-bancarias/solicitud' };
+    // Taller: la Solicitud de Registro de Cuenta Bancaria (SRCB) y la de Ítems Estratégicos del CMN (SIE).
+    const rutas: Record<string, string> = {
+      SRCB: '/procesos/registro-cuentas-bancarias/solicitud',
+      SIE: '/procesos/cuadro-multianual-necesidades/solicitudes/items-estrategicos/solicitud',
+    };
     return rutas[codigo] ?? '/procesos/registro-cuentas-bancarias/solicitud';
   }
 

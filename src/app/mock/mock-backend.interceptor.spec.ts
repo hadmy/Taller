@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 
 import type { LoginResponse } from '../core/api/auth-api.service';
 import type { SolicitudResponse } from '../core/api/solicitudes-api.service';
+import type { ItemEstrategicoCatalogo, ItemEstrategicoRegistro } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
 import type { CuentaBancariaDatos, CuentaBancariaRegistro } from '../modules/tesoreria/cuentas-bancarias/models/cuenta-bancaria.model';
 import { mockBackendInterceptor } from './mock-backend.interceptor';
 import { reiniciarDatosDemo } from './mock-db';
@@ -138,6 +139,38 @@ describe('mockBackendInterceptor', () => {
 
     expect(eliminar.error?.status).toBe(409);
     expect(eliminar.error?.error.message).toContain('observada');
+  }));
+
+  it('ítems estratégicos: elaborar pide ítems, numera con su serie y aprobar deja los ítems vigentes', fakeAsync(() => {
+    const ana = entrar('11111111');
+    const creada = esperar(http.post<SolicitudResponse>(`${API}/solicitudes`, { tipoDocumentoId: 'td-sie', tipoAccion: 'inclusion', organoLinea: 'OGA', justificacion: 'Ítems nuevos' }, { headers: ana }));
+    const id = creada.valor!.id;
+    expect(creada.valor?.catDocumento?.codigo).toBe('SIE');
+
+    // Sin ítems no se puede elaborar, y no se aceptan ítems fuera del catálogo.
+    esperar(http.post(`${API}/solicitudes/${id}/sustentos`, archivo(), { headers: ana }));
+    expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana })).error?.status).toBe(400);
+    expect(esperar(http.post(`${API}/solicitudes/${id}/items-estrategicos`, { items: [{ codigo: '0000', descripcion: 'Otro' }] }, { headers: ana })).error?.status).toBe(400);
+
+    const catalogo = esperar(http.get<ItemEstrategicoCatalogo[]>(`${API}/items-estrategicos/catalogo`, { headers: ana })).valor!;
+    const elegidos = catalogo.slice(14, 16).map(({ codigo, descripcion }) => ({ codigo, descripcion }));
+    esperar(http.post(`${API}/solicitudes/${id}/items-estrategicos`, { items: elegidos }, { headers: ana }));
+    const elaborada = esperar(http.patch<{ numero: string }>(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
+    expect(elaborada.valor?.numero).toMatch(/^CMN-SIE-00007-\d{4}-MEF-OGA$/);
+
+    // Cada proceso tiene su bandeja.
+    const bandeja = esperar(http.get<SolicitudResponse[]>(`${API}/solicitudes/bandeja-creador?tipos=SIE`, { headers: ana }));
+    expect(bandeja.valor?.every((s) => s.catDocumento?.codigo === 'SIE')).toBeTrue();
+    expect(bandeja.valor?.length).toBe(7);
+
+    esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VERIFICADO' }, { headers: ana }));
+    const luis = entrar('22222222');
+    esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: luis }));
+
+    const registros = esperar(http.get<ItemEstrategicoRegistro[]>(`${API}/items-estrategicos`, { headers: luis })).valor!;
+    const nuevos = registros.filter((r) => r.documentoId === id);
+    expect(nuevos.map((r) => r.codigo)).toEqual(elegidos.map((i) => i.codigo));
+    expect(nuevos.every((r) => r.vigente)).toBeTrue();
   }));
 
   it('deja pasar lo que no es de la API (los assets)', () => {

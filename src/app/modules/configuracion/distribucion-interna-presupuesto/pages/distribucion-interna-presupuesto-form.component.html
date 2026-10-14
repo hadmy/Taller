@@ -1,19 +1,30 @@
+<siaf-modal
+  [open]="modalGrabarAbierto()"
+  variant="save"
+  [showIllustration]="true"
+  title="¿Grabar techo presupuestal?"
+  description="Se grabarán los datos de distribución interna de presupuesto."
+  confirmLabel="Aceptar"
+  [confirmDisabled]="guardando()"
+  (canceled)="modalGrabarAbierto.set(false)"
+  (closed)="modalGrabarAbierto.set(false)"
+  (confirmed)="confirmarGrabar()"
+/>
+
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
   <siaf-page-header pageHeader title="Distribución interna de presupuesto" />
 
   <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg rounded-siaf-md bg-surface p-siaf-lg">
     <header class="flex items-center justify-between">
       <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-        Configurar distribución interna del techo presupuestal por genérica
+        {{ editando() ? 'Editar distribución interna de presupuesto' : 'Configurar distribución interna del techo presupuestal por genérica' }}
       </h2>
-      @if (anioSeleccionado()) {
-        <div class="flex gap-siaf-sm">
-          <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
-          <siaf-button variant="filled" icon="save" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="grabar()">
-            Grabar
-          </siaf-button>
-        </div>
-      }
+      <div class="flex gap-siaf-sm">
+        <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+        <siaf-button variant="filled" icon="save" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="grabar()">
+          Grabar
+        </siaf-button>
+      </div>
     </header>
 
     <!--
@@ -21,61 +32,64 @@
       este margen queda pegada al borde superior del contenedor con scroll y `overflow-y-auto` se la recorta.
     -->
     <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg overflow-y-auto pt-siaf-xs">
-      @if (!anioSeleccionado()) {
-        <!-- Paso 1: elegir el año (Figma, nodo 4129:285438) -->
-        <div class="max-w-xl">
+      @if (presupuestoFaseSeleccionado() && areaUsuariaTitular()) {
+        <!-- Figma 4683:1179228: datos del área titular en un recuadro, sobre los selectores. -->
+        <div class="flex flex-wrap gap-siaf-lg rounded-siaf-md border border-[var(--sys-color-divider-default)] p-siaf-md">
+          <div class="min-w-[260px] flex-[2]">
+            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-high)]">Área Usuaria titular que recibió el presupuesto</p>
+            <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ areaUsuariaTitular()!.codigo + ' - ' + areaUsuariaTitular()!.denominacion }}</p>
+          </div>
+          <div class="min-w-[180px] flex-1">
+            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-high)]">Entidad / UE</p>
+            <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ entidadUe() }}</p>
+          </div>
+          <div class="min-w-[100px]">
+            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-high)]">Periodo</p>
+            <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ periodo() }}</p>
+          </div>
+          <div class="min-w-[160px]">
+            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-high)]">Genéricas habilitadas</p>
+            <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ genericasHabilitadas() }}</p>
+          </div>
+        </div>
+      }
+
+      <!-- Figma 4683:1179194 / 4683:1179273: «Año» y «Presupuesto de fase» con su leyenda encima, siempre visibles. -->
+      <div class="flex flex-wrap gap-siaf-lg">
+        <div class="max-w-xs flex-1">
+          <p class="m-0 mb-siaf-xs text-xs font-bold uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-high)]">Año</p>
           <siaf-input
-            placeholder="Seleccione"
+            [label]="anioSeleccionado() ? 'Año' : ''"
+            placeholder="Selecciona"
             type="select"
+            [disabled]="editando()"
             [options]="opcionesAnio"
             [value]="anioSeleccionado()"
             (valueChange)="seleccionarAnio($any($event).toString())"
           />
         </div>
-      } @else {
-        <!-- Paso 2: con el año elegido, aparece el presupuesto de fase (Figma, nodo 4216:225574) -->
-        <div class="flex flex-wrap gap-siaf-lg">
-          <div class="max-w-xs flex-1">
-            <siaf-input
-              label="Año"
-              type="select"
-              [options]="opcionesAnio"
-              [value]="anioSeleccionado()"
-              (valueChange)="seleccionarAnio($any($event).toString())"
-            />
-          </div>
-          <div class="max-w-xs flex-1">
-            <siaf-input
-              label="Presupuesto de fase"
-              placeholder="Selecciona"
-              type="select"
-              [disabled]="cargando()"
-              [options]="opcionesPresupuestoFase"
-              [value]="presupuestoFaseSeleccionado()"
-              (valueChange)="seleccionarPresupuestoFase($any($event).toString())"
-            />
-          </div>
+        <div class="max-w-xs flex-1">
+          <p class="m-0 mb-siaf-xs text-xs font-bold uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-high)]">Presupuesto de fase</p>
+          <siaf-input
+            [label]="presupuestoFaseSeleccionado() ? 'Presupuesto de fase' : ''"
+            placeholder="Selecciona"
+            type="select"
+            [disabled]="editando() || cargando() || !anioSeleccionado()"
+            [options]="opcionesPresupuestoFase"
+            [value]="presupuestoFaseSeleccionado()"
+            (valueChange)="seleccionarPresupuestoFase($any($event).toString())"
+          />
         </div>
+      </div>
+
+      @if (presupuestoFaseSeleccionado()) {
+        <div class="border-t border-[var(--sys-color-divider-default)]"></div>
       }
 
+      <!-- Figma: pestañas con los tres años siguientes al elegido («-» mientras no hay año). -->
+      <siaf-tabs [tabs]="tabsAnios()" [activeId]="tabAnioActiva()" (activeIdChange)="tabAnioElegida.set($event)" ariaLabel="Años de la distribución" />
+
       @if (presupuestoFaseSeleccionado() && areaUsuariaTitular()) {
-        <div class="border-t border-[var(--sys-color-divider-default)]"></div>
-
-        <div class="flex flex-wrap gap-siaf-md">
-          <div class="min-w-[260px] flex-[2]">
-            <readonly-field caption="Área Usuaria titular que recibió la APM" [value]="areaUsuariaTitular()!.codigo + ' - ' + areaUsuariaTitular()!.denominacion" />
-          </div>
-          <div class="min-w-[180px] flex-1">
-            <readonly-field caption="Entidad / UE" [value]="entidadUe()" />
-          </div>
-          <div class="min-w-[100px]">
-            <readonly-field caption="Periodo" [value]="periodo()?.toString() ?? ''" />
-          </div>
-          <div class="min-w-[160px]">
-            <readonly-field caption="Genéricas habilitadas" [value]="genericasHabilitadas()" />
-          </div>
-        </div>
-
         <div class="flex flex-wrap gap-siaf-md">
           @for (generica of genericas(); track generica.codigo) {
             <div class="min-w-[220px] flex-1 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-lowest)] p-siaf-md">
@@ -90,9 +104,12 @@
           <siaf-alert tone="warning" [description]="'Genérica ' + e.codigo + ': Excede la APM recibida en S/ ' + (e.exceso | number: '1.2-2')" />
         }
 
-        <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" (valueChange)="buscar($event)" />
+        @if (!editando()) {
+          <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" (valueChange)="buscar($event)" />
+        }
 
-        <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+        <!-- shrink-0: en la columna con scroll, sin esto la tabla se encoge hasta quedar solo el encabezado. -->
+        <div class="shrink-0 overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
           <table class="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
@@ -139,9 +156,9 @@
             </tbody>
           </table>
         </div>
-
-        <siaf-pagination navigation="Inactive" position="Bottom" [rowPage]="true" [page]="1" [pageSize]="filasFiltradas().length || 1" [totalItems]="filasFiltradas().length" [totalPages]="1" [rowsPerPage]="filasFiltradas().length || 25" [rowsPerPageOptions]="[25]" />
       }
+
+      <siaf-pagination navigation="Inactive" position="Bottom" [rowPage]="true" [page]="1" [pageSize]="filasFiltradas().length || 1" [totalItems]="filasFiltradas().length" [totalPages]="1" [rowsPerPage]="25" [rowsPerPageOptions]="[25]" />
     </div>
   </div>
 </siaf-page-shell>

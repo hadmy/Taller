@@ -6,18 +6,24 @@ import type { CambiarPerfilResponse, LoginResponse, PerfilItem } from '../core/a
 import type { SolicitudResponse } from '../core/api/solicitudes-api.service';
 import { APP_CONFIG } from '../core/config/app.config';
 import type { EstadoDocumento } from '../core/models/documento.model';
+import type { ItemEstrategico } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
 import type { CuentaBancariaDatos } from '../modules/tesoreria/cuentas-bancarias/models/cuenta-bancaria.model';
 import {
+  CATALOGO_ITEMS_ESTRATEGICOS,
   DatosTaller,
   ENTIDAD_CREADORA,
   NotificacionMock,
+  TIPOS_DOCUMENTO,
   TIPO_DOCUMENTO,
+  TIPO_DOCUMENTO_SIE,
   UNIDAD_CREADORA,
   filaHistorial,
   guardarDatos,
   leerDatos,
   nuevoId,
   numeroDocumento,
+  numeroDocumentoItemsEstrategicos,
+  tipoDocumentoDe,
 } from './mock-db';
 import { CONTRASENA_DEMO, USUARIOS_DEMO, UsuarioDemo, buscarUsuarioPorPerfil } from './usuarios-demo';
 
@@ -140,6 +146,13 @@ const tiposDocumento: Manejador = () => ok([
     accionesPermitidas: [{ tipoAccion: 'creacion' }],
     proceso: { codigo: 'registro-cuentas-bancarias', nombre: 'Registro de cuentas bancarias', modulo: 'tesoreria' },
   },
+  {
+    ...TIPO_DOCUMENTO_SIE,
+    modulo: 'abastecimiento',
+    esActivo: true,
+    accionesPermitidas: [{ tipoAccion: 'inclusion' }],
+    proceso: { codigo: 'items-estrategicos', nombre: 'Ítems estratégicos', modulo: 'abastecimiento' },
+  },
 ]);
 
 // ─── Notificaciones ────────────────────────────────────────────────
@@ -189,7 +202,7 @@ function notificar(datos: DatosTaller, s: SolicitudResponse, estado: EstadoDocum
     leida: false,
     leidaEn: null,
     createdAt: new Date().toISOString(),
-    documento: { id: s.id, numero: s.numero, catDocumento: TIPO_DOCUMENTO },
+    documento: { id: s.id, numero: s.numero, catDocumento: tipoDocumentoDe(s) },
     ...destino,
   });
 }
@@ -198,6 +211,10 @@ function notificar(datos: DatosTaller, s: SolicitudResponse, estado: EstadoDocum
 
 function buscarSolicitud(datos: DatosTaller, id: string): SolicitudResponse | undefined {
   return datos.solicitudes.find((s) => s.id === id);
+}
+
+function esItemsEstrategicos(s: SolicitudResponse): boolean {
+  return s.catDocumento?.codigo === TIPO_DOCUMENTO_SIE.codigo;
 }
 
 function bandeja(ctx: Contexto, estados?: EstadoDocumento[]): Respuesta {
@@ -236,13 +253,15 @@ const detalleSolicitud: Manejador = ({ datos, params }) => {
 const crearSolicitud: Manejador = ({ req, datos, sesion }) => {
   if (!sesion) return error(401, 'Sesión expirada.');
   if (sesion.perfil.rolCodigo !== 'CREADOR') return error(403, 'Solo un creador puede registrar solicitudes.');
-  const dto = (req.body ?? {}) as { tipoAccion?: string; organoLinea?: string; justificacion?: string };
+  const dto = (req.body ?? {}) as { tipoDocumentoId?: string; tipoAccion?: string; organoLinea?: string; justificacion?: string };
+  // Sin `tipoDocumentoId` (o con uno desconocido) la solicitud es del proceso de ejemplo.
+  const tipo = TIPOS_DOCUMENTO.find((t) => t.id === dto.tipoDocumentoId) ?? TIPO_DOCUMENTO;
   const ahora = new Date().toISOString();
   const id = nuevoId(datos, 'sol');
   const s: SolicitudResponse = {
     id,
     numero: null,
-    catDocumento: TIPO_DOCUMENTO,
+    catDocumento: tipo,
     tipoAccion: dto.tipoAccion ?? 'creacion',
     estado: 'NUEVO',
     asuntoMotivo: `[${dto.organoLinea ?? ''}] ${dto.justificacion ?? ''}`,
@@ -254,6 +273,7 @@ const crearSolicitud: Manejador = ({ req, datos, sesion }) => {
     updatedAt: ahora,
     itemsCuenta: [],
     detalleCuentaBancaria: null,
+    detalleItemsEstrategicos: null,
     sustentos: [],
     historialEstados: [filaHistorial(datos, null, 'NUEVO', ahora, sesion.usuario, rolDe(sesion.perfil))],
   };
@@ -284,6 +304,22 @@ const guardarCuentaBancaria: Manejador = ({ req, datos, params }) => {
   s.updatedAt = new Date().toISOString();
   guardarDatos(datos);
   return ok({ message: 'Cuenta guardada' });
+};
+
+const guardarItemsEstrategicos: Manejador = ({ req, datos, params }) => {
+  const s = buscarSolicitud(datos, params[0]);
+  if (!s) return error(404, 'La solicitud no existe.');
+  if (!esItemsEstrategicos(s)) return error(400, 'La solicitud no es de ítems estratégicos.');
+  if (!['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'La solicitud ya no admite cambios.');
+  const items = ((req.body ?? {}) as { items?: ItemEstrategico[] }).items ?? [];
+  if (!items.length) return error(400, 'Seleccione al menos un ítem estratégico.');
+  const codigos = new Set(items.map((i) => i.codigo));
+  if (codigos.size !== items.length) return error(400, 'Hay ítems repetidos en la solicitud.');
+  if (items.some((i) => !CATALOGO_ITEMS_ESTRATEGICOS.some((c) => c.codigo === i.codigo))) return error(400, 'Hay ítems que no están en el catálogo.');
+  s.detalleItemsEstrategicos = { documentoId: s.id, items: items.map(({ codigo, descripcion }) => ({ codigo, descripcion })) };
+  s.updatedAt = new Date().toISOString();
+  guardarDatos(datos);
+  return ok({ message: 'Ítems guardados' });
 };
 
 const subirSustento: Manejador = ({ req, datos, params }) => {
@@ -349,16 +385,25 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
   if (nuevo === 'ELIMINADO' && (s.historialEstados ?? []).some((h) => h.estadoNuevo === 'OBSERVADO')) {
     return error(409, 'No se puede eliminar una solicitud que fue observada.');
   }
+  const items = esItemsEstrategicos(s);
   if (nuevo === 'ELABORADO') {
-    if (!s.detalleCuentaBancaria) return error(400, 'Registre los datos de la cuenta bancaria.');
-    if (!(s.sustentos ?? []).length) return error(400, 'Adjunte el documento de sustento.');
+    if (items && !s.detalleItemsEstrategicos?.items.length) return error(400, 'Seleccione al menos un ítem estratégico.');
+    if (!items && !s.detalleCuentaBancaria) return error(400, 'Registre los datos de la cuenta bancaria.');
+    // La solicitud de ítems estratégicos ya no lleva documento de sustento (Figma «2. Registro de solicitud»).
+    if (!items && !(s.sustentos ?? []).length) return error(400, 'Adjunte el documento de sustento.');
   }
 
   const ahora = new Date().toISOString();
   const anterior = s.estado;
   if (nuevo === 'ELABORADO' && !s.numero) {
-    datos.correlativoDocumento += 1;
-    s.numero = numeroDocumento(datos.correlativoDocumento, new Date());
+    // Cada tipo de documento lleva su propia serie.
+    if (items) {
+      datos.correlativoItemsEstrategicos += 1;
+      s.numero = numeroDocumentoItemsEstrategicos(datos.correlativoItemsEstrategicos, new Date());
+    } else {
+      datos.correlativoDocumento += 1;
+      s.numero = numeroDocumento(datos.correlativoDocumento, new Date());
+    }
   }
   // Volver a grabar un ELABORADO no deja fila en el historial.
   if (!(anterior === 'ELABORADO' && nuevo === 'ELABORADO')) {
@@ -386,6 +431,25 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
     });
   }
 
+  // Al aprobar, los ítems pasan a los registros como vigentes; uno ya registrado vuelve a quedar vigente.
+  if (nuevo === 'APROBADO' && s.detalleItemsEstrategicos) {
+    for (const item of s.detalleItemsEstrategicos.items) {
+      const existente = datos.registrosItemsEstrategicos.find(
+        (r) => r.codigo === item.codigo && r.entidadSiglas === (s.entidadCreadora?.siglas ?? ''),
+      );
+      const registro = {
+        ...item,
+        vigente: true,
+        entidadSiglas: s.entidadCreadora?.siglas ?? '',
+        documentoId: s.id,
+        numeroDocumento: s.numero ?? '',
+        fechaRegistro: ahora,
+      };
+      if (existente) Object.assign(existente, registro);
+      else datos.registrosItemsEstrategicos.push({ id: nuevoId(datos, 'rie'), ...registro });
+    }
+  }
+
   notificar(datos, s, nuevo, comentario || null);
   guardarDatos(datos);
   return ok({ message: 'Estado actualizado', numero: s.numero });
@@ -396,11 +460,18 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
 const registrosCuentas: Manejador = ({ datos, sesion }) =>
   ok(datos.registros.filter((r) => !sesion || r.entidadSiglas === sesion.perfil.entidadSiglas));
 
+// ─── Ítems estratégicos del CMN ────────────────────────────────────
+
+const registrosItemsEstrategicos: Manejador = ({ datos, sesion }) =>
+  ok(datos.registrosItemsEstrategicos.filter((r) => !sesion || r.entidadSiglas === sesion.perfil.entidadSiglas));
+
+const catalogoItemsEstrategicos: Manejador = () => ok(CATALOGO_ITEMS_ESTRATEGICOS);
+
 // ─── Configuración: áreas usuarias del CMN ─────────────────────────
 
 const listarAreasUsuarias: Manejador = ({ datos }) => ok(datos.areasUsuarias.filter((a) => !a.pendiente));
 
-/** Catálogo de commodities/ítems de «Buscar commodities u ítems» (Figma «Conf-Areas usuarias-06»); «—» donde el catálogo no tiene dato. */
+/** Catálogo de commodities/ítems de «Buscar commodities u ítems» (Figma nodo 5053:72111). */
 const CATALOGO_COMMODITIES_ITEMS = (
   [
     ['78101800', 'Papel y cartón', '78101801', 'Papel bond A4 75gr'],
@@ -410,10 +481,10 @@ const CATALOGO_COMMODITIES_ITEMS = (
     ['44121700', 'Suministros de oficina', '44121703', 'Folder manila A4'],
     ['43211500', 'Equipos de cómputo', '43211502', 'Monitor LED 24 pulgadas'],
     ['43211500', 'Equipos de cómputo', '43211503', 'Impresora multifuncional láser'],
-    ['46181500', 'Equipos de protección personal', '—', '—'],
-    ['81112200', 'Servicios de soporte informático', '—', '—'],
-    ['—', '—', '73152108', 'Servicio de mantenimiento de equipos'],
-    ['—', '—', '84131600', 'Servicio de fotocopiado externo'],
+    ['46181500', 'Equipos de protección personal', '46181501', 'Guantes de seguridad industrial'],
+    ['81112200', 'Servicios de soporte informático', '81112201', 'Servicio de soporte técnico de computadoras'],
+    ['81112501', 'Servicios de mantenimiento', '73152108', 'Servicio de mantenimiento de equipos'],
+    ['81112502', 'Servicios de publicación', '84131600', 'Servicio de fotocopiado externo'],
   ] as const
 ).map(([commodity, descripcionCommodity, item, descripcionItem], i) => ({
   id: `cat-${i + 1}`,
@@ -435,6 +506,42 @@ const guardarItemsAreaUsuaria: Manejador = ({ req, datos, params }) => {
   ];
   guardarDatos(datos);
   return ok({ message: 'Ítems guardados' });
+};
+
+// ─── Configuración: servicios básicos excluidos de la ley ──────────
+
+/** Catálogo de «Seleccionar ítems» (Figma «Configuración de servicios básicos excluidos de la ley»). */
+const CATALOGO_SERVICIOS_BASICOS = (
+  [
+    ['51', '20', '17', '22', '44152789', 'Bien', 'Servicio de Agua'],
+    ['51', '20', '17', '22', '45152785', 'Bien', 'Servicio de Luz'],
+    ['51', '20', '17', '22', '46152888', 'Bien', 'Servicio de Gas Natural'],
+    ['51', '20', '17', '23', '47152901', 'Servicio', 'Servicio de Telefonía Fija'],
+    ['51', '20', '17', '23', '47152902', 'Servicio', 'Servicio de Internet'],
+    ['51', '20', '18', '10', '48153010', 'Servicio', 'Servicio de Limpieza Pública'],
+    ['52', '10', '11', '05', '49160011', 'Bien', 'Papel bond A4'],
+  ] as const
+).map(([segmento, familia, clase, commodity, item, tipo, descripcion], i) => ({
+  id: `sb-${i + 1}`,
+  segmento,
+  familia,
+  clase,
+  commodity,
+  item,
+  tipo,
+  descripcion,
+  vigente: true,
+}));
+
+const catalogoServiciosBasicos: Manejador = () => ok(CATALOGO_SERVICIOS_BASICOS);
+
+const listarServiciosBasicosExcluidos: Manejador = ({ datos }) => ok(datos.serviciosBasicosExcluidos);
+
+const guardarServiciosBasicosExcluidos: Manejador = ({ req, datos }) => {
+  const { items } = (req.body ?? {}) as { items?: typeof datos.serviciosBasicosExcluidos };
+  datos.serviciosBasicosExcluidos = items ?? [];
+  guardarDatos(datos);
+  return ok({ message: 'Servicios básicos guardados' });
 };
 
 /** «Sincronizar»: trae del pliego la siguiente área que la lista aún no tiene, marcada como nueva; `null` si no hay más. */
@@ -469,9 +576,9 @@ const guardarFechaFaseCmnEntidad: Manejador = ({ req, datos }) => {
   }
   const existente = datos.fechasFaseCmnEntidad.find((f) => f.anio === anio);
   const fases = {
-    fase1: (body.fase1 as { inicio: string; fin: string }) ?? faseVacia(),
-    fase2: (body.fase2 as { inicio: string; fin: string }) ?? faseVacia(),
-    fase3: (body.fase3 as { inicio: string; fin: string }) ?? faseVacia(),
+    fase1: (body.fase1 as ReturnType<typeof etapasVacias>) ?? etapasVacias(),
+    fase2: (body.fase2 as ReturnType<typeof etapasVacias>) ?? etapasVacias(),
+    fase3: (body.fase3 as ReturnType<typeof etapasVacias>) ?? etapasVacias(),
   };
   if (existente) {
     Object.assign(existente, fases);
@@ -505,9 +612,9 @@ const guardarFechaFaseCmnDplaip: Manejador = ({ req, datos }) => {
   }
   const existente = datos.fechasFaseCmnDplaip.find((f) => f.anio === anio);
   const fases = {
-    fase1: (body.fase1 as ReturnType<typeof etapasVacias>) ?? etapasVacias(),
-    fase2: (body.fase2 as ReturnType<typeof etapasVacias>) ?? etapasVacias(),
-    fase3: (body.fase3 as ReturnType<typeof etapasVacias>) ?? etapasVacias(),
+    fase1: (body.fase1 as { inicio: string; fin: string }) ?? faseVacia(),
+    fase2: (body.fase2 as { inicio: string; fin: string }) ?? faseVacia(),
+    fase3: (body.fase3 as { inicio: string; fin: string }) ?? faseVacia(),
   };
   if (existente) {
     Object.assign(existente, fases);
@@ -769,15 +876,21 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['POST', /^\/solicitudes$/, crearSolicitud],
   ['PATCH', /^\/solicitudes\/([^/]+)\/estado$/, cambiarEstado],
   ['POST', /^\/solicitudes\/([^/]+)\/cuenta-bancaria$/, guardarCuentaBancaria],
+  ['POST', /^\/solicitudes\/([^/]+)\/items-estrategicos$/, guardarItemsEstrategicos],
   ['POST', /^\/solicitudes\/([^/]+)\/sustentos$/, subirSustento],
   ['GET', /^\/solicitudes\/([^/]+)\/sustentos$/, listarSustentos],
   ['DELETE', /^\/solicitudes\/([^/]+)\/sustentos\/([^/]+)$/, eliminarSustento],
   ['GET', /^\/solicitudes\/([^/]+)$/, detalleSolicitud],
   ['PATCH', /^\/solicitudes\/([^/]+)$/, actualizarSolicitud],
   ['GET', /^\/cuentas-bancarias$/, registrosCuentas],
+  ['GET', /^\/items-estrategicos$/, registrosItemsEstrategicos],
+  ['GET', /^\/items-estrategicos\/catalogo$/, catalogoItemsEstrategicos],
   ['GET', /^\/configuracion\/areas-usuarias$/, listarAreasUsuarias],
   ['PUT', /^\/configuracion\/areas-usuarias$/, guardarAreasUsuarias],
   ['POST', /^\/configuracion\/areas-usuarias\/sincronizar$/, sincronizarAreasUsuarias],
+  ['GET', /^\/configuracion\/servicios-basicos-excluidos$/, listarServiciosBasicosExcluidos],
+  ['GET', /^\/configuracion\/servicios-basicos-excluidos\/catalogo$/, catalogoServiciosBasicos],
+  ['PUT', /^\/configuracion\/servicios-basicos-excluidos$/, guardarServiciosBasicosExcluidos],
   ['GET', /^\/configuracion\/areas-usuarias\/catalogo-items$/, catalogoItemsAreaUsuaria],
   ['PUT', /^\/configuracion\/areas-usuarias\/([^/]+)\/items$/, guardarItemsAreaUsuaria],
   ['GET', /^\/configuracion\/areas-usuarias\/([^/]+)\/detalle$/, detalleAreaUsuaria],

@@ -1,4 +1,4 @@
-<siaf-modal
+﻿<siaf-modal
   [open]="modalEliminarAbierto()"
   variant="custom"
   icon="delete"
@@ -31,14 +31,14 @@
 
   <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
     <header class="flex min-h-10 items-center justify-between gap-siaf-md">
-      @if (!vacio()) {
-        <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Gestión de precios diferenciados por áreas</h2>
-      }
+      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+        {{ vacio() || hayPendientes() || sinPrecios() ? 'Ítems de precios diferenciados' : 'Gestión de precios diferenciados por áreas' }}
+      </h2>
       <div class="ml-auto">
         @if (hayPendientes()) {
           <siaf-button variant="filled" [disabled]="guardando()" (click)="modalGrabarAbierto.set(true)">Grabar</siaf-button>
         } @else {
-          <siaf-button variant="filled" icon="add" [iconOnly]="true" ariaLabel="Agregar CUBSO" [disabled]="cargando()" (click)="abrirPanel()" />
+          <siaf-button variant="filled" icon="search" [iconOnly]="true" ariaLabel="Buscar CUBSO" [disabled]="cargando()" (click)="abrirPanel()" />
         }
       </div>
     </header>
@@ -49,7 +49,10 @@
         Por favor, haga clic en el botón (+) para seleccionar una opción.
       </p>
     } @else if (hayPendientes()) {
-      <!-- CUBSO elegidos en «Seleccionar ítems», aún sin grabar (Figma, nodo 4683:868177). -->
+      <!-- CUBSO elegidos en «Seleccionar ítems», aún sin grabar (Figma, nodos 4683:868177 y 5887:146069). -->
+      <p class="m-0 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] p-siaf-md text-sm text-[var(--sys-color-text-neutral-medium)]">
+        Por favor, haga clic en el botón (+) para seleccionar una opción.
+      </p>
       <div class="flex min-h-10 items-center gap-siaf-xs">
         <input
           class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
@@ -71,7 +74,7 @@
               <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
               <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código CUBSO</th>
               <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
-              <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">N° de precios generado</th>
+              <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Número de precios generado</th>
             </tr>
           </thead>
           <tbody>
@@ -88,15 +91,23 @@
                 </td>
                 <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ cubso.codigoCubso }}</td>
                 <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ cubso.descripcion }}</td>
-                <td class="px-siaf-md py-siaf-sm text-center text-[var(--sys-color-text-neutral-medium)]">-</td>
+                <td class="px-siaf-md py-siaf-sm text-center text-[var(--sys-color-text-neutral-medium)]">0</td>
               </tr>
             }
           </tbody>
         </table>
       </div>
+
+      <siaf-pagination navigation="Inactive" position="Bottom" [rowPage]="true" [page]="1" [pageSize]="pendientes().length || 1" [totalItems]="pendientes().length" [totalPages]="1" [rowsPerPage]="25" [rowsPerPageOptions]="[25]" />
     } @else {
       <!-- CUBSO grabados (Figma, nodo 4683:868307). -->
-      <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar CUBSO" (typing)="buscar($event)" (valueChange)="buscar($event)" />
+      @if (sinPrecios()) {
+        <p class="m-0 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] p-siaf-md text-sm text-[var(--sys-color-text-neutral-medium)]">
+          Por favor, haga clic en el botón (+) para seleccionar una opción.
+        </p>
+      } @else {
+        <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar CUBSO" (typing)="buscar($event)" (valueChange)="buscar($event)" />
+      }
 
       <!-- Barra de selección (Figma, nodo 4683:868246): checkbox «todos», Editar con un solo CUBSO marcado y eliminar. -->
       <div class="flex min-h-10 items-center gap-siaf-xs">
@@ -115,6 +126,18 @@
         @if (hayAlgunoSeleccionado()) {
           <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" ariaLabel="Eliminar" siafTooltip="Eliminar" tooltipMode="always" (click)="abrirModalEliminar()" />
         }
+        <!-- Figma 4683:868246: el rango y las flechas también van arriba, a la derecha de la barra de selección. -->
+        <siaf-pagination
+          class="ml-auto"
+          navigation="Activate"
+          position="Top"
+          [page]="page()"
+          [pageSize]="rowsPerPage()"
+          [totalItems]="cubsosFiltrados().length"
+          [totalPages]="totalPages()"
+          (previous)="paginaAnterior()"
+          (next)="paginaSiguiente()"
+        />
       </div>
 
       <div class="overflow-auto">
@@ -124,7 +147,7 @@
               <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
               <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código CUBSO</th>
               <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
-              <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">N° de precios generado</th>
+              <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Número de precios generado</th>
             </tr>
           </thead>
           <tbody>
@@ -175,3 +198,4 @@
     }
   </div>
 </siaf-page-shell>
+

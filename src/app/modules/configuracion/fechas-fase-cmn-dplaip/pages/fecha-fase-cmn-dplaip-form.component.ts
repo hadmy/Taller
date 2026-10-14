@@ -3,43 +3,30 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DateTimePickerComponent } from '../../../../shared/ui/date-time-picker/date-time-picker.component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
+import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
 import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { FechasFaseCmnDplaipApiService } from '../api/fechas-fase-cmn-dplaip-api.service';
-import { FECHAS_FASE_CMN_DPLAIP_PROCESS_ID, FECHAS_FASE_CMN_DPLAIP_ROUTE } from '../config/fechas-fase-cmn-dplaip.rutas';
-import { ETAPAS_FASE, EtapasFase, FechaFaseCmnDplaip, etapasFaseVacia, fechasDeFase } from '../models/fecha-fase-cmn.model';
-
-/** Una de las tres fases del formulario, con su etiqueta fija (Figma, nodo 3591:262078). */
-interface FaseForm {
-  key: 'fase1' | 'fase2' | 'fase3';
-  titulo: string;
-  subtitulo: string;
-}
-
-const FASES_FORM: FaseForm[] = [
-  { key: 'fase1', titulo: 'Fase 1: Fase de identificación', subtitulo: '' },
-  { key: 'fase2', titulo: 'Fase 2: Fase de identificación', subtitulo: '' },
-  { key: 'fase3', titulo: 'Fase 3: Fase de identificación', subtitulo: '' },
-];
-
-/** dd/mm/aaaa a partir de una fecha ISO (yyyy-mm-dd); vacío si no hay fecha. */
-function aFechaPe(iso: string): string {
-  const [anio, mes, dia] = iso.split('-');
-  return anio && mes && dia ? `${dia}-${mes}-${anio}` : '';
-}
+import {
+  FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE,
+  FECHAS_FASE_CMN_DPLAIP_PROCESS_ID,
+  FECHAS_FASE_CMN_DPLAIP_ROUTE,
+} from '../config/fechas-fase-cmn-dplaip.rutas';
+import { FaseFecha, FechaFaseCmnDplaip, faseFechaVacia } from '../models/fecha-fase-cmn.model';
 
 /**
- * «+» de Configuración de fechas de fase del CMN - DPLAIP (Figma, nodo 3591:262078): elige un año y, por cada una
- * de sus tres fases, configura la fecha de inicio y fin de sus tres etapas (Anexo 1 ATEs/No ATEs, Anexo 1 No ATEs,
- * Anexo 2 consolidación). Si el año ya tenía fechas configuradas, las carga para editarlas; si es nuevo, lo crea
- * «En Proceso» al grabar.
+ * «+» / Editar de Configuración de fechas de fase del CMN - DPLAIP (Figma «CMN Programación · Configuración», nodos
+ * 5205:126726 a 5214:171379): elige un año (desde el actual) y configura la fecha de inicio y fin de sus tres fases.
+ * Si el año ya tenía fechas configuradas, las carga para editarlas; si es nuevo, lo crea «En Proceso». «Grabar» pide
+ * confirmación («¿Grabar?») antes de guardar.
  */
 @Component({
   selector: 'siaf-fecha-fase-cmn-dplaip-form',
   standalone: true,
-  imports: [ButtonComponent, DateTimePickerComponent, PageHeaderComponent, PageShellComponent, TextFieldComponent],
+  imports: [ButtonComponent, DateTimePickerComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TextFieldComponent],
   templateUrl: './fecha-fase-cmn-dplaip-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -51,26 +38,26 @@ export class FechaFaseCmnDplaipFormComponent implements OnInit {
   readonly breadcrumbs = buildProcessBreadcrumbs(
     FECHAS_FASE_CMN_DPLAIP_PROCESS_ID,
     FECHAS_FASE_CMN_DPLAIP_ROUTE,
-    'Configuración de fechas de fase del CMN - DPLAIP',
+    'Configuración de fechas de fase del CMN para la entidad',
   );
-
-  readonly fases = FASES_FORM;
-  readonly etapas = ETAPAS_FASE;
 
   readonly cargando = signal(false);
   readonly guardando = signal(false);
+  readonly modalGrabarAbierto = signal(false);
   readonly anios = signal<FechaFaseCmnDplaip[]>([]);
   readonly anioSeleccionado = signal('');
+  /** Se entró con «Editar» sobre un año de la lista. */
+  readonly editando = signal(false);
 
-  readonly fase1 = signal<EtapasFase>(etapasFaseVacia());
-  readonly fase2 = signal<EtapasFase>(etapasFaseVacia());
-  readonly fase3 = signal<EtapasFase>(etapasFaseVacia());
+  readonly fase1 = signal<FaseFecha>(faseFechaVacia());
+  readonly fase2 = signal<FaseFecha>(faseFechaVacia());
+  readonly fase3 = signal<FaseFecha>(faseFechaVacia());
 
-  /** Años del selector: el anterior y los cuatro siguientes al actual. */
+  /** Años del selector: el actual y los cuatro siguientes (no se ofrecen años pasados). */
   readonly opcionesAnio: TextFieldOption[] = (() => {
     const actual = new Date().getFullYear();
     const anios: TextFieldOption[] = [];
-    for (let anio = actual - 1; anio <= actual + 4; anio++) {
+    for (let anio = actual; anio <= actual + 4; anio++) {
       anios.push({ label: String(anio), value: String(anio) });
     }
     return anios;
@@ -81,11 +68,19 @@ export class FechaFaseCmnDplaipFormComponent implements OnInit {
   ngOnInit(): void {
     this.cargando.set(true);
     const anioPreseleccionado = this.route.snapshot.queryParamMap.get('anio');
+    this.editando.set(!!anioPreseleccionado);
     this.api.listar().subscribe({
       next: (anios) => {
         this.anios.set(anios);
         this.cargando.set(false);
-        if (anioPreseleccionado) this.seleccionarAnio(anioPreseleccionado);
+        // Pantalla principal (Figma): abre con el primer año configurado ya elegido y sus fechas cargadas.
+        // Sin año guardado, propone el actual con el borrador de fechas del diseño (Fase 3 sin fechas).
+        const inicial = anioPreseleccionado ?? String(new Date().getFullYear());
+        this.seleccionarAnio(inicial);
+        if (!anioPreseleccionado && !anios.some((a) => String(a.anio) === inicial)) {
+          this.fase1.set({ inicio: `${inicial}-01-01`, fin: `${inicial}-04-09` });
+          this.fase2.set({ inicio: `${inicial}-07-01`, fin: `${inicial}-09-30` });
+        }
       },
       error: () => this.cargando.set(false),
     });
@@ -94,42 +89,26 @@ export class FechaFaseCmnDplaipFormComponent implements OnInit {
   seleccionarAnio(valor: string): void {
     this.anioSeleccionado.set(valor);
     const existente = this.anios().find((a) => String(a.anio) === valor);
-    this.fase1.set(existente ? estructuraClonada(existente.fase1) : etapasFaseVacia());
-    this.fase2.set(existente ? estructuraClonada(existente.fase2) : etapasFaseVacia());
-    this.fase3.set(existente ? estructuraClonada(existente.fase3) : etapasFaseVacia());
+    this.fase1.set(existente ? { ...existente.fase1 } : faseFechaVacia());
+    this.fase2.set(existente ? { ...existente.fase2 } : faseFechaVacia());
+    this.fase3.set(existente ? { ...existente.fase3 } : faseFechaVacia());
   }
 
-  private faseSignal(fase: FaseForm['key']) {
-    return fase === 'fase1' ? this.fase1 : fase === 'fase2' ? this.fase2 : this.fase3;
+  actualizarFase(fase: 'fase1' | 'fase2' | 'fase3', campo: 'inicio' | 'fin', valor: string): void {
+    this[fase].update((actual) => ({ ...actual, [campo]: valor }));
   }
 
-  /**
-   * Fase 1 marca el cronograma «oficial»: al grabar una de sus fechas, Fase 2 y Fase 3 la heredan automáticamente
-   * (siguen siendo editables después, cada una por su cuenta) para no repetir las mismas fechas tres veces.
-   */
-  actualizarEtapa(fase: FaseForm['key'], etapa: keyof EtapasFase, campo: 'inicio' | 'fin', valor: string): void {
-    this.faseSignal(fase).update((actual) => ({
-      ...actual,
-      [etapa]: { ...actual[etapa], [campo]: valor },
-    }));
-    if (fase === 'fase1') {
-      this.fase2.update((actual) => ({ ...actual, [etapa]: { ...actual[etapa], [campo]: valor } }));
-      this.fase3.update((actual) => ({ ...actual, [etapa]: { ...actual[etapa], [campo]: valor } }));
-    }
-  }
-
-  /** «(dd-mm-aaaa / dd-mm-aaaa)»: primera y última fecha con valor entre las tres etapas de la fase; vacío si ninguna tiene fecha. */
-  rangoResumen(fase: FaseForm['key']): string {
-    const fechas = fechasDeFase(this.faseSignal(fase)()).sort();
-    if (!fechas.length) return '';
-    return `(${aFechaPe(fechas[0])} / ${aFechaPe(fechas[fechas.length - 1])})`;
-  }
-
+  /** «Cancelar»: descarta lo editado y regresa a la lista de fechas de fase (Figma 5110:402515). */
   cancelar(): void {
-    void this.router.navigateByUrl(FECHAS_FASE_CMN_DPLAIP_ROUTE);
+    void this.router.navigateByUrl(FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE);
   }
 
+  /** «Grabar»: abre la confirmación; el guardado ocurre al aceptarla. */
   grabar(): void {
+    if (this.puedeGrabar()) this.modalGrabarAbierto.set(true);
+  }
+
+  confirmarGrabar(): void {
     if (!this.puedeGrabar()) return;
     this.guardando.set(true);
     this.api
@@ -142,13 +121,11 @@ export class FechaFaseCmnDplaipFormComponent implements OnInit {
       .subscribe({
         next: () => {
           this.guardando.set(false);
-          void this.router.navigateByUrl(FECHAS_FASE_CMN_DPLAIP_ROUTE);
+          this.modalGrabarAbierto.set(false);
+          // Figma 5110:402515: al grabar se pasa a la lista de años (con el año recién configurado «En Proceso»).
+          void this.router.navigateByUrl(FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE);
         },
         error: () => this.guardando.set(false),
       });
   }
-}
-
-function estructuraClonada(fase: EtapasFase): EtapasFase {
-  return { etapa1: { ...fase.etapa1 }, etapa2: { ...fase.etapa2 }, etapa3: { ...fase.etapa3 } };
 }

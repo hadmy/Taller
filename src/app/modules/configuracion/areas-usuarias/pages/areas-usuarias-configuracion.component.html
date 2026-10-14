@@ -26,7 +26,7 @@
       />
     </div>
 
-    <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" [showActions]="false" (typing)="filtrar($event)" (valueChange)="buscar($event)" />
+    <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria"(typing)="filtrar($event)" (valueChange)="buscar($event)" />
 
     <!-- Barra de selección: checkbox «todas» + Editar cuando hay exactamente un área marcada. -->
     <div class="flex h-10 items-center gap-siaf-xs">
@@ -39,9 +39,10 @@
         [disabled]="areasPaginadas().length === 0"
         (change)="alternarSeleccionVisibles($any($event.target).checked)"
       />
-      @if (areaParaEditar()) {
-        <siaf-button variant="text" size="sm" icon="edit" [iconOnly]="true" ariaLabel="Editar" siafTooltip="Editar" tooltipMode="always" (click)="editarSeleccionada()" />
-      }
+      <span class="mx-siaf-xs h-6 w-px bg-[var(--sys-color-divider-strong)]" aria-hidden="true"></span>
+      <siaf-button variant="text" size="sm" icon="edit" [iconOnly]="true" ariaLabel="Editar" siafTooltip="Editar" tooltipMode="always" [disabled]="!areaParaEditar()" (click)="editarSeleccionada()" />
+      <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" ariaLabel="Eliminar" [disabled]="true" />
+      <siaf-button variant="text" size="sm" icon="more_vert" [iconOnly]="true" ariaLabel="Más opciones" />
     </div>
 
     <div class="min-h-0 flex-1 overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">

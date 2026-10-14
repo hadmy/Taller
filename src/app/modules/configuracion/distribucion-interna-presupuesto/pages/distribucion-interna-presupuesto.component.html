@@ -70,6 +70,9 @@
                 @if (anio.estado === 'Validado') {
                   <!-- Figma de esta pantalla: «Validado» con fondo suave azul y check en círculo. -->
                   <siaf-status-tag tone="info" appearance="soft" icon="check_circle" size="small">Validado</siaf-status-tag>
+                } @else if (anio.estado === 'En Proceso') {
+                  <!-- Figma 5747:7768: «En Proceso» gris suave con ícono de sincronización. -->
+                  <siaf-status-tag tone="default" appearance="soft" icon="change_circle" size="small">En Proceso</siaf-status-tag>
                 } @else {
                   <siaf-record-status-tag [status]="anio.estado" />
                 }

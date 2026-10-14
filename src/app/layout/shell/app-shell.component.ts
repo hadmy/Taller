@@ -3,6 +3,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
+import {
+  CREATE_DOCUMENT_OPTIONS as CREATE_DOCUMENT_OPTIONS_ITEMS,
+  REQUEST_ROUTE as REQUEST_ROUTE_ITEMS,
+} from '../../modules/abastecimiento/items-estrategicos/config/items-estrategicos.rutas';
 import { CREATE_DOCUMENT_OPTIONS, REQUEST_ROUTE } from '../../modules/tesoreria/cuentas-bancarias/config/cuentas-bancarias.rutas';
 import { CreateDocumentAccepted, CreateDocumentComponent, CreateDocumentProcessOption } from '../../shared/components/create-document/create-document.component';
 import { CatalogosApiService, TipoDocumentoResponse } from '../../core/api/catalogos-api.service';
@@ -150,7 +154,7 @@ export class AppShellComponent implements OnInit {
   adminMenuOpen = false;
 
   // Fallback en caso de que el API tarde o falle — la maqueta sigue funcional
-  private readonly fallbackOptions: CreateDocumentProcessOption[] = [...CREATE_DOCUMENT_OPTIONS];
+  private readonly fallbackOptions: CreateDocumentProcessOption[] = [...CREATE_DOCUMENT_OPTIONS, ...CREATE_DOCUMENT_OPTIONS_ITEMS];
 
   readonly createDocumentOptions = signal<CreateDocumentProcessOption[]>(this.fallbackOptions);
 
@@ -182,6 +186,10 @@ export class AppShellComponent implements OnInit {
       'registro-cuentas-bancarias': {
         processRoute: REQUEST_ROUTE,
         tipoRoutes: { SRCB: REQUEST_ROUTE },
+      },
+      'items-estrategicos': {
+        processRoute: REQUEST_ROUTE_ITEMS,
+        tipoRoutes: { SIE: REQUEST_ROUTE_ITEMS },
       },
     };
 
@@ -217,6 +225,7 @@ export class AppShellComponent implements OnInit {
     const map: Record<string, string> = {
       creacion: 'Creación',
       modificacion: 'Modificación',
+      inclusion: 'Creación',
       reversion: 'Reversión',
       anulacion: 'Anulación',
       aprobacion: 'Aprobación',

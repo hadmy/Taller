@@ -1,0 +1,86 @@
+<siaf-page-shell [breadcrumbs]="breadcrumbs">
+  <siaf-page-header pageHeader title="Configuración de servicios basicos excluidos de la ley">
+    @if (editando()) {
+      <siaf-button actions variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
+        Grabar
+      </siaf-button>
+    }
+  </siaf-page-header>
+
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md overflow-auto rounded-siaf-md bg-surface p-siaf-lg">
+    <header class="flex items-center justify-between">
+      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+        {{ items().length ? 'Vincular servicios basicos' : 'Ítems de servicios basicos' }}
+      </h2>
+      <siaf-button variant="filled" icon="search" [iconOnly]="true" ariaLabel="Buscar ítems de servicios básicos" (click)="abrirPanel()" />
+    </header>
+
+    @if (items().length === 0) {
+      <div class="rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-lowest)] px-siaf-md py-siaf-md text-sm text-[var(--sys-color-text-neutral-medium)]">
+        Por favor, haga clic en el botón (+) para seleccionar una opción.
+      </div>
+    } @else {
+      <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar servicio básico" (valueChange)="buscar($event)" />
+
+      <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+        <table class="w-full min-w-[560px] border-collapse text-sm">
+          <thead>
+            <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+              <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Ítem</th>
+              <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
+              @if (editando()) {
+                <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigencia</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of itemsPaginados(); track item.id) {
+              <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
+                <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ codigo(item) }}</td>
+                <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcion }}</td>
+                @if (editando()) {
+                  <td class="px-siaf-md py-siaf-xs text-center">
+                    <siaf-button
+                      variant="text"
+                      size="sm"
+                      icon="delete"
+                      [iconOnly]="true"
+                      [ariaLabel]="'Quitar ' + item.descripcion"
+                      (click)="quitar(item.id)"
+                    />
+                  </td>
+                }
+              </tr>
+            } @empty {
+              <tr>
+                <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="editando() ? 3 : 2">No se encontraron servicios básicos.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <siaf-pagination
+        navigation="Activate"
+        position="Bottom"
+        [rowPage]="true"
+        [page]="page()"
+        [pageSize]="rowsPerPage()"
+        [totalItems]="itemsFiltrados().length"
+        [totalPages]="totalPages()"
+        [rowsPerPage]="rowsPerPage()"
+        [rowsPerPageOptions]="rowsPerPageOptions"
+        (previous)="page.set(page() - 1 < 1 ? 1 : page() - 1)"
+        (next)="page.set(page() + 1 > totalPages() ? totalPages() : page() + 1)"
+        (rowsPerPageChange)="cambiarFilasPorPagina($event)"
+      />
+    }
+  </div>
+
+  <siaf-seleccionar-items-panel
+    [open]="panelAbierto()"
+    [catalogo]="catalogoDisponible()"
+    (confirmed)="agregarItems($event)"
+    (canceled)="cerrarPanel()"
+  />
+</siaf-page-shell>

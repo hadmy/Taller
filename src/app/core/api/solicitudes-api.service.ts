@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../config/app.config';
 import { EstadoDocumento } from '../models/documento.model';
+import type { ItemEstrategico } from '../../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
 import type { CuentaBancariaDatos } from '../../modules/tesoreria/cuentas-bancarias/models/cuenta-bancaria.model';
 
 // ─────────────────────────────────────────────────────────────
@@ -312,6 +313,8 @@ export interface SolicitudResponse {
   detalleAsientoAjuste?: AsientoAjusteResponse | null; // SRAA
   /** Taller: cuenta bancaria propuesta en la solicitud SRCB (proceso de ejemplo). */
   detalleCuentaBancaria?: (CuentaBancariaDatos & { documentoId: string }) | null; // SRCB
+  /** Taller: ítems propuestos como estratégicos en la solicitud SIE (CMN). */
+  detalleItemsEstrategicos?: { documentoId: string; items: ItemEstrategico[] } | null; // SIE
   detalleConfiguracionMensual?: {
     documentoId: string;
     periodoContableId: string;

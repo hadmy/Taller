@@ -5,7 +5,8 @@ import { forkJoin } from 'rxjs';
 
 import { AlertComponent } from '../../../../shared/ui/alert/alert.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { ReadonlyFieldComponent } from '../../../../shared/ui/readonly-field/readonly-field.component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { TabItem, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
 import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
 import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
@@ -34,7 +35,7 @@ import {
 @Component({
   selector: 'siaf-distribucion-interna-presupuesto-form',
   standalone: true,
-  imports: [AlertComponent, ButtonComponent, DecimalPipe, FormTableSearchComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, ReadonlyFieldComponent, TextFieldComponent],
+  imports: [AlertComponent, ButtonComponent, DecimalPipe, FormTableSearchComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TabsComponent, TextFieldComponent],
   templateUrl: './distribucion-interna-presupuesto-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -58,6 +59,20 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
   readonly anioSeleccionado = signal('');
   readonly presupuestoFaseSeleccionado = signal('');
   readonly busqueda = signal('');
+  readonly modalGrabarAbierto = signal(false);
+  /** Se entró con «Editar» sobre un año de la lista (Figma 4683:1184709): año y fase fijos, sin buscador. */
+  readonly editando = signal(false);
+
+  /** Pestañas de años (Figma 4683:1179273): los tres siguientes al año elegido; «-» mientras no hay año. */
+  readonly tabsAnios = computed<TabItem[]>(() => {
+    const anio = Number(this.anioSeleccionado());
+    return [1, 2, 3].map((i) => (anio ? { id: String(anio + i), label: String(anio + i) } : { id: `vacio-${i}`, label: '-' }));
+  });
+  readonly tabAnioElegida = signal('');
+  readonly tabAnioActiva = computed(() => {
+    const tabs = this.tabsAnios();
+    return tabs.some((t) => t.id === this.tabAnioElegida()) ? this.tabAnioElegida() : tabs[0].id;
+  });
 
   readonly genericas = signal<DistribucionGenerica[]>([]);
   readonly filas = signal<DistribucionFilaOu[]>([]);
@@ -108,6 +123,7 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
   ngOnInit(): void {
     this.cargando.set(true);
     const anioPreseleccionado = this.route.snapshot.queryParamMap.get('anio');
+    this.editando.set(!!anioPreseleccionado);
     forkJoin({ anios: this.api.listar(), plantilla: this.api.plantilla() }).subscribe({
       next: ({ anios, plantilla }) => {
         this.anios.set(anios);
@@ -183,7 +199,12 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
     void this.router.navigateByUrl(DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE);
   }
 
+  /** «Grabar»: abre la confirmación «¿Grabar techo presupuestal?»; el guardado ocurre al aceptarla. */
   grabar(): void {
+    if (this.puedeGrabar()) this.modalGrabarAbierto.set(true);
+  }
+
+  confirmarGrabar(): void {
     if (!this.puedeGrabar()) return;
     this.guardando.set(true);
     this.api
@@ -195,6 +216,7 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
       .subscribe({
         next: () => {
           this.guardando.set(false);
+          this.modalGrabarAbierto.set(false);
           void this.router.navigateByUrl(DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE);
         },
         error: () => this.guardando.set(false),

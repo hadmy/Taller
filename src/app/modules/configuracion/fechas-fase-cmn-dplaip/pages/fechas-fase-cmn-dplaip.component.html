@@ -1,4 +1,4 @@
-<siaf-modal
+﻿<siaf-modal
   [open]="modalEliminarAbierto()"
   variant="custom"
   icon="delete"
@@ -13,7 +13,7 @@
 />
 
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración de fechas de fase del CMN - DPLAIP" />
+  <siaf-page-header pageHeader title="Configuración de fechas de fase del CMN" />
 
   <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
     <header class="flex items-center justify-between">
@@ -48,7 +48,7 @@
           <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
             <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
             <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Año</th>
-            <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Estado</th>
+            <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-right">Estado</th>
           </tr>
         </thead>
         <tbody>
@@ -64,9 +64,17 @@
                 />
               </td>
               <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ anio.anio }}</td>
-              <td class="px-siaf-md py-siaf-sm">
-                <siaf-record-status-tag [status]="anio.estado" />
-              </td>
+              <td class="px-siaf-md py-siaf-sm text-right"><div class="flex justify-end">
+                @if (anio.estado === 'Activo') {
+                  <!-- Figma de esta pantalla (5110:402459): «Activo» con fondo suave azul y check en círculo. -->
+                  <siaf-status-tag tone="info" appearance="soft" icon="check_circle" size="small">Activo</siaf-status-tag>
+                } @else if (anio.estado === 'En Proceso') {
+                  <!-- Figma: «En Proceso» gris suave con ícono de sincronización. -->
+                  <siaf-status-tag tone="default" appearance="soft" icon="change_circle" size="small">En Proceso</siaf-status-tag>
+                } @else {
+                  <siaf-record-status-tag [status]="anio.estado" />
+                }
+              </div></td>
             </tr>
           } @empty {
             <tr>
@@ -99,3 +107,5 @@
     />
   </div>
 </siaf-page-shell>
+
+

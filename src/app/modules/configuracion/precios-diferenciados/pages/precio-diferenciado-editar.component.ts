@@ -1,10 +1,9 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
-import { SwitchComponent } from '../../../../shared/ui/switch/switch.component';
 import { TextFieldComponent } from '../../../../shared/ui/text-field/text-field.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
@@ -24,7 +23,7 @@ import { PrecioArea, PrecioDiferenciado } from '../models/precio-diferenciado.mo
 @Component({
   selector: 'siaf-precio-diferenciado-editar',
   standalone: true,
-  imports: [ButtonComponent, EmptyStateComponent, ModalComponent, PageHeaderComponent, PageShellComponent, SwitchComponent, TextFieldComponent],
+  imports: [ButtonComponent, EmptyStateComponent, ModalComponent, PageHeaderComponent, PageShellComponent, TextFieldComponent],
   templateUrl: './precio-diferenciado-editar.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -88,8 +87,9 @@ export class PrecioDiferenciadoEditarComponent implements OnInit {
     this.actualizar(id, { monto: numero === null || Number.isNaN(numero) ? null : numero });
   }
 
-  cambiarVigencia(id: string, vigente: boolean): void {
-    this.actualizar(id, { vigente });
+  /** Papelera de la columna Vigencia: quita la fila del formulario (se aplica al grabar). */
+  quitarFila(id: string): void {
+    this.precios.update((lista) => lista.filter((p) => p.id !== id));
   }
 
   private actualizar(id: string, cambios: Partial<PrecioArea>): void {
@@ -125,3 +125,4 @@ export class PrecioDiferenciadoEditarComponent implements OnInit {
     });
   }
 }
+

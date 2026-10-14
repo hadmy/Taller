@@ -304,9 +304,12 @@ export class TrayNotificationsViewComponent implements OnInit {
   }
 
   private resolveRoute(notif: NotificacionResponse): string {
-    // Taller: el único documento es la Solicitud de Registro de Cuenta Bancaria (SRCB).
+    // Taller: la Solicitud de Registro de Cuenta Bancaria (SRCB) y la de Ítems Estratégicos del CMN (SIE).
     const codigo = (notif.documento?.catDocumento?.codigo ?? notif.solicitud?.tipoDocumento?.codigo ?? '').toUpperCase();
-    const rutas: Record<string, string> = { SRCB: '/procesos/registro-cuentas-bancarias/solicitud' };
+    const rutas: Record<string, string> = {
+      SRCB: '/procesos/registro-cuentas-bancarias/solicitud',
+      SIE: '/procesos/cuadro-multianual-necesidades/solicitudes/items-estrategicos/solicitud',
+    };
     return rutas[codigo] ?? '/procesos/registro-cuentas-bancarias/solicitud';
   }
 }

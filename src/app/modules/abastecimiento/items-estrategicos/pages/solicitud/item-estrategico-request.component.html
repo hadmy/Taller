@@ -1,0 +1,281 @@
+﻿<div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
+  <!-- La cabecera (migas, título, estado y botones según rol y estado) la pinta el layout de solicitudes. -->
+  <siaf-solicitude-page-layout
+    [breadcrumbs]="breadcrumbs"
+    [role]="headerRole()"
+    [state]="headerState()"
+    [loading]="cargando()"
+    [heading]="heading"
+    [secondaryText]="tipoAccion"
+    [showReturn]="true"
+    [saveDisabled]="!formValido() || saving()"
+    [verifyDisabled]="!puedeVerificar() || cargando()"
+    (returned)="regresar()"
+    (canceled)="regresar()"
+    (saved)="modalGrabar.set(true)"
+    (edited)="editar()"
+    (verified)="modalVerificar.set(true)"
+    (deleted)="modalEliminar.set(true)"
+    (approved)="abrirAprobar()"
+    (observed)="abrirObservar()"
+    (rejected)="abrirRechazar()"
+  >
+    @if (cargando()) {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl">
+        <div class="grid grid-cols-3 gap-siaf-md">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="siaf-skeleton-pulse h-4 w-32 rounded bg-[var(--sys-color-bg-surfaces-surface-low)]"></div>
+          }
+        </div>
+      </div>
+    } @else {
+      @if (elaborado()) {
+        <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
+          <siaf-solicitude-info-card [fields]="camposEntidad()" [captureOpenDate]="true" />
+          <siaf-document-summary-card [documentNumber]="numeroDocumento()" [status]="estadoDocumento()" />
+        </section>
+      } @else {
+        <siaf-solicitude-info-card [fields]="camposEntidad()" [captureOpenDate]="true" />
+      }
+
+      <!-- ── Ítems estratégicos (Figma «2. Registro de solicitud»: «+», tarjeta Agregar y tabla Año / Cantidad de ítems) ── -->
+      @if (modoAgregar()) {
+        <siaf-solicitude-form-card title="Agregar">
+          <div card-actions class="flex gap-siaf-sm">
+            <siaf-button variant="outline" size="md" (click)="cancelarAgregar()">Cancelar</siaf-button>
+            <siaf-button variant="accent" size="md" [disabled]="items().length === 0" (click)="aceptarAgregar()">Aceptar</siaf-button>
+          </div>
+
+          <div class="flex min-h-10 items-center justify-between gap-siaf-md">
+            <h3 class="m-0 text-sm font-bold uppercase text-text">Ítems estratégicos</h3>
+            <siaf-button variant="accent" size="md" icon="search" [iconOnly]="true" ariaLabel="Seleccionar ítems estratégicos" (click)="abrirPanelItems()" />
+          </div>
+
+          @if (items().length === 0) {
+            <message-box text="No se ha seleccionado ningún ítem. Haga clic en el botón para realizar una selección." />
+          } @else {
+            <siaf-form-table-search
+              [value]="busquedaItems()"
+              placeholder="Buscar"
+              ariaLabel="Buscar ítems de la solicitud"
+              [showActions]="false"
+              (valueChange)="buscarItems($event)"
+            />
+
+            <siaf-table-controls
+              [checked]="paginaItemsCompleta()"
+              [indeterminate]="paginaItemsParcial()"
+              [selectedCount]="itemsMarcados().size"
+              [showDeleteAction]="true"
+              selectAllLabel="Seleccionar los ítems de la página"
+              deleteLabel="Quitar los ítems seleccionados"
+              [page]="paginaItems()"
+              [pageSize]="filasPorPaginaItems()"
+              [totalItems]="itemsFiltrados().length"
+              [totalPages]="totalPaginasItems()"
+              (selectionChange)="marcarPaginaItems($event)"
+              (delete)="quitarMarcados()"
+              (previous)="paginaItemsAnterior()"
+              (next)="paginaItemsSiguiente()"
+            />
+
+            <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+              <table class="w-full min-w-[640px] border-collapse text-sm">
+                <thead>
+                  <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                    <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Selección</span></th>
+                    <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código</th>
+                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
+                    <th class="w-20 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of itemsPaginados(); track item.codigo) {
+                    <tr
+                      class="border-b border-[var(--sys-color-divider-default)] last:border-b-0"
+                      [class.bg-[var(--sys-color-bg-states-light-selected)]]="itemsMarcados().has(item.codigo)"
+                    >
+                      <td class="p-siaf-sm text-center">
+                        <input
+                          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                          type="checkbox"
+                          [attr.aria-label]="'Seleccionar el ítem ' + item.descripcion"
+                          [checked]="itemsMarcados().has(item.codigo)"
+                          (change)="marcarItem(item.codigo, $any($event.target).checked)"
+                        />
+                      </td>
+                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.codigo }}</td>
+                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcion }}</td>
+                      <td class="px-siaf-md py-siaf-xs text-center">
+                        <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" [ariaLabel]="'Quitar el ítem ' + item.descripcion" (click)="quitarItem(item.codigo)" />
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" colspan="4">No se encontraron ítems.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <siaf-pagination
+              navigation="Activate"
+              position="Bottom"
+              [rowPage]="true"
+              [page]="paginaItems()"
+              [pageSize]="filasPorPaginaItems()"
+              [totalItems]="itemsFiltrados().length"
+              [totalPages]="totalPaginasItems()"
+              [rowsPerPage]="filasPorPaginaItems()"
+              [rowsPerPageOptions]="opcionesFilasPorPagina"
+              (previous)="paginaItemsAnterior()"
+              (next)="paginaItemsSiguiente()"
+              (rowsPerPageChange)="cambiarFilasItems($event)"
+            />
+          }
+        </siaf-solicitude-form-card>
+      } @else {
+        <siaf-solicitude-form-card title="Ítems estratégicos">
+          @if (!soloLectura()) {
+            <siaf-button
+              card-actions
+              variant="accent"
+              size="md"
+              icon="add"
+              [iconOnly]="true"
+              ariaLabel="Agregar ítems estratégicos"
+              [disabled]="items().length > 0"
+              (click)="abrirAgregar()"
+            />
+          }
+
+          @if (items().length === 0) {
+            <message-box text="Por favor, haga clic en el botón (+) para seleccionar una opción." />
+          } @else {
+            <siaf-table-controls
+              [showSelection]="!soloLectura()"
+              [checked]="resumenMarcado()"
+              [selectedCount]="resumenMarcado() ? 1 : 0"
+              [showEditAction]="!soloLectura()"
+              [editDisabled]="!resumenMarcado()"
+              selectAllLabel="Seleccionar la fila"
+              editLabel="Editar los ítems del año"
+              [page]="1"
+              [pageSize]="25"
+              [totalItems]="1"
+              [totalPages]="1"
+              (selectionChange)="resumenMarcado.set($event)"
+              (edit)="abrirAgregar()"
+            />
+
+            <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+              <table class="w-full min-w-[480px] border-collapse text-sm">
+                <thead>
+                  <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                    @if (!soloLectura()) {
+                      <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Selección</span></th>
+                    }
+                    <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Año</th>
+                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Cantidad de ítems</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0" [class.bg-[var(--sys-color-bg-states-light-selected)]]="resumenMarcado()">
+                    @if (!soloLectura()) {
+                      <td class="p-siaf-sm text-center">
+                        <input
+                          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                          type="checkbox"
+                          [attr.aria-label]="'Seleccionar el año ' + anioResumen"
+                          [checked]="resumenMarcado()"
+                          (change)="resumenMarcado.set($any($event.target).checked)"
+                        />
+                      </td>
+                    }
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ anioResumen }}</td>
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ items().length }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          }
+        </siaf-solicitude-form-card>
+      }
+
+      <!-- ── Comentarios del aprobador y trazabilidad ── -->
+      @if (historial().length > 0 || comentarioActual()) {
+        <siaf-detail-history-tabs [comentario]="comentarioActual()" [entries]="historial()" />
+      }
+
+      @if (numeroDocumento()) {
+        <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
+      }
+    }
+  </siaf-solicitude-page-layout>
+
+  <!-- ── Seleccionar ítems estratégicos (Figma RC-016, con el panel de selección del kit) ── -->
+  <siaf-selection-side-nav
+    [open]="panelItemsAbierto()"
+    title="Seleccionar ítems estratégicos"
+    mode="multiple"
+    [rows]="filasPanel()"
+    [columns]="columnasPanel"
+    [searchValue]="busquedaPanel()"
+    [selectedIds]="seleccionPanel()"
+    [disabledIds]="idsDeshabilitadosPanel()"
+    emptyMessage="No hay ítems disponibles para agregar."
+    [paginated]="true"
+    [showTopPagination]="true"
+    [page]="paginaPanel()"
+    [totalPages]="totalPaginasPanel()"
+    [pageSize]="filasPorPaginaPanel()"
+    [totalItems]="totalFilasPanel()"
+    [rowsPerPage]="filasPorPaginaPanel()"
+    [rowsPerPageOptions]="opcionesFilasPorPagina"
+    [showSelectAll]="true"
+    [selectAllChecked]="paginaPanelCompleta()"
+    [selectAllIndeterminate]="paginaPanelParcial()"
+    selectAllLabel="Seleccionar los ítems de la página"
+    (searchChange)="buscarEnPanel($event)"
+    (selectionChange)="seleccionPanel.set($event)"
+    (selectAllChange)="marcarPaginaPanel($event)"
+    (previousPage)="paginaPanelAnterior()"
+    (nextPage)="paginaPanelSiguiente()"
+    (rowsPerPageChange)="cambiarFilasPanel($event)"
+    (closed)="panelItemsAbierto.set(false)"
+    (accepted)="agregarSeleccionados($event)"
+  />
+
+
+  <siaf-request-approval-modals
+    [saveOpen]="modalGrabar()"
+    [verifyOpen]="modalVerificar()"
+    [deleteOpen]="modalEliminar()"
+    [approveOpen]="modalAprobar()"
+    [observeOpen]="modalObservar()"
+    [rejectOpen]="modalRechazar()"
+    [saving]="saving()"
+    [reason]="comentario()"
+    [rejectReasonType]="motivoRechazo()"
+    [rejectReasonTypeOptions]="motivosRechazo"
+    [snackbarVariant]="aviso()"
+    [snackbarOpen]="avisoAbierto()"
+    requestType="creación"
+    [requestNumber]="numeroDocumento()"
+    (saveConfirmed)="onConfirmarGrabar()"
+    (verifyConfirmed)="onConfirmarVerificar()"
+    (deleteConfirmed)="onConfirmarEliminar()"
+    (approveConfirmed)="onConfirmarAprobar()"
+    (observeConfirmed)="onConfirmarObservar()"
+    (rejectConfirmed)="onConfirmarRechazar()"
+    (saveClosed)="modalGrabar.set(false)"
+    (verifyClosed)="modalVerificar.set(false)"
+    (deleteClosed)="modalEliminar.set(false)"
+    (approvalClosed)="cerrarModalesAprobador()"
+    (reasonChange)="comentario.set($event)"
+    (rejectReasonTypeChange)="motivoRechazo.set($event)"
+    (snackbarClosed)="avisoAbierto.set(false)"
+  />
+</div>
+

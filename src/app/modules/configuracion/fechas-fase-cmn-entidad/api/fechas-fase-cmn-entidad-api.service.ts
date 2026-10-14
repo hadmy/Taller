@@ -3,13 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../../../../core/config/app.config';
-import { FaseFecha, FechaFaseCmnEntidad } from '../models/fecha-fase-cmn.model';
+import { EtapasFase, FechaFaseCmnEntidad } from '../models/fecha-fase-cmn.model';
 
 export interface GuardarFechaFaseCmnEntidad {
   anio: number;
-  fase1: FaseFecha;
-  fase2: FaseFecha;
-  fase3: FaseFecha;
+  fase1: EtapasFase;
+  fase2: EtapasFase;
+  fase3: EtapasFase;
 }
 
 /**

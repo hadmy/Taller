@@ -71,7 +71,13 @@ export class PreciosDiferenciadosComponent implements OnInit {
    * La lista de CUBSO grabados se muestra recién después de «Grabar», o al volver de «Editar precios diferenciados»
    * (que navega con `state.mostrarLista`); al entrar a la opción se ve el estado inicial con el «+».
    */
-  readonly mostrarLista = signal<boolean>(!!this.router.getCurrentNavigation()?.extras.state?.['mostrarLista']);
+  readonly mostrarLista = signal<boolean>(true);
+
+  /**
+   * Pantalla principal (Figma «Configuracion_precios 01», nodo 5887:146069): mientras ningún CUBSO tenga precios
+   * generados se ve «Ítems de precios diferenciados» con la lupa, el aviso y la tabla de CUBSO con 0 precios.
+   */
+  readonly sinPrecios = computed(() => this.cubsos().length > 0 && this.cubsos().every((c) => c.numPreciosGenerados === 0));
 
   /** Estado inicial (Figma, nodo 5538:60180): solo el «+» y el aviso, sin CUBSO elegidos ni lista a la vista. */
   readonly vacio = computed(() => !this.hayPendientes() && (!this.mostrarLista() || (!this.cargando() && this.cubsos().length === 0)));

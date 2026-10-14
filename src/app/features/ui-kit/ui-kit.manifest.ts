@@ -3636,6 +3636,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "hideFloatingLabel",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Con `true` el nombre (label o placeholder) no flota sobre el borde al abrir ni con valor: solo se ve dentro del campo vacío (p. ej. «DD/MM/YYYY»). También quita del calendario el círculo que marca el día de hoy, para que no parezca una fecha elegida."
+      },
+      {
         "nombre": "hint",
         "tipo": "string",
         "porDefecto": "''",
@@ -10826,7 +10833,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-pagination",
       "siaf-table-controls"
     ],
-    "sinUso": true
+    "sinUso": false
   },
   {
     "selector": "siaf-side-nav",

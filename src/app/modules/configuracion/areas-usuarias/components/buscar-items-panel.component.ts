@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
 
 import { SidePanelComponent } from '../../../../shared/ui/side-panel/side-panel.component';
 import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
@@ -118,7 +118,7 @@ export class BuscarItemsPanelComponent {
     }
   }
 
-  @Output() readonly confirmed = new EventEmitter<CatalogoItem[]>();
+  @Output() readonly confirmed =new EventEmitter<CatalogoItem[]>();
   @Output() readonly canceled = new EventEmitter<void>();
 
   private readonly catalogoSig = signal<CatalogoItem[]>([]);
@@ -198,3 +198,4 @@ export class BuscarItemsPanelComponent {
     if (elegidos.length) this.confirmed.emit(elegidos);
   }
 }
+

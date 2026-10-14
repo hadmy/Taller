@@ -46,6 +46,13 @@ export const routes: Routes = [
           import('./modules/tesoreria/tesoreria.routes').then((m) => m.TESORERIA_ROUTES),
         data: { permissions: ['document.read'] }
       },
+      // ── Abastecimiento · CMN: Solicitud de Ítems Estratégicos ──
+      {
+        path: '',
+        loadChildren: () =>
+          import('./modules/abastecimiento/abastecimiento.routes').then((m) => m.ABASTECIMIENTO_ROUTES),
+        data: { permissions: ['document.read'] },
+      },
       // ── Configuración: áreas usuarias del CMN ──
       {
         path: '',

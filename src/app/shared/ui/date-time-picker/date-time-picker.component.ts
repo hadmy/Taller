@@ -219,8 +219,8 @@ type CalendarDay = {
                   [class.bg-brand-primary]="day.value === selectedDate"
                   [class.text-[var(--sys-color-text-brand-white)]]="day.value === selectedDate"
                   [class.text-[var(--sys-color-text-neutral-medium)]]="day.value !== selectedDate && !day.disabled"
-                  [class.border]="day.value === todayDate"
-                  [class.border-[var(--sys-color-border-states-hover)]]="day.value === todayDate"
+                  [class.border]="!hideFloatingLabel && day.value === todayDate"
+                  [class.border-[var(--sys-color-border-states-hover)]]="!hideFloatingLabel && day.value === todayDate"
                   (click)="selectDate(day.value, $event)"
                 >
                   {{ day.label }}
@@ -273,6 +273,8 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
   @Input() defaultToToday = true;
   @Input() required = false;
   @Input() fullWidth = false;
+  /** Con `true` el nombre (label o placeholder) no flota sobre el borde al abrir ni con valor: solo se ve dentro del campo vacío (p. ej. «DD/MM/YYYY»). También quita del calendario el círculo que marca el día de hoy, para que no parezca una fecha elegida. */
+  @Input() hideFloatingLabel = false;
   /** Fecha mínima seleccionable en formato ISO (YYYY-MM-DD). Los días anteriores quedan deshabilitados. */
   @Input() minDate = '';
 
@@ -307,7 +309,7 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
   }
 
   get floatingLabel(): boolean {
-    return this.pickerOpen || this.hasValue;
+    return !this.hideFloatingLabel && (this.pickerOpen || this.hasValue);
   }
 
   get displayValue(): string {

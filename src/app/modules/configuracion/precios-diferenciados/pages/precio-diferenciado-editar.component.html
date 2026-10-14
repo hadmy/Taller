@@ -58,10 +58,14 @@
                   <siaf-input type="decimal" placeholder="S/ 0.00" [hideLabel]="true" [value]="precio.monto ?? ''" (valueChange)="cambiarMonto(precio.id, $event)" />
                 </td>
                 <td class="px-siaf-md py-siaf-xs text-center">
-                  <siaf-switch
-                    [checked]="precio.vigente"
-                    [ariaLabel]="'Vigencia del precio ' + ($index + 1)"
-                    (checkedChange)="cambiarVigencia(precio.id, $event)"
+                  <!-- Figma 5531-59740 / 5733-145862: la columna Vigencia lleva la papelera que quita la fila. -->
+                  <siaf-button
+                    variant="text"
+                    size="sm"
+                    icon="delete"
+                    [iconOnly]="true"
+                    [ariaLabel]="'Quitar el precio ' + ($index + 1)"
+                    (click)="quitarFila(precio.id)"
                   />
                 </td>
               </tr>

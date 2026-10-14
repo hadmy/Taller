@@ -61,6 +61,38 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
             comingSoon: true,
           },
           {
+            id: 'cuadro-multianual-necesidades-solicitudes',
+            label: 'Solicitudes del Cuadro Multianual de Necesidades',
+            comingSoon: true,
+            children: [
+              {
+                id: 'cuadro-multianual-necesidades-solicitudes-items-estrategicos',
+                label: 'Ítems estratégicos',
+                moduleRoute: '/procesos/cuadro-multianual-necesidades/solicitudes/items-estrategicos',
+              },
+              {
+                id: 'cuadro-multianual-necesidades-solicitudes-cambio-fecha-vigente',
+                label: 'Cambio de fecha vigente',
+                comingSoon: true,
+              },
+              {
+                id: 'cuadro-multianual-necesidades-solicitudes-cambio-fecha-vencida',
+                label: 'Cambio de fecha vencida',
+                comingSoon: true,
+              },
+              {
+                id: 'cuadro-multianual-necesidades-solicitudes-anexo-1-fase-1',
+                label: 'Registro de Anexo 1 / Fase 1',
+                comingSoon: true,
+              },
+              {
+                id: 'cuadro-multianual-necesidades-solicitudes-anexo-2-fase-1',
+                label: 'Registro de Anexo 2 / Fase 1',
+                comingSoon: true,
+              },
+            ],
+          },
+          {
             id: 'cuadro-multianual-necesidades-configuracion',
             label: 'Configuración del Cuadro Multianual de Necesidades',
             comingSoon: true,
@@ -73,7 +105,7 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
               {
                 id: 'cuadro-multianual-necesidades-configuracion-servicios-basicos-excluidos-ley',
                 label: 'Configuración de Servicios Básicos Excluidos de la Ley',
-                comingSoon: true,
+                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/servicios-basicos-excluidos-ley',
               },
               {
                 id: 'cuadro-multianual-necesidades-configuracion-fechas-fase-dplaip',

@@ -27,12 +27,13 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 32;
+const VERSION = 33;
 
 export interface NotificacionMock extends NotificacionResponse {
-  /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol. */
+  /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol en la entidad de la solicitud. */
   paraUsuarioId?: string;
   paraRolCodigo?: 'CREADOR' | 'APROBADOR';
+  paraEntidadId?: string;
 }
 
 export interface DatosTaller {
@@ -257,9 +258,8 @@ function enFecha(dia: string, horas: number, dias = 0): string {
   return fecha.toISOString();
 }
 
-/** Historial de una solicitud sembrada: el creador (Ana, si no se dice otro) la elabora y la verifica; Luis la responde. */
-function historialSemilla(datos: DatosTaller, dia: string, estado: EstadoSemilla, comentario?: string, ana = USUARIOS_DEMO[0]): HistorialItem[] {
-  const luis = USUARIOS_DEMO[1];
+/** Historial de una solicitud sembrada: el creador (Ana, si no se dice otro) la elabora y la verifica; el aprobador (Luis, si no se dice otro) la responde. */
+function historialSemilla(datos: DatosTaller, dia: string, estado: EstadoSemilla, comentario?: string, ana = USUARIOS_DEMO[0], luis = USUARIOS_DEMO[1]): HistorialItem[] {
   const historial: HistorialItem[] = [
     filaHistorial(datos, null, 'NUEVO', enFecha(dia, 9), ana, ROL_CREADOR),
     filaHistorial(datos, 'NUEVO', 'ELABORADO', enFecha(dia, 9, 0), ana, ROL_CREADOR),
@@ -445,12 +445,13 @@ function crearDatosIniciales(): DatosTaller {
 
   // Anexos 02 de CMN Programación (Figma «A.2-OA-EV-009»): los registra la Especialista OA del Ministerio de Educación.
   const especialista = USUARIOS_DEMO.find((u) => u.id === 'usr-especialista-oa')!;
+  const aprobadorOa = USUARIOS_DEMO.find((u) => u.id === 'usr-aprobador-oa')!;
   const perfilOa = especialista.perfiles[0];
   for (const semilla of SEMILLAS_ANEXO_2) {
     const id = nuevoId(datos, 'sol');
     datos.correlativoAnexo2Fase1 += 1;
     const creada = enFecha(semilla.creada, 9);
-    const historial = historialSemilla(datos, semilla.creada, semilla.estado, undefined, especialista);
+    const historial = historialSemilla(datos, semilla.creada, semilla.estado, undefined, especialista, aprobadorOa);
     datos.solicitudes.push({
       id,
       numero: numeroDocumentoAnexo2Fase1(datos.correlativoAnexo2Fase1),
@@ -473,7 +474,7 @@ function crearDatosIniciales(): DatosTaller {
   }
 
   // Notificaciones: el aprobador tiene una solicitud por aprobar; el creador, una observada y otras ya leídas.
-  const aviso = (s: SolicitudResponse, tipo: string, titulo: string, mensaje: string, leida: boolean, destino: Pick<NotificacionMock, 'paraUsuarioId' | 'paraRolCodigo'>): NotificacionMock => ({
+  const aviso = (s: SolicitudResponse, tipo: string, titulo: string, mensaje: string, leida: boolean, destino: Pick<NotificacionMock, 'paraUsuarioId' | 'paraRolCodigo' | 'paraEntidadId'>): NotificacionMock => ({
     id: nuevoId(datos, 'not'),
     tipo,
     titulo,
@@ -486,7 +487,7 @@ function crearDatosIniciales(): DatosTaller {
   });
   const porEstado = (estado: string) => datos.solicitudes.filter((s) => s.estado === estado);
   for (const s of porEstado('VERIFICADO')) {
-    datos.notificaciones.push(aviso(s, 'DOCUMENTO_VERIFICADO', 'Solicitud por aprobar', `La solicitud ${s.numero} fue verificada y espera su aprobación.`, false, { paraRolCodigo: 'APROBADOR' }));
+    datos.notificaciones.push(aviso(s, 'DOCUMENTO_VERIFICADO', 'Solicitud por aprobar', `La solicitud ${s.numero} fue verificada y espera su aprobación.`, false, { paraRolCodigo: 'APROBADOR', paraEntidadId: s.entidadCreadora?.id }));
   }
   for (const s of porEstado('OBSERVADO')) {
     datos.notificaciones.push(aviso(s, 'DOCUMENTO_OBSERVADO', 'Solicitud observada', `La solicitud ${s.numero} fue observada: revise el comentario y subsane.`, false, { paraUsuarioId: ana.id }));
@@ -494,7 +495,7 @@ function crearDatosIniciales(): DatosTaller {
   for (const s of porEstado('RECHAZADO')) {
     datos.notificaciones.push(aviso(s, 'DOCUMENTO_RECHAZADO', 'Solicitud rechazada', `La solicitud ${s.numero} fue rechazada.`, true, { paraUsuarioId: ana.id }));
   }
-  const ultimaAprobada = porEstado('APROBADO').at(-1);
+  const ultimaAprobada = porEstado('APROBADO').filter((s) => s.creador?.id === ana.id).at(-1);
   if (ultimaAprobada) {
     datos.notificaciones.push(aviso(ultimaAprobada, 'DOCUMENTO_APROBADO', 'Solicitud aprobada', `La solicitud ${ultimaAprobada.numero} fue aprobada.`, true, { paraUsuarioId: ana.id }));
   }

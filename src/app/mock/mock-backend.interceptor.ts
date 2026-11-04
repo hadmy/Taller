@@ -162,7 +162,9 @@ const tiposDocumento: Manejador = () => ok([
 
 function visibles(datos: DatosTaller, sesion: Sesion): NotificacionMock[] {
   return datos.notificaciones
-    .filter((n) => (n.paraUsuarioId ? n.paraUsuarioId === sesion.usuario.id : n.paraRolCodigo === sesion.perfil.rolCodigo))
+    .filter((n) => (n.paraUsuarioId
+      ? n.paraUsuarioId === sesion.usuario.id
+      : n.paraRolCodigo === sesion.perfil.rolCodigo && n.paraEntidadId === sesion.perfil.entidadId))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -197,7 +199,7 @@ function notificar(datos: DatosTaller, s: SolicitudResponse, estado: EstadoDocum
   };
   const texto = textos[estado];
   if (!texto) return;
-  const destino = estado === 'VERIFICADO' ? { paraRolCodigo: 'APROBADOR' as const } : { paraUsuarioId: s.creador?.id };
+  const destino = estado === 'VERIFICADO' ? { paraRolCodigo: 'APROBADOR' as const, paraEntidadId: s.entidadCreadora?.id } : { paraUsuarioId: s.creador?.id };
   datos.notificaciones.push({
     id: nuevoId(datos, 'not'),
     tipo: `DOCUMENTO_${estado}`,
@@ -212,8 +214,9 @@ function notificar(datos: DatosTaller, s: SolicitudResponse, estado: EstadoDocum
 
 // ─── Solicitudes ───────────────────────────────────────────────────
 
-function buscarSolicitud(datos: DatosTaller, id: string): SolicitudResponse | undefined {
-  return datos.solicitudes.find((s) => s.id === id);
+/** Una solicitud de la entidad de la sesión: las de otra entidad no existen para ella. */
+function buscarSolicitud(datos: DatosTaller, id: string, sesion: Contexto['sesion']): SolicitudResponse | undefined {
+  return datos.solicitudes.find((s) => s.id === id && s.entidadCreadora?.id === sesion?.perfil.entidadId);
 }
 
 function esItemsEstrategicos(s: SolicitudResponse): boolean {
@@ -252,8 +255,8 @@ function bandeja(ctx: Contexto, estados?: EstadoDocumento[]): Respuesta {
 const bandejaCreador: Manejador = (ctx) => bandeja(ctx);
 const bandejaAprobador: Manejador = (ctx) => bandeja(ctx, ['VERIFICADO', 'OBSERVADO', 'APROBADO', 'RECHAZADO']);
 
-const detalleSolicitud: Manejador = ({ datos, params }) => {
-  const s = buscarSolicitud(datos, params[0]);
+const detalleSolicitud: Manejador = ({ datos, params, sesion }) => {
+  const s = buscarSolicitud(datos, params[0], sesion);
   return s ? ok(s) : error(404, 'La solicitud no existe.');
 };
 
@@ -296,7 +299,7 @@ const crearSolicitud: Manejador = ({ req, datos, sesion }) => {
 };
 
 const actualizarSolicitud: Manejador = ({ req, datos, params, sesion }) => {
-  const s = buscarSolicitud(datos, params[0]);
+  const s = buscarSolicitud(datos, params[0], sesion);
   if (!s) return error(404, 'La solicitud no existe.');
   if (sesion?.perfil.rolCodigo !== 'CREADOR') return error(403, 'Solo el creador puede editar la solicitud.');
   if (!['ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'Solo se edita una solicitud elaborada u observada.');
@@ -307,8 +310,8 @@ const actualizarSolicitud: Manejador = ({ req, datos, params, sesion }) => {
   return ok(s);
 };
 
-const guardarItemsEstrategicos: Manejador = ({ req, datos, params }) => {
-  const s = buscarSolicitud(datos, params[0]);
+const guardarItemsEstrategicos: Manejador = ({ req, datos, params, sesion }) => {
+  const s = buscarSolicitud(datos, params[0], sesion);
   if (!s) return error(404, 'La solicitud no existe.');
   if (!esItemsEstrategicos(s)) return error(400, 'La solicitud no es de necesidades estratégicas.');
   if (!['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'La solicitud ya no admite cambios.');
@@ -323,8 +326,8 @@ const guardarItemsEstrategicos: Manejador = ({ req, datos, params }) => {
   return ok({ message: 'Necesidades guardadas' });
 };
 
-const guardarAnexo2Fase1: Manejador = ({ req, datos, params }) => {
-  const s = buscarSolicitud(datos, params[0]);
+const guardarAnexo2Fase1: Manejador = ({ req, datos, params, sesion }) => {
+  const s = buscarSolicitud(datos, params[0], sesion);
   if (!s) return error(404, 'La solicitud no existe.');
   if (!esAnexo2Fase1(s)) return error(400, 'La solicitud no es del Anexo N.º 02.');
   if (!['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'La solicitud ya no admite cambios.');
@@ -340,8 +343,8 @@ const guardarAnexo2Fase1: Manejador = ({ req, datos, params }) => {
   return ok({ message: 'Áreas usuarias guardadas' });
 };
 
-const subirSustento: Manejador = ({ req, datos, params }) => {
-  const s = buscarSolicitud(datos, params[0]);
+const subirSustento: Manejador = ({ req, datos, params, sesion }) => {
+  const s = buscarSolicitud(datos, params[0], sesion);
   if (!s) return error(404, 'La solicitud no existe.');
   const formulario = req.body instanceof FormData ? req.body : null;
   const archivo = formulario?.get('archivo');
@@ -365,10 +368,10 @@ const subirSustento: Manejador = ({ req, datos, params }) => {
   return ok(sustento, 201);
 };
 
-const listarSustentos: Manejador = ({ datos, params }) => ok(buscarSolicitud(datos, params[0])?.sustentos ?? []);
+const listarSustentos: Manejador = ({ datos, params, sesion }) => ok(buscarSolicitud(datos, params[0], sesion)?.sustentos ?? []);
 
-const eliminarSustento: Manejador = ({ datos, params }) => {
-  const s = buscarSolicitud(datos, params[0]);
+const eliminarSustento: Manejador = ({ datos, params, sesion }) => {
+  const s = buscarSolicitud(datos, params[0], sesion);
   if (s) {
     s.sustentos = (s.sustentos ?? []).filter((x) => x.id !== params[1]);
     guardarDatos(datos);
@@ -389,7 +392,7 @@ const TRANSICIONES: Record<'CREADOR' | 'APROBADOR', Partial<Record<EstadoDocumen
 
 const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
   if (!sesion) return error(401, 'Sesión expirada.');
-  const s = buscarSolicitud(datos, params[0]);
+  const s = buscarSolicitud(datos, params[0], sesion);
   if (!s) return error(404, 'La solicitud no existe.');
   const dto = (req.body ?? {}) as { estadoNuevo?: EstadoDocumento; comentario?: string; motivo?: string };
   const nuevo = dto.estadoNuevo;

@@ -31,6 +31,7 @@ La contraseña de todos es **`Taller2026*`**. En el login, el campo «Usuario» 
 | Luis Ramírez Soto | `luis.ramirez@taller.pe` | `22222222` | Aprobador | Aprobar, observar (con comentario) o rechazar lo verificado |
 | Carla Mendoza Ríos | `carla.mendoza@taller.pe` | `33333333` | Creador y Aprobador | Lo mismo que los dos anteriores: cambia de perfil desde su menú de usuario |
 | Usuario Especialista OA | `especialista-oa@minedu.gob.pe` | `44444444` | Creador (Ministerio de Educación) | Registra las solicitudes del CMN, como el Anexo N.º 02 |
+| Usuario Aprobador OA | `aprobador-oa@minedu.gob.pe` | `55555555` | Aprobador (Ministerio de Educación) | Aprueba, observa o rechaza las solicitudes de su entidad, como el Anexo N.º 02 |
 
 «Olvidé mi contraseña» también funciona: con el correo de un usuario (por ejemplo `ana.torres@taller.pe`) el código de
 verificación es `123456`.
@@ -51,7 +52,8 @@ verificación es `123456`.
    los botones y las notificaciones.
 7. **CMN** como la Especialista OA: en **Procesos**, buscar «CMN Programación» (o Gestión de abastecimiento →
    Programación multianual de bienes, servicios y obras → CMN Programación) y, en Documentos y registros, **Crear
-   documento → Solicitud de CMN - Anexo N.º 02**.
+   documento → Solicitud de CMN - Anexo N.º 02**. Lo aprueba el **Aprobador OA**: cada perfil ve y responde solo las
+   solicitudes de su entidad.
 8. **Catálogo de componentes** en `/ui-kit`: cada componente con su ficha, sus entradas y su ejemplo.
 
 Para empezar de cero: **Reiniciar datos** en el login (o borrar el almacenamiento del sitio).

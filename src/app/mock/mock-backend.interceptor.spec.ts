@@ -191,6 +191,29 @@ describe('mockBackendInterceptor', () => {
     expect(detalle.detalleAnexo2Fase1?.areas.map((a) => a.id)).toEqual(contexto.areas.slice(0, 2).map((a) => a.id));
   }));
 
+  it('una solicitud solo la ven y la responden los perfiles de su entidad', fakeAsync(() => {
+    const especialista = entrar('44444444');
+    const creada = esperar(http.post<SolicitudResponse>(`${API}/solicitudes`, { tipoDocumentoId: 'td-sa2f1', tipoAccion: 'creacion', organoLinea: 'OLA', justificacion: '' }, { headers: especialista }));
+    const id = creada.valor!.id;
+    const contexto = esperar(http.get<ContextoAnexo2>(`${API}/cmn/anexo-2-fase-1/contexto`, { headers: especialista })).valor!;
+    esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1`, { areas: contexto.areas.slice(0, 2) }, { headers: especialista }));
+    esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: especialista }));
+    esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VERIFICADO' }, { headers: especialista }));
+
+    type Aviso = { documento: { id: string } };
+    const luis = entrar('22222222');
+    expect(esperar(http.get<Aviso[]>(`${API}/notificaciones`, { headers: luis })).valor?.some((n) => n.documento.id === id)).toBeFalse();
+    expect(esperar(http.get(`${API}/solicitudes/${id}`, { headers: luis })).error?.status).toBe(404);
+    expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: luis })).error?.status).toBe(404);
+
+    const aprobador = entrar('55555555');
+    const bandeja = esperar(http.get<SolicitudResponse[]>(`${API}/solicitudes/bandeja-aprobador?tipos=SA2F1`, { headers: aprobador }));
+    expect(bandeja.valor?.some((s) => s.id === id)).toBeTrue();
+    expect(esperar(http.get<Aviso[]>(`${API}/notificaciones`, { headers: aprobador })).valor?.some((n) => n.documento.id === id)).toBeTrue();
+    esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: aprobador }));
+    expect(esperar(http.get<SolicitudResponse>(`${API}/solicitudes/${id}`, { headers: especialista })).valor?.estado).toBe('APROBADO');
+  }));
+
   it('deja pasar lo que no es de la API (los assets)', () => {
     http.get('assets/datos.json').subscribe();
 

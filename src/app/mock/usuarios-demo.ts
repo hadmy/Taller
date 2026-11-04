@@ -7,6 +7,7 @@ import type { PerfilItem } from '../core/api/auth-api.service';
  * - Luis (aprobador) aprueba, observa o rechaza lo verificado.
  * - Carla tiene los dos perfiles: sirve para mostrar el cambio de perfil desde el menú del usuario.
  * - La Especialista OA (Ministerio de Educación) registra las solicitudes del CMN (Figma «A.2-OA-EV-001-Login»).
+ * - El Aprobador OA (Ministerio de Educación) responde las solicitudes de esa entidad.
  *
  * Son datos de ejemplo: no hay contraseñas reales ni se validan contra un servidor.
  */
@@ -102,6 +103,18 @@ export const USUARIOS_DEMO: UsuarioDemo[] = [
     descripcion: 'Especialista OA (Ministerio de Educación): registra las solicitudes del CMN',
     perfiles: [
       { id: 'perfil-especialista-oa', ...ENTIDAD_MINEDU, rol: 'Especialista OA', rolCodigo: 'CREADOR', perfilFuncional: 'Especialista de la Oficina de Abastecimiento' },
+    ],
+  },
+  {
+    id: 'usr-aprobador-oa',
+    dni: '55555555',
+    email: 'aprobador-oa@minedu.gob.pe',
+    nombres: 'Usuario',
+    apellidoPaterno: 'Aprobador',
+    apellidoMaterno: 'OA',
+    descripcion: 'Aprobador OA (Ministerio de Educación): aprueba, observa o rechaza las solicitudes del CMN',
+    perfiles: [
+      { id: 'perfil-aprobador-oa', ...ENTIDAD_MINEDU, rol: 'Aprobador OA', rolCodigo: 'APROBADOR', perfilFuncional: 'Aprobador de la Oficina de Abastecimiento' },
     ],
   },
 ];

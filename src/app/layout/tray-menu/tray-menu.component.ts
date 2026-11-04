@@ -5,6 +5,7 @@ import { IconComponent } from '../../shared/ui/icon/icon.component';
 import { NotificationsStateService } from '../../core/realtime/notifications-state.service';
 import { SolicitudesStateService } from '../../core/state/solicitudes-state.service';
 import { PermissionService } from '../../core/auth/permission.service';
+import { respondeSolicitudes } from '../../core/auth/role.model';
 
 type TrayItem = {
   label: string;
@@ -108,17 +109,18 @@ export class TrayMenuComponent {
     const role = this.permissionService.currentRole();
     const unread = this.notifications.unreadCount();
     const isAprobador = role === 'approver';
+    const responde = respondeSolicitudes(role);
 
     const recibidos = isAprobador
       ? this.solicitudesState.aprobadorRecibidosCount()
-      : this.solicitudesState.creadorRecibidosCount();
+      : role === 'reviewer' ? this.solicitudesState.evaluadorRecibidosCount() : this.solicitudesState.creadorRecibidosCount();
 
     const enviados = isAprobador
       ? this.solicitudesState.aprobadorEnviadosCount()
-      : this.solicitudesState.creadorEnviadosCount();
+      : role === 'reviewer' ? this.solicitudesState.evaluadorEnviadosCount() : this.solicitudesState.creadorEnviadosCount();
 
-    const borradores = isAprobador ? 0 : this.solicitudesState.creadorBorradoresCount();
-    const papelera   = isAprobador ? 0 : this.solicitudesState.creadorPapeleraCount();
+    const borradores = responde ? 0 : this.solicitudesState.creadorBorradoresCount();
+    const papelera   = responde ? 0 : this.solicitudesState.creadorPapeleraCount();
 
     const base: TrayItem[] = [
       { label: 'Recibidos',      icon: 'description',   count: this.fmt(recibidos) },

@@ -27,12 +27,12 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 33;
+const VERSION = 34;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol en la entidad de la solicitud. */
   paraUsuarioId?: string;
-  paraRolCodigo?: 'CREADOR' | 'APROBADOR';
+  paraRolCodigo?: 'CREADOR' | 'EVALUADOR' | 'APROBADOR';
   paraEntidadId?: string;
 }
 
@@ -195,9 +195,10 @@ export function filaHistorial(
 // ─── Datos iniciales ───────────────────────────────────────────────
 
 const ROL_CREADOR = { codigo: 'CREADOR', nombre: 'Creador' };
+const ROL_EVALUADOR = { codigo: 'EVALUADOR', nombre: 'Evaluador' };
 const ROL_APROBADOR = { codigo: 'APROBADOR', nombre: 'Aprobador' };
 
-type EstadoSemilla = 'ELABORADO' | 'VERIFICADO' | 'APROBADO' | 'OBSERVADO' | 'RECHAZADO';
+type EstadoSemilla = 'ELABORADO' | 'VERIFICADO' | 'VALIDADO' | 'APROBADO' | 'OBSERVADO' | 'RECHAZADO';
 
 /** Áreas usuarias del pliego demo: jerarquía corta por código (`01`, `01.01`, `01.01.01`…). */
 const AREAS_USUARIAS_SEMILLA: Omit<AreaUsuaria, 'id'>[] = [
@@ -243,6 +244,7 @@ const SEMILLAS_ITEMS: SemillaItems[] = [
   { creada: '2026-08-20', estado: 'VERIFICADO', items: [7, 8], justificacion: 'Inclusión de analgésicos y mascarillas de oxígeno para hospitalización.' },
   { creada: '2026-09-03', estado: 'OBSERVADO', items: [9, 10], justificacion: 'Inclusión de equipos portátiles para la atención en zonas rurales.', comentario: 'Sustente la criticidad del equipo de rayos X portátil con el informe técnico del área usuaria.' },
   { creada: '2026-09-25', estado: 'ELABORADO', items: [11, 12, 13], justificacion: 'Inclusión de material médico descartable de alta rotación.' },
+  { creada: '2026-09-28', estado: 'VALIDADO', items: [14, 15], justificacion: 'Inclusión de insumos priorizados para la campaña de vacunación.' },
 ];
 
 /** Anexos 02 sembrados: los del Figma «A.2-OA-EV-009» (0001 aprobado en 2025, 0002 elaborado en 2026). */
@@ -258,8 +260,8 @@ function enFecha(dia: string, horas: number, dias = 0): string {
   return fecha.toISOString();
 }
 
-/** Historial de una solicitud sembrada: el creador (Ana, si no se dice otro) la elabora y la verifica; el aprobador (Luis, si no se dice otro) la responde. */
-function historialSemilla(datos: DatosTaller, dia: string, estado: EstadoSemilla, comentario?: string, ana = USUARIOS_DEMO[0], luis = USUARIOS_DEMO[1]): HistorialItem[] {
+/** Historial de una solicitud sembrada: el creador (Ana, si no se dice otro) la elabora y la verifica, el evaluador (Marta) la valida y el aprobador (Luis) la responde. */
+function historialSemilla(datos: DatosTaller, dia: string, estado: EstadoSemilla, comentario?: string, ana = USUARIOS_DEMO[0], luis = USUARIOS_DEMO[1], evaluador = USUARIOS_DEMO.find((u) => u.id === 'usr-marta')!): HistorialItem[] {
   const historial: HistorialItem[] = [
     filaHistorial(datos, null, 'NUEVO', enFecha(dia, 9), ana, ROL_CREADOR),
     filaHistorial(datos, 'NUEVO', 'ELABORADO', enFecha(dia, 9, 0), ana, ROL_CREADOR),
@@ -267,8 +269,11 @@ function historialSemilla(datos: DatosTaller, dia: string, estado: EstadoSemilla
   if (estado !== 'ELABORADO') {
     historial.push(filaHistorial(datos, 'ELABORADO', 'VERIFICADO', enFecha(dia, 10, 1), ana, ROL_CREADOR));
   }
+  if (['VALIDADO', 'APROBADO', 'OBSERVADO', 'RECHAZADO'].includes(estado)) {
+    historial.push(filaHistorial(datos, 'VERIFICADO', 'VALIDADO', enFecha(dia, 10, 2), evaluador, ROL_EVALUADOR, 'Documento evaluado conforme.'));
+  }
   if (['APROBADO', 'OBSERVADO', 'RECHAZADO'].includes(estado)) {
-    historial.push(filaHistorial(datos, 'VERIFICADO', estado, enFecha(dia, 11, 2), luis, ROL_APROBADOR, comentario ?? null));
+    historial.push(filaHistorial(datos, 'VALIDADO', estado, enFecha(dia, 11, 2), luis, ROL_APROBADOR, comentario ?? null));
   }
   return historial;
 }
@@ -446,12 +451,13 @@ function crearDatosIniciales(): DatosTaller {
   // Anexos 02 de CMN Programación (Figma «A.2-OA-EV-009»): los registra la Especialista OA del Ministerio de Educación.
   const especialista = USUARIOS_DEMO.find((u) => u.id === 'usr-especialista-oa')!;
   const aprobadorOa = USUARIOS_DEMO.find((u) => u.id === 'usr-aprobador-oa')!;
+  const evaluadorOa = USUARIOS_DEMO.find((u) => u.id === 'usr-evaluador-oa')!;
   const perfilOa = especialista.perfiles[0];
   for (const semilla of SEMILLAS_ANEXO_2) {
     const id = nuevoId(datos, 'sol');
     datos.correlativoAnexo2Fase1 += 1;
     const creada = enFecha(semilla.creada, 9);
-    const historial = historialSemilla(datos, semilla.creada, semilla.estado, undefined, especialista, aprobadorOa);
+    const historial = historialSemilla(datos, semilla.creada, semilla.estado, undefined, especialista, aprobadorOa, evaluadorOa);
     datos.solicitudes.push({
       id,
       numero: numeroDocumentoAnexo2Fase1(datos.correlativoAnexo2Fase1),
@@ -473,7 +479,7 @@ function crearDatosIniciales(): DatosTaller {
     });
   }
 
-  // Notificaciones: el aprobador tiene una solicitud por aprobar; el creador, una observada y otras ya leídas.
+  // Notificaciones: el evaluador tiene una solicitud por validar, el aprobador una por aprobar; el creador, una observada y otras ya leídas.
   const aviso = (s: SolicitudResponse, tipo: string, titulo: string, mensaje: string, leida: boolean, destino: Pick<NotificacionMock, 'paraUsuarioId' | 'paraRolCodigo' | 'paraEntidadId'>): NotificacionMock => ({
     id: nuevoId(datos, 'not'),
     tipo,
@@ -487,7 +493,10 @@ function crearDatosIniciales(): DatosTaller {
   });
   const porEstado = (estado: string) => datos.solicitudes.filter((s) => s.estado === estado);
   for (const s of porEstado('VERIFICADO')) {
-    datos.notificaciones.push(aviso(s, 'DOCUMENTO_VERIFICADO', 'Solicitud por aprobar', `La solicitud ${s.numero} fue verificada y espera su aprobación.`, false, { paraRolCodigo: 'APROBADOR', paraEntidadId: s.entidadCreadora?.id }));
+    datos.notificaciones.push(aviso(s, 'DOCUMENTO_VERIFICADO', 'Solicitud por validar', `La solicitud ${s.numero} fue verificada y espera su evaluación.`, false, { paraRolCodigo: 'EVALUADOR', paraEntidadId: s.entidadCreadora?.id }));
+  }
+  for (const s of porEstado('VALIDADO')) {
+    datos.notificaciones.push(aviso(s, 'DOCUMENTO_VALIDADO', 'Solicitud por aprobar', `La solicitud ${s.numero} fue validada y espera su aprobación.`, false, { paraRolCodigo: 'APROBADOR', paraEntidadId: s.entidadCreadora?.id }));
   }
   for (const s of porEstado('OBSERVADO')) {
     datos.notificaciones.push(aviso(s, 'DOCUMENTO_OBSERVADO', 'Solicitud observada', `La solicitud ${s.numero} fue observada: revise el comentario y subsane.`, false, { paraUsuarioId: ana.id }));

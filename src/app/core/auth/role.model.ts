@@ -11,6 +11,7 @@ export const ROL_MAP: Record<string, UserRole> = {
   CREADOR: 'creator',
   APROBADOR: 'approver',
   REVISOR: 'reviewer',
+  EVALUADOR: 'reviewer',
   ADMIN_SISTEMA: 'admin_sistema',
   ADMIN_ENTIDAD: 'admin_entidad',
 };
@@ -21,6 +22,11 @@ export const ROL_MAP: Record<string, UserRole> = {
  */
 export function mapRolCodigo(rolCodigo: string): UserRole {
   return ROL_MAP[rolCodigo] ?? 'sin_permisos';
+}
+
+/** Roles que responden solicitudes ajenas: usan la bandeja de respuesta y no crean documentos. */
+export function respondeSolicitudes(role: string): boolean {
+  return role === 'approver' || role === 'reviewer';
 }
 
 export type Permission =
@@ -63,7 +69,7 @@ export type RoleRouteData = {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   creator: 'Creador',
-  reviewer: 'Revisor',
+  reviewer: 'Evaluador',
   approver: 'Aprobador',
   admin_sistema: 'Administrador del Sistema',
   admin_entidad: 'Administrador de Entidad',
@@ -85,7 +91,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'chart_account.read', 'chart_account.create',
   ],
   reviewer: [
-    'document.review', 'document.observe', 'document.read',
+    'document.review', 'document.observe', 'document.reject', 'document.read',
     'chart_account.read',
   ],
   approver: [

@@ -26,7 +26,7 @@ usuarios de demostración, el recorrido de la clase y cómo sumar un proceso.
   CMN - Anexo N.º 02 (documento SA2F1). Es el modelo para un proceso nuevo: `api/`, `config/`, `models/`,
   `pages/{documents,solicitud}` y `utils/`. Al lado, `items-estrategicos/` (Necesidades estratégicas, documento SIE).
 - `src/app/core/`: API (`core/api`, mismo contrato que el backend real), sesión, permisos por rol
-  (`ROLE_PERMISSIONS`: creador y aprobador), interceptores, estado de solicitudes y notificaciones. El socket de
+  (`ROLE_PERMISSIONS`: creador, evaluador y aprobador), interceptores, estado de solicitudes y notificaciones. El socket de
   notificaciones está apagado (`notifications-socket.service.ts` no hace nada).
 - `src/app/layout/`: armazón, barra superior (menú de usuario con cambio de perfil), menú de procesos, bandeja y
   escritorio virtual.
@@ -61,8 +61,8 @@ usuarios de demostración, el recorrido de la clase y cómo sumar un proceso.
   `filled` con modal de confirmación.
 - **Estados**: `siaf-flow-status-tag` (documento) y `siaf-record-status-tag` (registro).
 - **Formularios de solicitud**: «Grabar» solo con cambios (foto del formulario con `shared/utils/form-snapshot.util.ts`
-  al entrar a editar); el sustento se toma en `(confirmed)` de `siaf-upload-side-nav`; las acciones de aprobar,
-  observar y rechazar van con `siaf-request-approval-modals`.
+  al entrar a editar); el sustento se toma en `(confirmed)` de `siaf-upload-side-nav`; las acciones de validar,
+  aprobar, observar y rechazar van con `siaf-request-approval-modals`.
 - **Modales, paneles y desplegables**: foco con la directiva `siafFoco`, no a mano.
 - **Gráficos** (Chart.js): los arma `siaf-query-report-page` desde `charts` de su configuración.
 - **Al crear o cambiar un componente**: JSDoc sobre la clase (es su ficha), `npm run ui-kit:manifest`, su categoría en

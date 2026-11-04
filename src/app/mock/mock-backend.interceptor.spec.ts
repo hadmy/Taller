@@ -81,7 +81,7 @@ describe('mockBackendInterceptor', () => {
     const { valor } = esperar(http.get<{ data: SolicitudResponse[]; total: number }>(`${API}/solicitudes/bandeja-creador?tipos=SIE&page=1&limit=5`, { headers }));
 
     expect(valor?.data.length).toBe(5);
-    expect(valor?.total).toBe(6);
+    expect(valor?.total).toBe(7);
   }));
 
   it('no crea solicitudes de un tipo de documento que no existe', fakeAsync(() => {
@@ -101,20 +101,29 @@ describe('mockBackendInterceptor', () => {
 
     esperar(http.post(`${API}/solicitudes/${id}/items-estrategicos`, { items: ITEMS }, { headers: ana }));
     const elaborada = esperar(http.patch<{ numero: string }>(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
-    expect(elaborada.valor?.numero).toMatch(/^CMN-SIE-00007-\d{4}-MEF-OGA$/);
+    expect(elaborada.valor?.numero).toMatch(/^CMN-SIE-00008-\d{4}-MEF-OGA$/);
 
     // El creador no puede aprobar.
     expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: ana })).error?.status).toBe(409);
     esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VERIFICADO' }, { headers: ana }));
 
+    // El aprobador no responde lo que el evaluador aún no valida.
     const luis = entrar('22222222');
+    expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: luis })).error?.status).toBe(409);
+
+    const marta = entrar('66666666');
+    const avisosMarta = esperar(http.get<{ titulo: string; documento: { id: string } }[]>(`${API}/notificaciones`, { headers: marta }));
+    expect(avisosMarta.valor?.some((n) => n.documento.id === id && n.titulo === 'Solicitud por validar')).toBeTrue();
+    expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VALIDADO' }, { headers: marta })).error?.status).toBe(400);
+    esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VALIDADO', comentario: 'Conforme.' }, { headers: marta }));
+
     const avisos = esperar(http.get<{ titulo: string; documento: { id: string } }[]>(`${API}/notificaciones`, { headers: luis }));
     expect(avisos.valor?.some((n) => n.documento.id === id && n.titulo === 'Solicitud por aprobar')).toBeTrue();
 
     esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: luis }));
 
     const detalle = esperar(http.get<SolicitudResponse>(`${API}/solicitudes/${id}`, { headers: luis }));
-    expect(detalle.valor?.historialEstados?.map((h) => h.estadoNuevo)).toEqual(['NUEVO', 'ELABORADO', 'VERIFICADO', 'APROBADO']);
+    expect(detalle.valor?.historialEstados?.map((h) => h.estadoNuevo)).toEqual(['NUEVO', 'ELABORADO', 'VERIFICADO', 'VALIDADO', 'APROBADO']);
 
     const avisosAna = esperar(http.get<{ titulo: string; documento: { id: string } }[]>(`${API}/notificaciones`, { headers: ana }));
     expect(avisosAna.valor?.some((n) => n.documento.id === id && n.titulo === 'Solicitud aprobada')).toBeTrue();
@@ -123,14 +132,14 @@ describe('mockBackendInterceptor', () => {
   it('observar pide comentario y una solicitud observada ya no se puede eliminar', fakeAsync(() => {
     const luis = entrar('22222222');
     const bandeja = esperar(http.get<SolicitudResponse[]>(`${API}/solicitudes/bandeja-aprobador?tipos=SIE`, { headers: luis }));
-    const verificada = bandeja.valor!.find((s) => s.estado === 'VERIFICADO')!;
+    const validada = bandeja.valor!.find((s) => s.estado === 'VALIDADO')!;
 
-    expect(esperar(http.patch(`${API}/solicitudes/${verificada.id}/estado`, { estadoNuevo: 'OBSERVADO' }, { headers: luis })).error?.status).toBe(400);
-    esperar(http.patch(`${API}/solicitudes/${verificada.id}/estado`, { estadoNuevo: 'OBSERVADO', comentario: 'Falta la constancia.' }, { headers: luis }));
+    expect(esperar(http.patch(`${API}/solicitudes/${validada.id}/estado`, { estadoNuevo: 'OBSERVADO' }, { headers: luis })).error?.status).toBe(400);
+    esperar(http.patch(`${API}/solicitudes/${validada.id}/estado`, { estadoNuevo: 'OBSERVADO', comentario: 'Falta la constancia.' }, { headers: luis }));
 
     const ana = entrar('11111111');
-    esperar(http.patch(`${API}/solicitudes/${verificada.id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
-    const eliminar = esperar(http.patch(`${API}/solicitudes/${verificada.id}/estado`, { estadoNuevo: 'ELIMINADO' }, { headers: ana }));
+    esperar(http.patch(`${API}/solicitudes/${validada.id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
+    const eliminar = esperar(http.patch(`${API}/solicitudes/${validada.id}/estado`, { estadoNuevo: 'ELIMINADO' }, { headers: ana }));
 
     expect(eliminar.error?.status).toBe(409);
     expect(eliminar.error?.error.message).toContain('observada');
@@ -151,14 +160,15 @@ describe('mockBackendInterceptor', () => {
     const elegidos = catalogo.slice(14, 16).map(({ codigo, descripcion }) => ({ codigo, descripcion }));
     esperar(http.post(`${API}/solicitudes/${id}/items-estrategicos`, { items: elegidos }, { headers: ana }));
     const elaborada = esperar(http.patch<{ numero: string }>(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
-    expect(elaborada.valor?.numero).toMatch(/^CMN-SIE-00007-\d{4}-MEF-OGA$/);
+    expect(elaborada.valor?.numero).toMatch(/^CMN-SIE-00008-\d{4}-MEF-OGA$/);
 
     // Cada proceso tiene su bandeja.
     const bandeja = esperar(http.get<SolicitudResponse[]>(`${API}/solicitudes/bandeja-creador?tipos=SIE`, { headers: ana }));
     expect(bandeja.valor?.every((s) => s.catDocumento?.codigo === 'SIE')).toBeTrue();
-    expect(bandeja.valor?.length).toBe(7);
+    expect(bandeja.valor?.length).toBe(8);
 
     esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VERIFICADO' }, { headers: ana }));
+    esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VALIDADO', comentario: 'Conforme.' }, { headers: entrar('66666666') }));
     const luis = entrar('22222222');
     esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: luis }));
 
@@ -205,6 +215,10 @@ describe('mockBackendInterceptor', () => {
     expect(esperar(http.get<Aviso[]>(`${API}/notificaciones`, { headers: luis })).valor?.some((n) => n.documento.id === id)).toBeFalse();
     expect(esperar(http.get(`${API}/solicitudes/${id}`, { headers: luis })).error?.status).toBe(404);
     expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: luis })).error?.status).toBe(404);
+
+    const evaluador = entrar('77777777');
+    expect(esperar(http.get<Aviso[]>(`${API}/notificaciones`, { headers: evaluador })).valor?.some((n) => n.documento.id === id)).toBeTrue();
+    esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VALIDADO', comentario: 'Conforme.' }, { headers: evaluador }));
 
     const aprobador = entrar('55555555');
     const bandeja = esperar(http.get<SolicitudResponse[]>(`${API}/solicitudes/bandeja-aprobador?tipos=SA2F1`, { headers: aprobador }));

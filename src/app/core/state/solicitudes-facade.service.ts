@@ -1,3 +1,4 @@
+import { respondeSolicitudes } from '../auth/role.model';
 import { Injectable, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, interval, map, tap, catchError, throwError, switchMap, of } from 'rxjs';
@@ -27,6 +28,7 @@ const BANDEJA_POLLING_INTERVAL_MS = 30_000;
 const ESTADO_MAP: Record<string, EstadoSolicitudDemo> = {
   ELABORADO: ESTADO.ELABORADO,
   VERIFICADO: ESTADO.VERIFICADO,
+  VALIDADO: ESTADO.VALIDADO,
   APROBADO: ESTADO.APROBADO,
   RECHAZADO: ESTADO.RECHAZADO,
   OBSERVADO: ESTADO.OBSERVADO,
@@ -236,7 +238,7 @@ export class SolicitudesFacadeService {
   }
 
   iniciarBandeja(role: SolicitudeHeaderRole | string, destroyRef: DestroyRef, tipos?: string[], query?: BandejaQuery): void {
-    if (role === 'approver') {
+    if (respondeSolicitudes(role)) {
       this.cargarBandejaAprobador(tipos, query);
       // El polling repite la ÚLTIMA consulta, no la inicial: si el usuario
       // buscó o cambió de página, el refresco automático no debe pisarlo.
@@ -285,6 +287,9 @@ export class SolicitudesFacadeService {
   }
   eliminar(id: string): Observable<void> {
     return this.cambiarEstadoYRefrescar(id, 'ELIMINADO');
+  }
+  validar(id: string, comentario: string): Observable<void> {
+    return this.cambiarEstadoYRefrescar(id, 'VALIDADO', comentario);
   }
   aprobar(id: string): Observable<void> {
     return this.cambiarEstadoYRefrescar(id, 'APROBADO');

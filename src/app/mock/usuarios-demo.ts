@@ -7,7 +7,8 @@ import type { PerfilItem } from '../core/api/auth-api.service';
  * - Luis (aprobador) aprueba, observa o rechaza lo verificado.
  * - Carla tiene los dos perfiles: sirve para mostrar el cambio de perfil desde el menú del usuario.
  * - La Especialista OA (Ministerio de Educación) registra las solicitudes del CMN (Figma «A.2-OA-EV-001-Login»).
- * - El Aprobador OA (Ministerio de Educación) responde las solicitudes de esa entidad.
+ * - El Aprobador OA y el Evaluador OA (Ministerio de Educación) responden las solicitudes de esa entidad.
+ * - Marta es la evaluadora del MEF: valida lo verificado antes de que llegue al aprobador.
  *
  * Son datos de ejemplo: no hay contraseñas reales ni se validan contra un servidor.
  */
@@ -55,7 +56,7 @@ const ENTIDAD_MINEDU = {
   unidadId: 'uo-ola',
 };
 
-function perfil(id: string, rolCodigo: 'CREADOR' | 'APROBADOR', rol: string, perfilFuncional: string): PerfilItem {
+function perfil(id: string, rolCodigo: 'CREADOR' | 'EVALUADOR' | 'APROBADOR', rol: string, perfilFuncional: string): PerfilItem {
   return { id, ...ENTIDAD, rol, rolCodigo, perfilFuncional };
 }
 
@@ -115,6 +116,28 @@ export const USUARIOS_DEMO: UsuarioDemo[] = [
     descripcion: 'Aprobador OA (Ministerio de Educación): aprueba, observa o rechaza las solicitudes del CMN',
     perfiles: [
       { id: 'perfil-aprobador-oa', ...ENTIDAD_MINEDU, rol: 'Aprobador OA', rolCodigo: 'APROBADOR', perfilFuncional: 'Aprobador de la Oficina de Abastecimiento' },
+    ],
+  },
+  {
+    id: 'usr-marta',
+    dni: '66666666',
+    email: 'marta.quispe@taller.pe',
+    nombres: 'Marta',
+    apellidoPaterno: 'Quispe',
+    apellidoMaterno: 'Vega',
+    descripcion: 'Evaluador: valida, observa o rechaza lo verificado',
+    perfiles: [perfil('perfil-marta-evaluador', 'EVALUADOR', 'Evaluador', 'Evaluador del Cuadro Multianual de Necesidades')],
+  },
+  {
+    id: 'usr-evaluador-oa',
+    dni: '77777777',
+    email: 'evaluador-oa@minedu.gob.pe',
+    nombres: 'Usuario',
+    apellidoPaterno: 'Evaluador',
+    apellidoMaterno: 'OA',
+    descripcion: 'Evaluador OA (Ministerio de Educación): valida u observa las solicitudes del CMN',
+    perfiles: [
+      { id: 'perfil-evaluador-oa', ...ENTIDAD_MINEDU, rol: 'Evaluador OA', rolCodigo: 'EVALUADOR', perfilFuncional: 'Evaluador de la Oficina de Abastecimiento' },
     ],
   },
 ];

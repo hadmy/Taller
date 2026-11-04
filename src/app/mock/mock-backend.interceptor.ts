@@ -192,14 +192,17 @@ const marcarLeidaDocumento: Manejador = ({ datos, sesion, params }) => {
 
 function notificar(datos: DatosTaller, s: SolicitudResponse, estado: EstadoDocumento, comentario: string | null): void {
   const textos: Partial<Record<EstadoDocumento, { titulo: string; mensaje: string }>> = {
-    VERIFICADO: { titulo: 'Solicitud por aprobar', mensaje: `La solicitud ${s.numero} fue verificada y espera su aprobación.` },
+    VERIFICADO: { titulo: 'Solicitud por validar', mensaje: `La solicitud ${s.numero} fue verificada y espera su evaluación.` },
+    VALIDADO: { titulo: 'Solicitud por aprobar', mensaje: `La solicitud ${s.numero} fue validada y espera su aprobación.` },
     APROBADO: { titulo: 'Solicitud aprobada', mensaje: `La solicitud ${s.numero} fue aprobada.` },
     OBSERVADO: { titulo: 'Solicitud observada', mensaje: `La solicitud ${s.numero} fue observada: ${comentario ?? 'revise el comentario'}.` },
     RECHAZADO: { titulo: 'Solicitud rechazada', mensaje: `La solicitud ${s.numero} fue rechazada.` },
   };
   const texto = textos[estado];
   if (!texto) return;
-  const destino = estado === 'VERIFICADO' ? { paraRolCodigo: 'APROBADOR' as const, paraEntidadId: s.entidadCreadora?.id } : { paraUsuarioId: s.creador?.id };
+  const paraRol = { VERIFICADO: 'EVALUADOR', VALIDADO: 'APROBADOR' } as const;
+  const rolDestino = estado === 'VERIFICADO' || estado === 'VALIDADO' ? paraRol[estado] : null;
+  const destino = rolDestino ? { paraRolCodigo: rolDestino, paraEntidadId: s.entidadCreadora?.id } : { paraUsuarioId: s.creador?.id };
   datos.notificaciones.push({
     id: nuevoId(datos, 'not'),
     tipo: `DOCUMENTO_${estado}`,
@@ -253,7 +256,11 @@ function bandeja(ctx: Contexto, estados?: EstadoDocumento[]): Respuesta {
 }
 
 const bandejaCreador: Manejador = (ctx) => bandeja(ctx);
-const bandejaAprobador: Manejador = (ctx) => bandeja(ctx, ['VERIFICADO', 'OBSERVADO', 'APROBADO', 'RECHAZADO']);
+/** El evaluador ve lo verificado y lo que siguió; el aprobador, desde lo validado. */
+const bandejaAprobador: Manejador = (ctx) => {
+  const respondidas: EstadoDocumento[] = ['VALIDADO', 'OBSERVADO', 'APROBADO', 'RECHAZADO'];
+  return bandeja(ctx, ctx.sesion?.perfil.rolCodigo === 'EVALUADOR' ? ['VERIFICADO', ...respondidas] : respondidas);
+};
 
 const detalleSolicitud: Manejador = ({ datos, params, sesion }) => {
   const s = buscarSolicitud(datos, params[0], sesion);
@@ -379,14 +386,17 @@ const eliminarSustento: Manejador = ({ datos, params, sesion }) => {
   return ok(null, 204);
 };
 
-const TRANSICIONES: Record<'CREADOR' | 'APROBADOR', Partial<Record<EstadoDocumento, EstadoDocumento[]>>> = {
+const TRANSICIONES: Record<'CREADOR' | 'EVALUADOR' | 'APROBADOR', Partial<Record<EstadoDocumento, EstadoDocumento[]>>> = {
   CREADOR: {
     NUEVO: ['ELABORADO'],
     ELABORADO: ['ELABORADO', 'VERIFICADO', 'ELIMINADO'],
     OBSERVADO: ['ELABORADO', 'VERIFICADO'],
   },
+  EVALUADOR: {
+    VERIFICADO: ['VALIDADO', 'OBSERVADO', 'RECHAZADO'],
+  },
   APROBADOR: {
-    VERIFICADO: ['APROBADO', 'OBSERVADO', 'RECHAZADO'],
+    VALIDADO: ['APROBADO', 'OBSERVADO', 'RECHAZADO'],
   },
 };
 
@@ -396,13 +406,13 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
   if (!s) return error(404, 'La solicitud no existe.');
   const dto = (req.body ?? {}) as { estadoNuevo?: EstadoDocumento; comentario?: string; motivo?: string };
   const nuevo = dto.estadoNuevo;
-  const rol = sesion.perfil.rolCodigo as 'CREADOR' | 'APROBADOR';
+  const rol = sesion.perfil.rolCodigo as 'CREADOR' | 'EVALUADOR' | 'APROBADOR';
   const permitidos = TRANSICIONES[rol]?.[s.estado] ?? [];
   if (!nuevo || !permitidos.includes(nuevo)) {
     return error(409, `No se puede pasar de ${s.estado} a ${nuevo ?? '—'} con el perfil ${sesion.perfil.rol}.`);
   }
   const comentario = dto.comentario?.trim() ?? '';
-  if ((nuevo === 'OBSERVADO' || nuevo === 'RECHAZADO') && !comentario) return error(400, 'Escriba el comentario.');
+  if ((nuevo === 'VALIDADO' || nuevo === 'OBSERVADO' || nuevo === 'RECHAZADO') && !comentario) return error(400, 'Escriba el comentario.');
   if (nuevo === 'ELIMINADO' && (s.historialEstados ?? []).some((h) => h.estadoNuevo === 'OBSERVADO')) {
     return error(409, 'No se puede eliminar una solicitud que fue observada.');
   }
@@ -432,7 +442,7 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
   }
   s.estado = nuevo;
   s.updatedAt = ahora;
-  if (nuevo === 'VERIFICADO') s.fechaEvaluacion = ahora;
+  if (nuevo === 'VALIDADO') s.fechaEvaluacion = ahora;
   if (nuevo === 'APROBADO') s.fechaAprobacion = ahora;
 
   // Al aprobar, los ítems pasan a los registros como vigentes; uno ya registrado vuelve a quedar vigente.

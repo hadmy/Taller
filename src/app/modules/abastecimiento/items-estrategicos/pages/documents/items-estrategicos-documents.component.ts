@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 
 import { PermissionService } from '../../../../../core/auth/permission.service';
+import { respondeSolicitudes } from '../../../../../core/auth/role.model';
 import { ESTADO } from '../../../../../core/models/documento.model';
 import { SolicitudesFacadeService } from '../../../../../core/state/solicitudes-facade.service';
 import { SolicitudesStateService } from '../../../../../core/state/solicitudes-state.service';
@@ -59,18 +60,18 @@ export class ItemsEstrategicosDocumentsComponent implements OnInit {
   /** Búsqueda y paginación de la pestaña Documentos (Enter, lupa o cambio de página). */
   onDocumentsQuery(q: DocumentsQuery): void {
     const query = { search: q.search, page: q.page, limit: q.limit };
-    if (this.permissions.currentRole() === 'approver') this.solicitudesFacade.cargarBandejaAprobador([CODIGO_DOCUMENTO], query);
+    if (respondeSolicitudes(this.permissions.currentRole())) this.solicitudesFacade.cargarBandejaAprobador([CODIGO_DOCUMENTO], query);
     else this.solicitudesFacade.cargarBandejaCreador([CODIGO_DOCUMENTO], query);
   }
 
   readonly pageConfig = computed((): DocumentsRecordsConfig => {
-    const solicitudes = this.permissions.currentRole() === 'approver'
+    const solicitudes = respondeSolicitudes(this.permissions.currentRole())
       ? this.solicitudesState.bandejaAprobador()
       : this.solicitudesState.bandejaCreador();
     const nuevos = this.nuevos();
 
     const documentRows: DocumentsRecordsRow[] = solicitudes.map((s) => {
-      const verificado = [...s.historial].reverse().find((h) => h.estado === ESTADO.VERIFICADO);
+      const validado = [...s.historial].reverse().find((h) => h.estado === ESTADO.VALIDADO);
       const aprobado = [...s.historial].reverse().find((h) => h.estado === ESTADO.APROBADO);
       return {
         document: s.tipoDocumento,
@@ -85,8 +86,8 @@ export class ItemsEstrategicosDocumentsComponent implements OnInit {
         creator: s.creador,
         subject: s.justificacion,
         requesterArea: s.unidad,
-        evaluationDate: verificado?.fecha ?? '—',
-        evaluationUser: verificado?.usuario ?? '—',
+        evaluationDate: validado?.fecha ?? '—',
+        evaluationUser: validado?.usuario ?? '—',
         approvalDate: aprobado?.fecha ?? '—',
         approvalUser: aprobado?.usuario ?? '—',
         linkRoute: `${REQUEST_ROUTE}/${s.id}`,

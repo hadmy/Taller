@@ -28,9 +28,11 @@ La contraseña de todos es **`Taller2026*`**. En el login, el campo «Usuario» 
 | Usuario | Correo | DNI | Perfil | Qué puede hacer |
 | --- | --- | --- | --- | --- |
 | Ana Torres Díaz | `ana.torres@taller.pe` | `11111111` | Creador | Crear, grabar, editar, verificar y eliminar solicitudes |
-| Luis Ramírez Soto | `luis.ramirez@taller.pe` | `22222222` | Aprobador | Aprobar, observar (con comentario) o rechazar lo verificado |
-| Carla Mendoza Ríos | `carla.mendoza@taller.pe` | `33333333` | Creador y Aprobador | Lo mismo que los dos anteriores: cambia de perfil desde su menú de usuario |
+| Luis Ramírez Soto | `luis.ramirez@taller.pe` | `22222222` | Aprobador | Aprobar, observar (con comentario) o rechazar lo validado |
+| Carla Mendoza Ríos | `carla.mendoza@taller.pe` | `33333333` | Creador y Aprobador | Lo mismo que Ana y Luis: cambia de perfil desde su menú de usuario |
+| Marta Quispe Vega | `marta.quispe@taller.pe` | `66666666` | Evaluador | Validar (con comentario), observar o rechazar lo verificado |
 | Usuario Especialista OA | `especialista-oa@minedu.gob.pe` | `44444444` | Creador (Ministerio de Educación) | Registra las solicitudes del CMN, como el Anexo N.º 02 |
+| Usuario Evaluador OA | `evaluador-oa@minedu.gob.pe` | `77777777` | Evaluador (Ministerio de Educación) | Valida u observa las solicitudes de su entidad, como el Anexo N.º 02 |
 | Usuario Aprobador OA | `aprobador-oa@minedu.gob.pe` | `55555555` | Aprobador (Ministerio de Educación) | Aprueba, observa o rechaza las solicitudes de su entidad, como el Anexo N.º 02 |
 
 «Olvidé mi contraseña» también funciona: con el correo de un usuario (por ejemplo `ana.torres@taller.pe`) el código de
@@ -43,18 +45,20 @@ verificación es `123456`.
    Necesidades → Necesidades estratégicas** (Documentos y registros). La pestaña Documentos es la bandeja; Registros,
    los ítems ya aprobados (con el historial de la solicitud que los incluyó).
 3. **Crear documento → Solicitud de necesidades estratégicas**: elegir los ítems y **Grabar**. La solicitud recibe su
-   número (`CMN-SIE-00007-2026-MEF-OGA`) y queda Elaborada; luego **Verificar**.
-4. **Cerrar sesión** y entrar como Luis: tiene la notificación «Solicitud por aprobar». Abrir la solicitud y
-   **Aprobar** (los ítems aparecen en Registros), **Observar** o **Rechazar** (piden comentario).
-5. Volver a entrar como Ana: le llega el aviso. Una solicitud observada se corrige y se vuelve a verificar, pero ya no
+   número (`CMN-SIE-00008-2026-MEF-OGA`) y queda Elaborada; luego **Verificar**.
+4. **Cerrar sesión** y entrar como Marta: tiene la notificación «Solicitud por validar». Abrir la solicitud y
+   **Validar** (pide comentario de evaluación), **Observar** o **Rechazar**.
+5. Entrar como Luis: tiene la notificación «Solicitud por aprobar». Abrir la solicitud y **Aprobar** (los ítems aparecen
+   en Registros), **Observar** o **Rechazar** (piden comentario).
+6. Volver a entrar como Ana: le llega el aviso. Una solicitud observada se corrige y se vuelve a verificar, pero ya no
    se puede eliminar.
-6. Entrar como Carla y cambiar de perfil desde el menú del usuario: el avatar pasa de «CR» a «AP» y cambian la bandeja,
+7. Entrar como Carla y cambiar de perfil desde el menú del usuario: el avatar pasa de «CR» a «AP» y cambian la bandeja,
    los botones y las notificaciones.
-7. **CMN** como la Especialista OA: en **Procesos**, buscar «CMN Programación» (o Gestión de abastecimiento →
+8. **CMN** como la Especialista OA: en **Procesos**, buscar «CMN Programación» (o Gestión de abastecimiento →
    Programación multianual de bienes, servicios y obras → CMN Programación) y, en Documentos y registros, **Crear
-   documento → Solicitud de CMN - Anexo N.º 02**. Lo aprueba el **Aprobador OA**: cada perfil ve y responde solo las
-   solicitudes de su entidad.
-8. **Catálogo de componentes** en `/ui-kit`: cada componente con su ficha, sus entradas y su ejemplo.
+   documento → Solicitud de CMN - Anexo N.º 02**. Lo valida el **Evaluador OA** y lo aprueba el **Aprobador OA**: cada
+   perfil ve y responde solo las solicitudes de su entidad.
+9. **Catálogo de componentes** en `/ui-kit`: cada componente con su ficha, sus entradas y su ejemplo.
 
 Para empezar de cero: **Reiniciar datos** en el login (o borrar el almacenamiento del sitio).
 
@@ -79,7 +83,7 @@ Para empezar de cero: **Reiniciar datos** en el login (o borrar el almacenamient
   aprobar, notificaciones para cada rol). Simula 250 ms de latencia. Si una pantalla llama a una ruta que no simula,
   lo avisa en la consola con `[mock] Endpoint no simulado`.
 - **`src/app/mock/mock-db.ts`** guarda los datos en el `localStorage` del navegador (clave `taller-siaf-rp:datos`): lo
-  que graba un usuario lo ve otro al entrar, en el mismo navegador. Trae 6 solicitudes de necesidades estratégicas en
+  que graba un usuario lo ve otro al entrar, en el mismo navegador. Trae 7 solicitudes de necesidades estratégicas en
   todos los estados, sus ítems registrados, la configuración del CMN y notificaciones. Si cambian la forma de los datos, suban `VERSION` y se regeneran solos.
 - **`src/app/mock/usuarios-demo.ts`** define los usuarios y sus perfiles. El token es un JWT sin firma: la app solo lee
   su vencimiento.

@@ -68,10 +68,11 @@ export class SolicitudesStateService {
   // Bandeja del CREADOR — todas sus solicitudes
   readonly bandejaCreador = computed(() => this._solicitudes());
 
-  // Bandeja del APROBADOR — excluye ELABORADO y ELIMINADO (internos del creador)
+  // Bandeja del EVALUADOR y del APROBADOR — excluye ELABORADO y ELIMINADO (internos del creador)
   readonly bandejaAprobador = computed(() =>
     this._solicitudes().filter(s =>
       s.estado === ESTADO.VERIFICADO ||
+      s.estado === ESTADO.VALIDADO ||
       s.estado === ESTADO.OBSERVADO ||
       s.estado === ESTADO.APROBADO ||
       s.estado === ESTADO.RECHAZADO
@@ -85,7 +86,7 @@ export class SolicitudesStateService {
     this._solicitudes().filter(s => ESTADOS_RESPUESTA_APROBADOR.includes(s.estado)).length
   );
   readonly creadorEnviadosCount = computed(() =>
-    this._solicitudes().filter(s => s.estado === ESTADO.VERIFICADO).length
+    this._solicitudes().filter(s => s.estado === ESTADO.VERIFICADO || s.estado === ESTADO.VALIDADO).length
   );
   readonly creadorBorradoresCount = computed(() =>
     this._solicitudes().filter(s => s.estado === ESTADO.ELABORADO).length
@@ -94,9 +95,17 @@ export class SolicitudesStateService {
     this._solicitudes().filter(s => s.estado === ESTADO.ELIMINADO).length
   );
 
+  // Evaluador
+  readonly evaluadorRecibidosCount = computed(() =>
+    this._solicitudes().filter(s => s.estado === ESTADO.VERIFICADO).length
+  );
+  readonly evaluadorEnviadosCount = computed(() =>
+    this._solicitudes().filter(s => s.estado === ESTADO.VALIDADO || ESTADOS_RESPUESTA_APROBADOR.includes(s.estado)).length
+  );
+
   // Aprobador
   readonly aprobadorRecibidosCount = computed(() =>
-    this._solicitudes().filter(s => s.estado === ESTADO.VERIFICADO).length
+    this._solicitudes().filter(s => s.estado === ESTADO.VALIDADO).length
   );
   readonly aprobadorEnviadosCount = computed(() =>
     this._solicitudes().filter(s => ESTADOS_RESPUESTA_APROBADOR.includes(s.estado)).length

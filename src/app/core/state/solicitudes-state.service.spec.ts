@@ -24,6 +24,7 @@ describe('SolicitudesStateService — contadores de bandeja', () => {
     state.loadAll([
       doc(ESTADO.ELABORADO),
       doc(ESTADO.VERIFICADO),
+      doc(ESTADO.VALIDADO),
       doc(ESTADO.APROBADO),
       doc(ESTADO.OBSERVADO),
       doc(ESTADO.RECHAZADO),
@@ -36,8 +37,8 @@ describe('SolicitudesStateService — contadores de bandeja', () => {
       expect(state.creadorRecibidosCount()).toBe(3);
     });
 
-    it('Enviados = solo los verificados', () => {
-      expect(state.creadorEnviadosCount()).toBe(1);
+    it('Enviados = los verificados y validados', () => {
+      expect(state.creadorEnviadosCount()).toBe(2);
     });
 
     it('Borradores = solo los elaborados', () => {
@@ -49,8 +50,15 @@ describe('SolicitudesStateService — contadores de bandeja', () => {
     });
   });
 
+  describe('evaluador', () => {
+    it('Recibidos = lo verificado, Enviados = lo validado y las respuestas', () => {
+      expect(state.evaluadorRecibidosCount()).toBe(1);
+      expect(state.evaluadorEnviadosCount()).toBe(4);
+    });
+  });
+
   describe('aprobador', () => {
-    it('Recibidos = lo que llega para su acción (verificados)', () => {
+    it('Recibidos = lo que llega para su acción (validados)', () => {
       expect(state.aprobadorRecibidosCount()).toBe(1);
     });
 
@@ -64,14 +72,14 @@ describe('SolicitudesStateService — contadores de bandeja', () => {
 
     expect(estados).not.toContain(ESTADO.ELABORADO);
     expect(estados).not.toContain(ESTADO.ELIMINADO);
-    expect(estados.length).toBe(4);
+    expect(estados.length).toBe(5);
   });
 
   it('cada documento cae en exactamente un grupo del creador', () => {
     const suma = state.creadorRecibidosCount() + state.creadorEnviadosCount()
       + state.creadorBorradoresCount() + state.creadorPapeleraCount();
 
-    // 6 documentos, 6 estados, sin solapamientos ni huecos.
-    expect(suma).toBe(6);
+    // El evaluador y el aprobador tienen sus propios grupos: aquí, 7 documentos sin solapamientos ni huecos.
+    expect(suma).toBe(7);
   });
 });

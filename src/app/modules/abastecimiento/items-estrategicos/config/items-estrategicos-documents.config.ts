@@ -59,6 +59,7 @@ const filterCampoOptions: DocumentsRecordsFilterOption[] = [
 const filterValorOptions: DocumentsRecordsFilterOption[] = [
   { label: ESTADO.ELABORADO, value: ESTADO.ELABORADO },
   { label: ESTADO.VERIFICADO, value: ESTADO.VERIFICADO },
+  { label: ESTADO.VALIDADO, value: ESTADO.VALIDADO },
   { label: ESTADO.APROBADO, value: ESTADO.APROBADO },
   { label: ETIQUETA_TIPO_ACCION, value: ETIQUETA_TIPO_ACCION },
 ];
@@ -79,7 +80,7 @@ export const ITEMS_ESTRATEGICOS_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
   recordHistoryDocumentLabel: NOMBRE_DOCUMENTO,
   // El historial de un ítem es el de la solicitud que lo incluyó.
   recordHistoryKind: 'documento',
-  statusFilterOptions: [ESTADO.ELABORADO, ESTADO.VERIFICADO, ESTADO.OBSERVADO, ESTADO.APROBADO, ESTADO.RECHAZADO],
+  statusFilterOptions: [ESTADO.ELABORADO, ESTADO.VERIFICADO, ESTADO.VALIDADO, ESTADO.OBSERVADO, ESTADO.APROBADO, ESTADO.RECHAZADO],
   actionTypeFilterOptions: [ETIQUETA_TIPO_ACCION],
   filterCampoOptions,
   filterValorOptions,

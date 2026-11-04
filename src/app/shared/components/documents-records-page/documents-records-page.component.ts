@@ -38,11 +38,13 @@ type AppliedCustomFilter = {
 };
 
 // Estados visibles para el APROBADOR (filtra Elaborado y Eliminado)
-const ESTADOS_APROBADOR: string[] = [ESTADO.VERIFICADO, ESTADO.APROBADO, ESTADO.OBSERVADO, ESTADO.RECHAZADO];
+const ESTADOS_APROBADOR: string[] = [ESTADO.VALIDADO, ESTADO.APROBADO, ESTADO.OBSERVADO, ESTADO.RECHAZADO];
+// El EVALUADOR responde lo verificado y sigue su avance
+const ESTADOS_EVALUADOR: string[] = [ESTADO.VERIFICADO, ...ESTADOS_APROBADOR];
 // El CREADOR ve todos los estados de su ciclo — para auditoría y trazabilidad visual completa
-const ESTADOS_CREADOR: string[] = [ESTADO.ELABORADO, ESTADO.VERIFICADO, ESTADO.APROBADO, ESTADO.OBSERVADO, ESTADO.RECHAZADO, ESTADO.ELIMINADO];
+const ESTADOS_CREADOR: string[] = [ESTADO.ELABORADO, ESTADO.VERIFICADO, ESTADO.VALIDADO, ESTADO.APROBADO, ESTADO.OBSERVADO, ESTADO.RECHAZADO, ESTADO.ELIMINADO];
 
-type DocumentsRecordsRoleMode = 'creator' | 'approver' | 'readOnly';
+type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly';
 
 /**
  * Pantalla «Documentos y registros» de un proceso, armada desde un `DocumentsRecordsConfig`: breadcrumb, título,
@@ -452,6 +454,19 @@ export class DocumentsRecordsPageComponent implements OnChanges {
       };
     }
 
+    if (roleMode === 'reviewer') {
+      // Validar pide un comentario por documento: se hace desde la solicitud, sin acción masiva.
+      return {
+        ...this.config,
+        createDocumentOptions: [],
+        statusFilterOptions: ESTADOS_EVALUADOR,
+        accionPrincipal: undefined,
+        documentRows: this.config.documentRows.filter(r =>
+          ESTADOS_EVALUADOR.includes(String(r['status'] ?? ''))
+        ),
+      };
+    }
+
     if (roleMode === 'readOnly') {
       return {
         ...this.config,
@@ -639,11 +654,11 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   }
 
   get canApproveSelectedDocuments(): boolean {
-    return this.documentRows.some((row) => row.selected && row['status'] === ESTADO.VERIFICADO);
+    return this.documentRows.some((row) => row.selected && row['status'] === ESTADO.VALIDADO);
   }
 
   get selectedVerificadoCount(): number {
-    return this.documentRows.filter((row) => row.selected && row['status'] === ESTADO.VERIFICADO).length;
+    return this.documentRows.filter((row) => row.selected && row['status'] === ESTADO.VALIDADO).length;
   }
 
   get visibleSelectableElaboradoDocuments(): DocumentsRecordsRow[] {
@@ -651,7 +666,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
       return [];
     }
 
-    // APROBADOR selecciona Verificados — CREADOR selecciona Elaborados
+    // APROBADOR selecciona Validados — CREADOR selecciona Elaborados
     const selectableStatus = this.selectableDocumentStatus;
     if (!selectableStatus) {
       return [];
@@ -754,6 +769,10 @@ export class DocumentsRecordsPageComponent implements OnChanges {
       return 'approver';
     }
 
+    if (role === 'reviewer') {
+      return 'reviewer';
+    }
+
     if (role === 'creator') {
       return 'creator';
     }
@@ -761,13 +780,13 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     return 'readOnly';
   }
 
-  private get selectableDocumentStatus(): 'Elaborado' | 'Verificado' | '' {
+  private get selectableDocumentStatus(): 'Elaborado' | 'Validado' | '' {
     if (this.effectiveConfig.accionPrincipal === 'verificar') {
       return ESTADO.ELABORADO;
     }
 
     if (this.effectiveConfig.accionPrincipal === 'aprobar') {
-      return ESTADO.VERIFICADO;
+      return ESTADO.VALIDADO;
     }
 
     return '';
@@ -847,7 +866,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     const selectableStatus = this.selectableDocumentStatus;
     if (!selectableStatus) return true;
 
-    // APROBADOR solo puede seleccionar Verificados
+    // APROBADOR solo puede seleccionar Validados
     // CREADOR solo puede seleccionar Elaborados
     return row['status'] !== selectableStatus;
   };
@@ -885,7 +904,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   }
 
   confirmApproveModal(): void {
-    const selectedRows = this.documentRows.filter(row => row.selected && row['status'] === ESTADO.VERIFICADO);
+    const selectedRows = this.documentRows.filter(row => row.selected && row['status'] === ESTADO.VALIDADO);
     this.approveModalOpen = false;
     this.ejecutarCambioMasivo(selectedRows, 'APROBADO', ESTADO.APROBADO, 'aprobado');
   }

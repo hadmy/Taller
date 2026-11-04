@@ -7,6 +7,7 @@ export const ESTADOS_DOCUMENTO = [
   'NUEVO',
   'ELABORADO',
   'VERIFICADO',
+  'VALIDADO',
   'OBSERVADO',
   'APROBADO',
   'RECHAZADO',
@@ -31,6 +32,7 @@ export type EstadoDocumento = (typeof ESTADOS_DOCUMENTO)[number];
 export const ESTADO = {
   ELABORADO: 'Elaborado',
   VERIFICADO: 'Verificado',
+  VALIDADO: 'Validado',
   APROBADO: 'Aprobado',
   RECHAZADO: 'Rechazado',
   OBSERVADO: 'Observado',

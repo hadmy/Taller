@@ -100,6 +100,8 @@ const MODAL_PRESETS: Record<Exclude<ModalVariant, "custom">, ModalPreset> = {
     icon: "task_alt",
     illustration: "assets/figma/modals/validate.svg",
     confirmLabel: "Aceptar",
+    requiresReason: true,
+    confirmDisabled: true,
   },
   approve: {
     title: "¿Aprobar solicitud?",

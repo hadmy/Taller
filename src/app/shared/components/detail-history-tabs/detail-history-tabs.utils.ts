@@ -16,6 +16,7 @@ export const ESTADOS_HISTORIAL = new Set<string>(['OBSERVADO', 'RECHAZADO']);
 export const PROCESO_LABELS: Record<string, string> = {
   ELABORADO: 'Elaborar Solicitud',
   VERIFICADO: 'Verificar Solicitud',
+  VALIDADO: 'Validar Solicitud',
   APROBADO: 'Aprobar Solicitud',
   OBSERVADO: 'Observar Solicitud',
   RECHAZADO: 'Rechazar Solicitud',
@@ -26,6 +27,7 @@ export const PROCESO_LABELS: Record<string, string> = {
 export const COMENTARIO_HEADERS: Record<string, string> = {
   ELABORADO: 'Comentario de elaboración',
   VERIFICADO: 'Comentario de verificación',
+  VALIDADO: 'Comentarios de evaluación',
   APROBADO: 'Comentario de aprobación',
   OBSERVADO: 'Comentario de observación',
   RECHAZADO: 'Motivo del rechazo',

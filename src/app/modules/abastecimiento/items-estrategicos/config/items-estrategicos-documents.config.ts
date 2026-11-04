@@ -10,7 +10,7 @@ import { ETIQUETA_TIPO_ACCION, NOMBRE_DOCUMENTO } from '../models/item-estrategi
 import { CREATE_DOCUMENT_OPTIONS, PROCESS_ID, PROCESS_ROUTE, REQUEST_ROUTE } from './items-estrategicos.rutas';
 
 /**
- * Configuración de «Documentos y registros» de los ítems estratégicos. La pantalla completa la pinta
+ * Configuración de «Documentos y registros» de los necesidades estratégicas. La pantalla completa la pinta
  * `siaf-documents-records-page`: aquí solo se dice qué columnas, filtros y opciones tiene.
  */
 
@@ -59,12 +59,13 @@ const filterCampoOptions: DocumentsRecordsFilterOption[] = [
 const filterValorOptions: DocumentsRecordsFilterOption[] = [
   { label: ESTADO.ELABORADO, value: ESTADO.ELABORADO },
   { label: ESTADO.VERIFICADO, value: ESTADO.VERIFICADO },
+  { label: ESTADO.VALIDADO, value: ESTADO.VALIDADO },
   { label: ESTADO.APROBADO, value: ESTADO.APROBADO },
   { label: ETIQUETA_TIPO_ACCION, value: ETIQUETA_TIPO_ACCION },
 ];
 
 export const ITEMS_ESTRATEGICOS_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
-  title: 'Ítems estratégicos',
+  title: 'Necesidades estratégicas',
   processId: PROCESS_ID,
   defaultRequestRoute: REQUEST_ROUTE,
   createDocumentOptions: CREATE_DOCUMENT_OPTIONS,
@@ -79,7 +80,7 @@ export const ITEMS_ESTRATEGICOS_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
   recordHistoryDocumentLabel: NOMBRE_DOCUMENTO,
   // El historial de un ítem es el de la solicitud que lo incluyó.
   recordHistoryKind: 'documento',
-  statusFilterOptions: [ESTADO.ELABORADO, ESTADO.VERIFICADO, ESTADO.OBSERVADO, ESTADO.APROBADO, ESTADO.RECHAZADO],
+  statusFilterOptions: [ESTADO.ELABORADO, ESTADO.VERIFICADO, ESTADO.VALIDADO, ESTADO.OBSERVADO, ESTADO.APROBADO, ESTADO.RECHAZADO],
   actionTypeFilterOptions: [ETIQUETA_TIPO_ACCION],
   filterCampoOptions,
   filterValorOptions,

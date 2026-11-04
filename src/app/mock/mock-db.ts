@@ -7,18 +7,18 @@ import {
   NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SIE,
   TIPO_ACCION as TIPO_ACCION_SIE,
 } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
+import type { ContextoAnexo2 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
+import {
+  CODIGO_DOCUMENTO as CODIGO_DOCUMENTO_SA2F1,
+  NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SA2F1,
+  TIPO_ACCION as TIPO_ACCION_SA2F1,
+} from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import type { AreaUsuaria, AreaUsuariaItem } from '../modules/configuracion/areas-usuarias/models/area-usuaria.model';
 import type { DistribucionInternaPresupuesto } from '../modules/configuracion/distribucion-interna-presupuesto/models/distribucion-interna-presupuesto.model';
 import type { FechaFaseCmnDplaip } from '../modules/configuracion/fechas-fase-cmn-dplaip/models/fecha-fase-cmn.model';
 import type { FechaFaseCmnEntidad } from '../modules/configuracion/fechas-fase-cmn-entidad/models/fecha-fase-cmn.model';
 import type { PrecioDiferenciado } from '../modules/configuracion/precios-diferenciados/models/precio-diferenciado.model';
 import type { ServicioBasico } from '../modules/configuracion/servicios-basicos-excluidos/models/servicio-basico.model';
-import {
-  CODIGO_DOCUMENTO,
-  CuentaBancariaDatos,
-  CuentaBancariaRegistro,
-  NOMBRE_DOCUMENTO,
-} from '../modules/tesoreria/cuentas-bancarias/models/cuenta-bancaria.model';
 import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
 
 /**
@@ -27,18 +27,18 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 26;
+const VERSION = 34;
 
 export interface NotificacionMock extends NotificacionResponse {
-  /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol. */
+  /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol en la entidad de la solicitud. */
   paraUsuarioId?: string;
-  paraRolCodigo?: 'CREADOR' | 'APROBADOR';
+  paraRolCodigo?: 'CREADOR' | 'EVALUADOR' | 'APROBADOR';
+  paraEntidadId?: string;
 }
 
 export interface DatosTaller {
   version: number;
   solicitudes: SolicitudResponse[];
-  registros: CuentaBancariaRegistro[];
   /** Ítems aprobados como estratégicos (proceso SIE del CMN). */
   registrosItemsEstrategicos: ItemEstrategicoRegistro[];
   areasUsuarias: AreaUsuaria[];
@@ -49,21 +49,23 @@ export interface DatosTaller {
   preciosDiferenciados: PrecioDiferenciado[];
   serviciosBasicosExcluidos: ServicioBasico[];
   notificaciones: NotificacionMock[];
-  correlativoDocumento: number;
-  /** Correlativo propio de las Solicitudes de Ítems Estratégicos (su número tiene otra serie). */
+  /** Correlativo propio de las Solicitudes de Necesidades Estratégicas (su número tiene otra serie). */
   correlativoItemsEstrategicos: number;
-  correlativoRegistro: number;
+  /** Correlativo propio de las Solicitudes de CMN - Anexo N.º 02, Fase 1. */
+  correlativoAnexo2Fase1: number;
   secuencia: number;
 }
 
-export const TIPO_DOCUMENTO = { id: 'td-srcb', codigo: CODIGO_DOCUMENTO, nombre: NOMBRE_DOCUMENTO };
 export const TIPO_DOCUMENTO_SIE = { id: 'td-sie', codigo: CODIGO_DOCUMENTO_SIE, nombre: NOMBRE_DOCUMENTO_SIE };
+export const TIPO_DOCUMENTO_SA2F1 = { id: 'td-sa2f1', codigo: CODIGO_DOCUMENTO_SA2F1, nombre: NOMBRE_DOCUMENTO_SA2F1 };
 /** Tipos de documento del taller: la solicitud se crea con uno de estos (por `tipoDocumentoId`). */
-export const TIPOS_DOCUMENTO = [TIPO_DOCUMENTO, TIPO_DOCUMENTO_SIE];
+export const TIPOS_DOCUMENTO = [TIPO_DOCUMENTO_SIE, TIPO_DOCUMENTO_SA2F1];
+export type TipoDocumentoTaller = (typeof TIPOS_DOCUMENTO)[number];
 
-/** Tipo de documento de una solicitud (el de las notificaciones); sin uno conocido, el del proceso de ejemplo. */
-export function tipoDocumentoDe(s: SolicitudResponse): typeof TIPO_DOCUMENTO {
-  return TIPOS_DOCUMENTO.find((t) => t.codigo === s.catDocumento?.codigo) ?? TIPO_DOCUMENTO;
+/** Tipo de documento de una solicitud (el de las notificaciones); sin uno conocido, el que trae la solicitud. */
+export function tipoDocumentoDe(s: SolicitudResponse): TipoDocumentoTaller {
+  return TIPOS_DOCUMENTO.find((t) => t.codigo === s.catDocumento?.codigo)
+    ?? { id: s.catDocumento?.id ?? '', codigo: s.catDocumento?.codigo ?? '', nombre: s.catDocumento?.nombre ?? '' };
 }
 export const ENTIDAD_CREADORA = { id: 'ent-mef', codMef: '0001', siglas: 'MEF', nombre: 'Ministerio de Economía y Finanzas' };
 export const UNIDAD_CREADORA = { id: 'uo-oga', sigla: 'OGA', nombre: 'Oficina General de Administración' };
@@ -101,14 +103,49 @@ export function nuevoId(datos: DatosTaller, prefijo: string): string {
   return `${prefijo}-${datos.secuencia}`;
 }
 
-export function numeroDocumento(correlativo: number, fecha: Date): string {
-  return `PCB-SRCB-${String(correlativo).padStart(5, '0')}-${fecha.getFullYear()}-MEF-OGA`;
-}
-
-/** Número de una Solicitud de Ítems Estratégicos: serie propia del CMN. */
+/** Número de una Solicitud de Necesidades Estratégicas: serie propia del CMN. */
 export function numeroDocumentoItemsEstrategicos(correlativo: number, fecha: Date): string {
   return `CMN-SIE-${String(correlativo).padStart(5, '0')}-${fecha.getFullYear()}-MEF-OGA`;
 }
+
+/** Número de una Solicitud de CMN - Anexo N.º 02, Fase 1: correlativo propio de cuatro dígitos («0002», Figma EV-009). */
+export function numeroDocumentoAnexo2Fase1(correlativo: number): string {
+  return String(correlativo).padStart(4, '0');
+}
+
+/** Fecha ISO (`AAAA-MM-DD`) a `dias` de hoy. */
+function diaRelativo(dias: number): string {
+  const fecha = new Date();
+  fecha.setDate(fecha.getDate() + dias);
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Contexto de la Solicitud de CMN - Anexo N.º 02, Fase 1 (Figma «2. Registro de solicitud»): datos del anexo, resumen de
+ * la consolidación, marco presupuestario y los Anexos 01 que remitieron las áreas usuarias.
+ */
+export const CONTEXTO_ANEXO_2_FASE_1: ContextoAnexo2 = {
+  datos: {
+    entidad: '011 - Ministerio de Educación',
+    oficinaAbastecimiento: 'Oficina de Logística y Abastecimiento',
+    referenciaPresupuestaria: 'APM 2025',
+    fase: 'Fase 1 - Identificación',
+    elaboradoPor: 'Especialista OA',
+  },
+  resumen: { anexosRecibidos: 4, conformes: 2, observados: 1, necesidades: 21, anexosEvaluados: 3 },
+  marcoPresupuestario: [
+    { anio: 2027, referencia: 'APM 2025 - Año 2 (2027)', techoPresupuestal: 920_000, consolidadoAnexo1: 412_480 },
+    { anio: 2028, referencia: 'APM 2025 - Año 3 (2028)', techoPresupuestal: 980_000, consolidadoAnexo1: 316_200 },
+    { anio: 2029, referencia: 'APM 2025 - Año 4 (2029)', techoPresupuestal: 980_000, consolidadoAnexo1: 316_200 },
+  ],
+  // Plazos relativos a hoy, como en el Figma (19/08): tres vigentes y uno vencido.
+  areas: [
+    { id: 'a1-rrhh', nombre: 'Oficina de Recursos Humanos', items: 6, montoProgramado: 524_600, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(3) },
+    { id: 'a1-oti', nombre: 'Oficina de Tecnología de la Información', items: 5, montoProgramado: 577_000, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(-1) },
+    { id: 'a1-oa', nombre: 'Oficina de Abastecimiento', items: 7, montoProgramado: 467_880, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(5) },
+    { id: 'a1-oc', nombre: 'Oficina de Contabilidad', items: 3, montoProgramado: 112_200, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(4) },
+  ],
+};
 
 /** Catálogo de ítems que se pueden proponer como estratégicos (los del prototipo y algunos más para paginar). */
 export const CATALOGO_ITEMS_ESTRATEGICOS: ItemEstrategicoCatalogo[] = (
@@ -151,35 +188,17 @@ export function filaHistorial(
     createdAt: fecha,
     creador: { nombres: usuario.nombres, apellidoPaterno: usuario.apellidoPaterno, apellidoMaterno: usuario.apellidoMaterno },
     perfil: { cfgPerfil: { rol } },
+    unidadOrganica: usuario.perfiles[0]?.unidad ? { nombre: usuario.perfiles[0].unidad } : null,
   };
 }
 
 // ─── Datos iniciales ───────────────────────────────────────────────
 
 const ROL_CREADOR = { codigo: 'CREADOR', nombre: 'Creador' };
+const ROL_EVALUADOR = { codigo: 'EVALUADOR', nombre: 'Evaluador' };
 const ROL_APROBADOR = { codigo: 'APROBADOR', nombre: 'Aprobador' };
 
-interface Semilla {
-  datos: CuentaBancariaDatos;
-  /** Día en que se creó la solicitud (yyyy-mm-dd). */
-  creada: string;
-  estado: 'ELABORADO' | 'VERIFICADO' | 'APROBADO' | 'OBSERVADO' | 'RECHAZADO';
-  justificacion: string;
-  comentario?: string;
-  registroInactivo?: boolean;
-}
-
-function cuenta(banco: string, tipo: 'CORRIENTE' | 'AHORROS', moneda: 'PEN' | 'USD', n: number, denominacion: string, apertura: string, recaudadora: boolean): CuentaBancariaDatos {
-  return {
-    bancoCodigo: banco,
-    tipoCuenta: tipo,
-    moneda,
-    numeroCuenta: `${banco}100${String(58213400000000 + n * 7919).slice(-14)}`,
-    denominacion,
-    fechaApertura: apertura,
-    esRecaudadora: recaudadora,
-  };
-}
+type EstadoSemilla = 'ELABORADO' | 'VERIFICADO' | 'VALIDADO' | 'APROBADO' | 'OBSERVADO' | 'RECHAZADO';
 
 /** Áreas usuarias del pliego demo: jerarquía corta por código (`01`, `01.01`, `01.01.01`…). */
 const AREAS_USUARIAS_SEMILLA: Omit<AreaUsuaria, 'id'>[] = [
@@ -206,26 +225,12 @@ const AREAS_USUARIAS_SEMILLA: Omit<AreaUsuaria, 'id'>[] = [
   pendiente: ['01.01.01.01.01', '01.02'].includes(codigo),
 }));
 
-const SEMILLAS: Semilla[] = [
-  { creada: '2026-01-16', estado: 'APROBADO', justificacion: 'Cuenta para la recaudación de tasas por procedimientos administrativos.', datos: cuenta('018', 'CORRIENTE', 'PEN', 1, 'Recaudación de tasas administrativas', '2026-01-15', true) },
-  { creada: '2026-02-04', estado: 'APROBADO', justificacion: 'Cuenta para pagos a proveedores del exterior en dólares.', datos: cuenta('002', 'CORRIENTE', 'USD', 2, 'Pagos a proveedores del exterior', '2026-02-03', false) },
-  { creada: '2026-02-23', estado: 'APROBADO', justificacion: 'Cuenta de ahorros para el fondo de caja chica de la oficina.', datos: cuenta('003', 'AHORROS', 'PEN', 3, 'Fondo de caja chica', '2026-02-20', false) },
-  { creada: '2026-03-12', estado: 'APROBADO', justificacion: 'Cuenta para la recaudación de multas administrativas.', datos: cuenta('011', 'CORRIENTE', 'PEN', 4, 'Recaudación de multas', '2026-03-11', true) },
-  { creada: '2026-04-09', estado: 'APROBADO', justificacion: 'Cuenta para las transferencias a unidades ejecutoras.', datos: cuenta('018', 'CORRIENTE', 'PEN', 5, 'Transferencias a unidades ejecutoras', '2026-04-08', false) },
-  { creada: '2026-05-20', estado: 'APROBADO', justificacion: 'Cuenta para garantías recibidas en moneda extranjera.', datos: cuenta('009', 'AHORROS', 'USD', 6, 'Garantías en moneda extranjera', '2026-05-19', false), registroInactivo: true },
-  { creada: '2026-06-03', estado: 'APROBADO', justificacion: 'Cuenta para la recaudación de servicios no exclusivos.', datos: cuenta('018', 'CORRIENTE', 'PEN', 7, 'Recaudación de servicios no exclusivos', '2026-06-02', true) },
-  { creada: '2026-07-15', estado: 'APROBADO', justificacion: 'Cuenta de ahorros para encargos a las oficinas desconcentradas.', datos: cuenta('002', 'AHORROS', 'PEN', 8, 'Encargos a oficinas desconcentradas', '2026-07-14', false) },
-  { creada: '2026-08-06', estado: 'RECHAZADO', justificacion: 'Cuenta para la recaudación de derechos de trámite.', datos: cuenta('009', 'CORRIENTE', 'PEN', 9, 'Recaudación de derechos de trámite', '2026-08-05', true), comentario: '[Información incorrecta] La cuenta ya está registrada con el código CB-0004.' },
-  { creada: '2026-08-24', estado: 'VERIFICADO', justificacion: 'Cuenta en dólares para los fondos de cooperación internacional.', datos: cuenta('003', 'CORRIENTE', 'USD', 10, 'Fondos de cooperación internacional', '2026-08-21', false) },
-  { creada: '2026-09-02', estado: 'OBSERVADO', justificacion: 'Cuenta para la recaudación por alquiler de ambientes.', datos: cuenta('011', 'CORRIENTE', 'PEN', 11, 'Recaudación de alquileres', '2026-09-01', true), comentario: 'Adjunte la constancia de apertura emitida por el banco.' },
-  { creada: '2026-09-09', estado: 'ELABORADO', justificacion: 'Cuenta de ahorros para el fondo de viáticos.', datos: cuenta('018', 'AHORROS', 'PEN', 12, 'Fondo de viáticos', '2026-09-08', false) },
-];
-
 interface SemillaItems {
   /** Posiciones en `CATALOGO_ITEMS_ESTRATEGICOS`. */
   items: number[];
+  /** Día en que se creó la solicitud (yyyy-mm-dd). */
   creada: string;
-  estado: Semilla['estado'];
+  estado: EstadoSemilla;
   justificacion: string;
   comentario?: string;
   /** Códigos que quedan como no vigentes en los registros. */
@@ -239,6 +244,13 @@ const SEMILLAS_ITEMS: SemillaItems[] = [
   { creada: '2026-08-20', estado: 'VERIFICADO', items: [7, 8], justificacion: 'Inclusión de analgésicos y mascarillas de oxígeno para hospitalización.' },
   { creada: '2026-09-03', estado: 'OBSERVADO', items: [9, 10], justificacion: 'Inclusión de equipos portátiles para la atención en zonas rurales.', comentario: 'Sustente la criticidad del equipo de rayos X portátil con el informe técnico del área usuaria.' },
   { creada: '2026-09-25', estado: 'ELABORADO', items: [11, 12, 13], justificacion: 'Inclusión de material médico descartable de alta rotación.' },
+  { creada: '2026-09-28', estado: 'VALIDADO', items: [14, 15], justificacion: 'Inclusión de insumos priorizados para la campaña de vacunación.' },
+];
+
+/** Anexos 02 sembrados: los del Figma «A.2-OA-EV-009» (0001 aprobado en 2025, 0002 elaborado en 2026). */
+const SEMILLAS_ANEXO_2: { creada: string; estado: EstadoSemilla }[] = [
+  { creada: '2025-01-20', estado: 'APROBADO' },
+  { creada: '2026-08-19', estado: 'ELABORADO' },
 ];
 
 function enFecha(dia: string, horas: number, dias = 0): string {
@@ -248,9 +260,8 @@ function enFecha(dia: string, horas: number, dias = 0): string {
   return fecha.toISOString();
 }
 
-/** Historial de una solicitud sembrada: Ana la crea, la elabora y la verifica; Luis la responde. */
-function historialSemilla(datos: DatosTaller, dia: string, estado: Semilla['estado'], comentario?: string): HistorialItem[] {
-  const [ana, luis] = USUARIOS_DEMO;
+/** Historial de una solicitud sembrada: el creador (Ana, si no se dice otro) la elabora y la verifica, el evaluador (Marta) la valida y el aprobador (Luis) la responde. */
+function historialSemilla(datos: DatosTaller, dia: string, estado: EstadoSemilla, comentario?: string, ana = USUARIOS_DEMO[0], luis = USUARIOS_DEMO[1], evaluador = USUARIOS_DEMO.find((u) => u.id === 'usr-marta')!): HistorialItem[] {
   const historial: HistorialItem[] = [
     filaHistorial(datos, null, 'NUEVO', enFecha(dia, 9), ana, ROL_CREADOR),
     filaHistorial(datos, 'NUEVO', 'ELABORADO', enFecha(dia, 9, 0), ana, ROL_CREADOR),
@@ -258,8 +269,11 @@ function historialSemilla(datos: DatosTaller, dia: string, estado: Semilla['esta
   if (estado !== 'ELABORADO') {
     historial.push(filaHistorial(datos, 'ELABORADO', 'VERIFICADO', enFecha(dia, 10, 1), ana, ROL_CREADOR));
   }
+  if (['VALIDADO', 'APROBADO', 'OBSERVADO', 'RECHAZADO'].includes(estado)) {
+    historial.push(filaHistorial(datos, 'VERIFICADO', 'VALIDADO', enFecha(dia, 10, 2), evaluador, ROL_EVALUADOR, 'Documento evaluado conforme.'));
+  }
   if (['APROBADO', 'OBSERVADO', 'RECHAZADO'].includes(estado)) {
-    historial.push(filaHistorial(datos, 'VERIFICADO', estado, enFecha(dia, 11, 2), luis, ROL_APROBADOR, comentario ?? null));
+    historial.push(filaHistorial(datos, 'VALIDADO', estado, enFecha(dia, 11, 2), luis, ROL_APROBADOR, comentario ?? null));
   }
   return historial;
 }
@@ -268,7 +282,6 @@ function crearDatosIniciales(): DatosTaller {
   const datos: DatosTaller = {
     version: VERSION,
     solicitudes: [],
-    registros: [],
     registrosItemsEstrategicos: [],
     areasUsuarias: [],
     itemsAreaUsuaria: [],
@@ -278,9 +291,8 @@ function crearDatosIniciales(): DatosTaller {
     preciosDiferenciados: [],
     serviciosBasicosExcluidos: [],
     notificaciones: [],
-    correlativoDocumento: 0,
     correlativoItemsEstrategicos: 0,
-    correlativoRegistro: 0,
+    correlativoAnexo2Fase1: 0,
     secuencia: 0,
   };
   datos.areasUsuarias = AREAS_USUARIAS_SEMILLA.map((area) => ({ id: nuevoId(datos, 'au'), ...area }));
@@ -383,56 +395,7 @@ function crearDatosIniciales(): DatosTaller {
   ).map(([codigoCubso, descripcion]) => ({ id: nuevoId(datos, 'pd'), codigoCubso, descripcion, numPreciosGenerados: 0, precios: [] }));
   const ana = USUARIOS_DEMO[0];
 
-  for (const semilla of SEMILLAS) {
-    const id = nuevoId(datos, 'sol');
-    datos.correlativoDocumento += 1;
-    const creada = enFecha(semilla.creada, 9);
-    const numero = numeroDocumento(datos.correlativoDocumento, new Date(creada));
-    const historial = historialSemilla(datos, semilla.creada, semilla.estado, semilla.comentario);
-    const ultima = historial[historial.length - 1].createdAt;
-
-    const solicitud: SolicitudResponse = {
-      id,
-      numero,
-      catDocumento: TIPO_DOCUMENTO,
-      tipoAccion: 'creacion',
-      estado: semilla.estado,
-      asuntoMotivo: `[OFICINA GENERAL DE ADMINISTRACIÓN] ${semilla.justificacion}`,
-      entidadCreadora: ENTIDAD_CREADORA,
-      unidadCreadora: UNIDAD_CREADORA,
-      creador: { id: ana.id, nombres: ana.nombres, apellidoPaterno: ana.apellidoPaterno, apellidoMaterno: ana.apellidoMaterno },
-      fechaRegistro: creada,
-      createdAt: creada,
-      updatedAt: ultima,
-      itemsCuenta: [],
-      detalleCuentaBancaria: { documentoId: id, ...semilla.datos },
-      sustentos: [
-        {
-          id: nuevoId(datos, 'sus'),
-          tipoSustento: 'sustento',
-          archivo: { nombreOriginal: `Constancia de apertura ${String(datos.correlativoDocumento).padStart(2, '0')}.pdf`, storagePath: 'taller' },
-        },
-      ],
-      historialEstados: historial,
-    };
-    datos.solicitudes.push(solicitud);
-
-    if (semilla.estado === 'APROBADO') {
-      datos.correlativoRegistro += 1;
-      datos.registros.push({
-        id: nuevoId(datos, 'cb'),
-        codigo: `CB-${String(datos.correlativoRegistro).padStart(4, '0')}`,
-        estado: semilla.registroInactivo ? 'Inactivo' : 'Activo',
-        entidadSiglas: 'MEF',
-        documentoId: id,
-        numeroDocumento: numero,
-        fechaRegistro: ultima,
-        ...semilla.datos,
-      });
-    }
-  }
-
-  // Solicitudes de Ítems Estratégicos: las aprobadas dejan sus ítems en los registros.
+  // Solicitudes de Necesidades Estratégicas: las aprobadas dejan sus ítems en los registros.
   for (const semilla of SEMILLAS_ITEMS) {
     const id = nuevoId(datos, 'sol');
     datos.correlativoItemsEstrategicos += 1;
@@ -464,7 +427,7 @@ function crearDatosIniciales(): DatosTaller {
         {
           id: nuevoId(datos, 'sus'),
           tipoSustento: 'sustento',
-          archivo: { nombreOriginal: `Informe técnico de ítems estratégicos ${String(datos.correlativoItemsEstrategicos).padStart(2, '0')}.pdf`, storagePath: 'taller' },
+          archivo: { nombreOriginal: `Informe técnico de necesidades estratégicas ${String(datos.correlativoItemsEstrategicos).padStart(2, '0')}.pdf`, storagePath: 'taller' },
         },
       ],
       historialEstados: historial,
@@ -485,8 +448,39 @@ function crearDatosIniciales(): DatosTaller {
     }
   }
 
-  // Notificaciones: el aprobador tiene una solicitud por aprobar; el creador, una observada y otras ya leídas.
-  const aviso = (s: SolicitudResponse, tipo: string, titulo: string, mensaje: string, leida: boolean, destino: Pick<NotificacionMock, 'paraUsuarioId' | 'paraRolCodigo'>): NotificacionMock => ({
+  // Anexos 02 de CMN Programación (Figma «A.2-OA-EV-009»): los registra la Especialista OA del Ministerio de Educación.
+  const especialista = USUARIOS_DEMO.find((u) => u.id === 'usr-especialista-oa')!;
+  const aprobadorOa = USUARIOS_DEMO.find((u) => u.id === 'usr-aprobador-oa')!;
+  const evaluadorOa = USUARIOS_DEMO.find((u) => u.id === 'usr-evaluador-oa')!;
+  const perfilOa = especialista.perfiles[0];
+  for (const semilla of SEMILLAS_ANEXO_2) {
+    const id = nuevoId(datos, 'sol');
+    datos.correlativoAnexo2Fase1 += 1;
+    const creada = enFecha(semilla.creada, 9);
+    const historial = historialSemilla(datos, semilla.creada, semilla.estado, undefined, especialista, aprobadorOa, evaluadorOa);
+    datos.solicitudes.push({
+      id,
+      numero: numeroDocumentoAnexo2Fase1(datos.correlativoAnexo2Fase1),
+      catDocumento: TIPO_DOCUMENTO_SA2F1,
+      tipoAccion: TIPO_ACCION_SA2F1,
+      estado: semilla.estado,
+      asuntoMotivo: `[${(perfilOa.unidad ?? '').toUpperCase()}] `,
+      entidadCreadora: { id: perfilOa.entidadId ?? '', codMef: perfilOa.entidadCodigo ?? '', siglas: perfilOa.entidadSiglas ?? '', nombre: perfilOa.entidad ?? '' },
+      unidadCreadora: { id: perfilOa.unidadId ?? '', sigla: perfilOa.unidadSigla ?? '', nombre: perfilOa.unidad ?? '' },
+      creador: { id: especialista.id, nombres: especialista.nombres, apellidoPaterno: especialista.apellidoPaterno, apellidoMaterno: especialista.apellidoMaterno },
+      fechaRegistro: creada,
+      createdAt: creada,
+      updatedAt: historial[historial.length - 1].createdAt,
+      ...(semilla.estado === 'APROBADO' ? { fechaAprobacion: historial[historial.length - 1].createdAt } : {}),
+      itemsCuenta: [],
+      detalleAnexo2Fase1: { documentoId: id, areas: [...CONTEXTO_ANEXO_2_FASE_1.areas] },
+      sustentos: [],
+      historialEstados: historial,
+    });
+  }
+
+  // Notificaciones: el evaluador tiene una solicitud por validar, el aprobador una por aprobar; el creador, una observada y otras ya leídas.
+  const aviso = (s: SolicitudResponse, tipo: string, titulo: string, mensaje: string, leida: boolean, destino: Pick<NotificacionMock, 'paraUsuarioId' | 'paraRolCodigo' | 'paraEntidadId'>): NotificacionMock => ({
     id: nuevoId(datos, 'not'),
     tipo,
     titulo,
@@ -499,7 +493,10 @@ function crearDatosIniciales(): DatosTaller {
   });
   const porEstado = (estado: string) => datos.solicitudes.filter((s) => s.estado === estado);
   for (const s of porEstado('VERIFICADO')) {
-    datos.notificaciones.push(aviso(s, 'DOCUMENTO_VERIFICADO', 'Solicitud por aprobar', `La solicitud ${s.numero} fue verificada y espera su aprobación.`, false, { paraRolCodigo: 'APROBADOR' }));
+    datos.notificaciones.push(aviso(s, 'DOCUMENTO_VERIFICADO', 'Solicitud por validar', `La solicitud ${s.numero} fue verificada y espera su evaluación.`, false, { paraRolCodigo: 'EVALUADOR', paraEntidadId: s.entidadCreadora?.id }));
+  }
+  for (const s of porEstado('VALIDADO')) {
+    datos.notificaciones.push(aviso(s, 'DOCUMENTO_VALIDADO', 'Solicitud por aprobar', `La solicitud ${s.numero} fue validada y espera su aprobación.`, false, { paraRolCodigo: 'APROBADOR', paraEntidadId: s.entidadCreadora?.id }));
   }
   for (const s of porEstado('OBSERVADO')) {
     datos.notificaciones.push(aviso(s, 'DOCUMENTO_OBSERVADO', 'Solicitud observada', `La solicitud ${s.numero} fue observada: revise el comentario y subsane.`, false, { paraUsuarioId: ana.id }));
@@ -507,7 +504,7 @@ function crearDatosIniciales(): DatosTaller {
   for (const s of porEstado('RECHAZADO')) {
     datos.notificaciones.push(aviso(s, 'DOCUMENTO_RECHAZADO', 'Solicitud rechazada', `La solicitud ${s.numero} fue rechazada.`, true, { paraUsuarioId: ana.id }));
   }
-  const ultimaAprobada = porEstado('APROBADO').at(-1);
+  const ultimaAprobada = porEstado('APROBADO').filter((s) => s.creador?.id === ana.id).at(-1);
   if (ultimaAprobada) {
     datos.notificaciones.push(aviso(ultimaAprobada, 'DOCUMENTO_APROBADO', 'Solicitud aprobada', `La solicitud ${ultimaAprobada.numero} fue aprobada.`, true, { paraUsuarioId: ana.id }));
   }

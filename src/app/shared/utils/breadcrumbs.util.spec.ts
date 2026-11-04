@@ -22,9 +22,9 @@ describe('breadcrumbs.util', () => {
     });
 
     it('agrega el item final sin enlace cuando se pasa una hoja', () => {
-      const crumbs = buildProcessBreadcrumbs(PROCESS_ID, PROCESS_ROUTE, 'Solicitud de Registro de Cuenta Bancaria');
+      const crumbs = buildProcessBreadcrumbs(PROCESS_ID, PROCESS_ROUTE, 'Solicitud de necesidades estratégicas');
 
-      expect(crumbs[crumbs.length - 1]).toEqual({ label: 'Solicitud de Registro de Cuenta Bancaria' });
+      expect(crumbs[crumbs.length - 1]).toEqual({ label: 'Solicitud de necesidades estratégicas' });
     });
 
     it('avisa por consola cuando el processId no existe en el árbol', () => {

@@ -16,9 +16,11 @@ export { DEFAULT_PROCESS_TREE, findProcessPathById } from '../../shared/utils/pr
  *
  * Sus datos por defecto son `DEFAULT_PROCESS_TREE` de `shared/utils/process-tree.util` (este archivo solo
  * re-exporta el tipo y las utilidades). Es el único menú en árbol: el shell también lo usa para "Ajustes" con
- * `ADMIN_MENU_TREE` y otros textos, así que un árbol nuevo es solo otro arreglo de nodos. El campo de búsqueda
- * funciona como paleta de comandos: filtra la navegación en vivo, sin ir al servidor, y expande las ramas
- * con coincidencias. Los nodos `comingSoon` solo expanden — nunca emiten `nodeSelected`.
+ * `ADMIN_MENU_TREE` y otros textos, así que un árbol nuevo es solo otro arreglo de nodos. Cada nodo es un ítem de
+ * lista (Figma «A.2-OA-EV-007»): los grupos llevan el ícono de información y el elegido va en negrita sobre el fondo de
+ * selección. El campo de búsqueda funciona como paleta de comandos: al escribir, el árbol se cambia por la lista plana
+ * de coincidencias bajo «Procesos» (Figma «A.2-OA-EV-008»), sin ir al servidor. Los nodos `comingSoon` solo
+ * expanden — nunca emiten `nodeSelected`.
  *
  * @usar
  * - Para el panel Procesos del armazón: `siaf-app-shell` lo abre desde el rail y navega a la `moduleRoute` o
@@ -36,8 +38,8 @@ export { DEFAULT_PROCESS_TREE, findProcessPathById } from '../../shared/utils/pr
  * @teclado
  * - **Tab**: pasa por el buscador y su lupa, y luego por los nodos visibles en orden. La lupa no hace nada: el filtro
  *   se aplica al escribir.
- * - **Escribir en el buscador**: filtra el árbol en vivo, sin distinguir tildes ni mayúsculas, y abre las ramas con
- *   coincidencias.
+ * - **Escribir en el buscador**: muestra en vivo la lista de coincidencias, sin distinguir tildes ni mayúsculas;
+ *   elegir una limpia el buscador y la muestra en su rama del árbol.
  * - **Enter / Espacio** en un nodo: lo marca y emite `nodeSelected`; si tiene hijos, además los muestra u oculta. Los
  *   nodos `comingSoon` solo expanden.
  * @accesibilidad
@@ -45,8 +47,8 @@ export { DEFAULT_PROCESS_TREE, findProcessPathById } from '../../shared/utils/pr
  *   (sangría y línea a la izquierda): los nodos son botones en `div` anidados, sin `ul`/`li` ni `role="tree"`, y el
  *   lector no anuncia nivel ni cantidad. Además, el `aria-label` del `aside` es fijo («Menu de procesos») y también se
  *   lee en Ajustes.
- * - **Pendiente · 1.4.1 Uso del color (A)**: el nodo elegido (y su ancestro de primer nivel) se distingue solo por el
- *   fondo `bg-states-light-selected` y el color del texto; el peso de la fuente no cambia.
+ * - **1.4.1 Uso del color (A)**: el nodo elegido se distingue por el fondo `bg-states-light-selected`, el color y la
+ *   negrita.
  * - **1.4.3 Contraste mínimo (AA)**: en claro, título `text-neutral-high` 16.29:1 y nodos `text-neutral-medium` 14.53:1
  *   sobre blanco; en oscuro el panel usa `bg-surfaces-field` y falta medirlo.
  * - **1.4.11 Contraste no textual (AA)**: el contorno de foco es el azul del kit (`border-states-focus`, 5.35:1 claro
@@ -55,10 +57,9 @@ export { DEFAULT_PROCESS_TREE, findProcessPathById } from '../../shared/utils/pr
  *   después del rail: desde Procesos el Tab pasa antes por Ayuda y Ajustes, y si lo pide una página
  *   (`ShellNavigationService`) queda antes que el botón que lo abrió.
  * - **2.4.7 Foco visible (AA)**: cada nodo muestra un contorno azul de 2 px con `focus-visible`.
- * - **Pendiente · 4.1.2 Nombre, función y valor (A)**: los nodos con hijos publican `aria-expanded`, pero el elegido no
- *   publica `aria-current`.
- * - **Pendiente · 4.1.3 Mensajes de estado (AA)**: al filtrar no se anuncia cuántos nodos quedan y, sin coincidencias,
- *   el árbol queda vacío y sin mensaje.
+ * - **4.1.2 Nombre, función y valor (A)**: los nodos con hijos publican `aria-expanded` y el elegido `aria-current`.
+ * - **Pendiente · 4.1.3 Mensajes de estado (AA)**: al buscar no se anuncia cuántas coincidencias hay; sin
+ *   coincidencias se muestra «No se encontraron procesos.» con `role="status"`.
  */
 @Component({
   selector: 'siaf-process-menu-tree',
@@ -89,63 +90,77 @@ export { DEFAULT_PROCESS_TREE, findProcessPathById } from '../../shared/utils/pr
           (valueChange)="onQuery($any($event))"
         />
 
-        <section class="flex w-full flex-col gap-siaf-md overflow-hidden pt-siaf-lg">
-          <h3 class="m-0 px-siaf-md text-sm font-bold leading-normal text-[var(--sys-color-text-neutral-medium)]">
-            {{ subtitle }}
-          </h3>
+        @if (query.trim()) {
+          <!-- Búsqueda (Figma «A.2-OA-EV-008»): lista plana de coincidencias bajo «Procesos». -->
+          <section class="flex w-full flex-col gap-siaf-xxs overflow-hidden pt-siaf-xs" [attr.aria-label]="resultsLabel">
+            <h3 class="m-0 text-[11px] font-medium uppercase leading-4 tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">{{ resultsLabel }}</h3>
+            @for (node of resultados; track node.id) {
+              <button
+                class="flex min-h-12 w-full items-center rounded-siaf-sm px-siaf-md py-siaf-sm text-left text-sm leading-normal tracking-[0.0249px] transition duration-150 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+                type="button"
+                [class.bg-[var(--sys-color-bg-states-light-selected)]]="selectedId === node.id"
+                [class.font-bold]="selectedId === node.id"
+                [class.text-[var(--sys-color-text-neutral-activated)]]="selectedId === node.id"
+                [class.text-[var(--sys-color-text-neutral-medium)]]="selectedId !== node.id"
+                [class.hover:bg-[var(--sys-color-bg-states-light-hover)]]="selectedId !== node.id"
+                (click)="activarResultado(node)"
+              >
+                <span class="min-w-0 flex-1">@for (parte of partesEtiqueta(node.label); track $index) {<span [class.font-bold]="parte.coincide">{{ parte.texto }}</span>}</span>
+              </button>
+            } @empty {
+              <p class="m-0 px-siaf-md py-siaf-sm text-sm text-[var(--sys-color-text-neutral-medium)]" role="status">No se encontraron procesos.</p>
+            }
+          </section>
+        } @else {
+          <section class="flex w-full flex-col gap-siaf-md overflow-hidden pt-siaf-lg">
+            <h3 class="m-0 text-sm font-medium leading-normal text-[var(--sys-color-text-neutral-medium)]">
+              {{ subtitle }}
+            </h3>
 
-          <div class="flex w-full flex-col gap-1">
-            <ng-container *ngTemplateOutlet="treeTemplate; context: { $implicit: filteredNodes, level: 0 }" />
-          </div>
-        </section>
+            <div class="flex w-full flex-col gap-1">
+              <ng-container *ngTemplateOutlet="treeTemplate; context: { $implicit: nodes, level: 0 }" />
+            </div>
+          </section>
+        }
       </div>
     </aside>
 
     <ng-template #treeTemplate let-items let-level="level">
       @for (node of items; track node.id) {
-        <div class="w-full" [class.pl-[27px]]="level > 0">
-          <div class="w-full" [class.border-l]="level > 0" [style.borderColor]="level > 0 ? 'var(--sys-color-divider-strong)' : null" [class.pl-3]="level > 0">
-            <button
-              class="group flex w-full items-center rounded-siaf-sm text-left transition duration-150 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)] active:scale-[0.995]"
-              type="button"
-              [class.min-h-12]="level === 0"
-              [class.min-h-8]="level > 0"
-              [class.bg-[var(--sys-color-bg-states-light-selected)]]="isNodeHighlighted(node, level)"
-              [class.hover:bg-[var(--sys-color-bg-states-light-hover)]]="!isNodeHighlighted(node, level)"
-              [class.active:bg-[var(--sys-color-bg-states-light-pressed)]]="!isNodeHighlighted(node, level)"
-              [class.px-siaf-md]="true"
-              [class.py-siaf-sm]="level === 0"
-              [class.py-siaf-xxs]="level > 0"
-              [attr.aria-expanded]="hasChildren(node) ? isExpanded(node) : null"
-              (click)="activate(node)"
-            >
-              @if (hasChildren(node)) {
-                <siaf-icon
-                  class="mr-siaf-md shrink-0 text-[var(--sys-color-text-neutral-activated)] transition-transform duration-150"
-                  name="arrow_drop_down"
-                  [size]="level === 0 ? 24 : 20"
-                  [class.-rotate-90]="!isExpanded(node)"
-                />
-              }
+        <div class="flex w-full flex-col gap-1" [class.pl-siaf-sm]="level > 0">
+          <button
+            class="flex min-h-12 w-full items-center gap-siaf-md rounded-siaf-sm px-siaf-md py-siaf-sm text-left transition duration-150 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)] active:scale-[0.995]"
+            type="button"
+            [class.bg-[var(--sys-color-bg-states-light-selected)]]="selectedId === node.id"
+            [class.hover:bg-[var(--sys-color-bg-states-light-hover)]]="selectedId !== node.id"
+            [class.active:bg-[var(--sys-color-bg-states-light-pressed)]]="selectedId !== node.id"
+            [attr.aria-expanded]="hasChildren(node) ? isExpanded(node) : null"
+            [attr.aria-current]="selectedId === node.id ? 'page' : null"
+            (click)="activate(node)"
+          >
+            <span
+              class="min-w-0 flex-1 text-sm leading-normal"
+              [class.font-bold]="selectedId === node.id"
+              [class.tracking-[-0.02px]]="selectedId === node.id"
+              [class.tracking-[0.0249px]]="selectedId !== node.id"
+              [class.text-[var(--sys-color-text-neutral-activated)]]="selectedId === node.id"
+              [class.text-[var(--sys-color-text-neutral-medium)]]="selectedId !== node.id"
+            >{{ node.label }}</span>
 
-              <span
-                class="min-w-0 flex-1 text-sm leading-normal"
-                [class.ml-[36px]]="level > 0 && !hasChildren(node)"
-                [class.font-bold]="level === 0"
-                [class.font-normal]="level > 0"
-                [class.tracking-[-0.02px]]="level === 0"
-                [class.tracking-[0.0249px]]="level > 0"
-                [class.text-[var(--sys-color-text-neutral-activated)]]="isNodeHighlighted(node, level)"
-                [class.text-[var(--sys-color-text-neutral-medium)]]="!isNodeHighlighted(node, level)"
-              >
-                @for (parte of partesEtiqueta(node.label); track $index) {<span [class.font-bold]="parte.coincide">{{ parte.texto }}</span>}
-              </span>
-            </button>
-
-            @if (hasChildren(node) && isExpanded(node)) {
-              <ng-container *ngTemplateOutlet="treeTemplate; context: { $implicit: node.children || [], level: level + 1 }" />
+            <!-- Los grupos llevan el ícono de información del Figma; las hojas no. -->
+            @if (hasChildren(node) || node.comingSoon) {
+              <siaf-icon
+                class="shrink-0 self-start text-[var(--sys-color-icon-states-enabled)]"
+                name="info"
+                [size]="24"
+                [attr.title]="node.comingSoon ? 'Próximamente' : null"
+              />
             }
-          </div>
+          </button>
+
+          @if (hasChildren(node) && isExpanded(node)) {
+            <ng-container *ngTemplateOutlet="treeTemplate; context: { $implicit: node.children || [], level: level + 1 }" />
+          }
         </div>
       }
     </ng-template>
@@ -157,6 +172,8 @@ export class ProcessMenuTreeComponent implements OnChanges, OnInit {
   @Input() subtitle = 'Seleccionar proceso o procedimiento';
   @Input() placeholder = 'Buscar proceso o procedimiento';
   @Input() searchLabel = 'Buscar proceso o procedimiento';
+  /** Encabezado de la lista de resultados de la búsqueda. */
+  @Input() resultsLabel = 'Procesos';
   @Input() nodes: ProcessMenuNode[] = DEFAULT_PROCESS_TREE;
 
   @Output() nodeSelected = new EventEmitter<ProcessMenuNode>();
@@ -177,14 +194,31 @@ export class ProcessMenuTreeComponent implements OnChanges, OnInit {
     }
   }
 
-  get filteredNodes(): ProcessMenuNode[] {
+  /** Coincidencias de la búsqueda en todo el árbol, como lista plana (sin tildes ni mayúsculas). */
+  get resultados(): ProcessMenuNode[] {
     const search = this.normalize(this.query);
+    if (!search) return [];
+    const encontrados: ProcessMenuNode[] = [];
+    const recorrer = (nodes: readonly ProcessMenuNode[]) => {
+      for (const node of nodes) {
+        if (this.normalize(node.label).includes(search)) encontrados.push(node);
+        if (node.children?.length) recorrer(node.children);
+      }
+    };
+    recorrer(this.nodes);
+    return encontrados;
+  }
 
-    if (!search) {
-      return this.nodes;
+  /** Un resultado de la búsqueda: limpia el buscador, abre su rama en el árbol y lo activa. */
+  activarResultado(node: ProcessMenuNode): void {
+    this.query = '';
+    let parentId = this.parentById.get(node.id);
+    while (parentId) {
+      this.expandedIds.add(parentId);
+      parentId = this.parentById.get(parentId);
     }
-
-    return this.filterNodes(this.nodes, search);
+    if (this.hasChildren(node)) this.expandedIds.delete(node.id);
+    this.activate(node);
   }
 
   activate(node: ProcessMenuNode): void {
@@ -213,11 +247,7 @@ export class ProcessMenuTreeComponent implements OnChanges, OnInit {
   }
 
   isExpanded(node: ProcessMenuNode): boolean {
-    return Boolean(this.query) || this.expandedIds.has(node.id);
-  }
-
-  isNodeHighlighted(node: ProcessMenuNode, level: number): boolean {
-    return this.selectedId === node.id || (level === 0 && this.activeAncestorIds.has(node.id));
+    return this.expandedIds.has(node.id);
   }
 
   /** Parte la etiqueta en tramos para pintar en negrita las palabras que coinciden con la búsqueda (sin tildes ni mayúsculas). */
@@ -302,28 +332,6 @@ export class ProcessMenuTreeComponent implements OnChanges, OnInit {
       this.activeAncestorIds.add(parentId);
       parentId = this.parentById.get(parentId);
     }
-  }
-
-  private filterNodes(nodes: ProcessMenuNode[], search: string): ProcessMenuNode[] {
-    const result: ProcessMenuNode[] = [];
-
-    for (const node of nodes) {
-      const children = node.children ? this.filterNodes(node.children, search) : [];
-      const matches = this.normalize(node.label).includes(search);
-
-      if (!matches && children.length === 0) {
-        continue;
-      }
-
-      result.push({
-        ...node,
-        // Durante la busqueda se abren las ramas que contienen coincidencias para mostrar contexto.
-        expanded: true,
-        children: children.length > 0 ? children : node.children
-      });
-    }
-
-    return result;
   }
 
   private normalize(value: string): string {

@@ -17,7 +17,7 @@ import { PaginationComponent } from '../../../../../shared/components/pagination
 import { RequestApprovalModalsComponent } from '../../../../../shared/components/request-approval-modals/request-approval-modals.component';
 import { SelectionColumn, SelectionSideNavComponent } from '../../../../../shared/components/selection-side-nav/selection-side-nav.component';
 import { SolicitudeFormCardComponent } from '../../../../../shared/components/solicitude-form-card/solicitude-form-card.component';
-import { SolicitudeHeaderState } from '../../../../../shared/components/solicitude-header/solicitude-header.component';
+import { SolicitudeHeaderRole, SolicitudeHeaderState } from '../../../../../shared/components/solicitude-header/solicitude-header.component';
 import { SolicitudeInfoCardComponent, SolicitudeInfoField } from '../../../../../shared/components/solicitude-info-card/solicitude-info-card.component';
 import { SolicitudePageLayoutComponent } from '../../../../../shared/components/solicitude-page-layout/solicitude-page-layout.component';
 import { TableControlsComponent } from '../../../../../shared/components/table-controls/table-controls.component';
@@ -41,12 +41,12 @@ import {
 } from '../../models/item-estrategico.model';
 
 /**
- * Solicitud de Ítems Estratégicos (SIE) del CMN, armada sobre el patrón de solicitud del Figma «B.1 Rol Creador»
+ * Solicitud de Necesidades Estratégicas (SIE) del CMN, armada sobre el patrón de solicitud del Figma «B.1 Rol Creador»
  * (Registro, Elaborada, Verificada y Observada).
  *
- * El creador elige los ítems del catálogo en «Seleccionar ítems estratégicos» (`siaf-selection-side-nav`), los quita de
+ * El creador elige los ítems del catálogo en «Seleccionar necesidades estratégicas» (`siaf-selection-side-nav`), los quita de
  * a uno o en bloque. Con el «+» se abre la tarjeta «Agregar» (Cancelar / Aceptar) y, al aceptar, queda la tabla Año /
- * Cantidad de ítems (Figma «2. Registro de solicitud»); no lleva justificación ni sustento. Grabar: crear la solicitud →
+ * Cantidad de necesidades (Figma «2. Registro de solicitud»); no lleva justificación ni sustento. Grabar: crear la solicitud →
  * guardar los ítems → pasar a ELABORADO (genera el número). El creador edita, verifica o elimina; el aprobador aprueba,
  * observa o rechaza un documento VERIFICADO. Al aprobarse, los ítems pasan a los registros con la vigencia activa.
  */
@@ -96,7 +96,10 @@ export class ItemEstrategicoRequestComponent implements OnInit {
   readonly cargando = signal(false);
   readonly saving = signal(false);
 
-  readonly headerRole = computed<'creator' | 'approver'>(() => (this.permissions.currentRole() === 'approver' ? 'approver' : 'creator'));
+  readonly headerRole = computed<SolicitudeHeaderRole>(() => {
+    const rol = this.permissions.currentRole();
+    return rol === 'approver' || rol === 'reviewer' ? rol : 'creator';
+  });
   readonly elaborado = computed(() => this.estado() !== 'NUEVO');
   readonly soloLectura = computed(() => this.elaborado() && !this.editando());
   readonly puedeVerificar = computed(() => ['ELABORADO', 'OBSERVADO'].includes(this.estado()));
@@ -109,6 +112,7 @@ export class ItemEstrategicoRequestComponent implements OnInit {
       case 'OBSERVADO': return 'observed';
       case 'RECHAZADO': return 'rejected';
       case 'VERIFICADO': return 'verified';
+      case 'VALIDADO': return 'validated';
       case 'ELIMINADO': return 'deleted';
       case 'ELABORADO': return 'elaborated';
       default: return 'new';
@@ -121,6 +125,7 @@ export class ItemEstrategicoRequestComponent implements OnInit {
       OBSERVADO: ESTADO.OBSERVADO,
       RECHAZADO: ESTADO.RECHAZADO,
       VERIFICADO: ESTADO.VERIFICADO,
+      VALIDADO: ESTADO.VALIDADO,
       ELIMINADO: ESTADO.ELIMINADO,
     };
     return etiquetas[this.estado()] ?? ESTADO.ELABORADO;
@@ -162,7 +167,7 @@ export class ItemEstrategicoRequestComponent implements OnInit {
     () => this.itemsPaginados().some((i) => this.itemsMarcados().has(i.codigo)) && !this.paginaItemsCompleta(),
   );
 
-  // ── Panel «Seleccionar ítems estratégicos» ────────────────────────
+  // ── Panel «Seleccionar necesidades estratégicas» ────────────────────────
   private readonly catalogo = signal<ItemEstrategicoCatalogo[]>([]);
   readonly panelItemsAbierto = signal(false);
   readonly busquedaPanel = signal('');
@@ -203,7 +208,7 @@ export class ItemEstrategicoRequestComponent implements OnInit {
     () => this.elegiblesPaginaPanel().some((f) => this.seleccionPanel().includes(f.id)) && !this.paginaPanelCompleta(),
   );
 
-  // ── Modo «Agregar» y tabla Año / Cantidad de ítems (Figma 2. Registro de solicitud) ──
+  // ── Modo «Agregar» y tabla Año / Cantidad de necesidades (Figma 2. Registro de solicitud) ──
   /** Tarjeta «Agregar»: se eligen y quitan ítems; «Aceptar» los confirma y «Cancelar» vuelve a la lista anterior. */
   readonly modoAgregar = signal(false);
   private respaldoItems: ItemEstrategico[] = [];
@@ -243,13 +248,14 @@ export class ItemEstrategicoRequestComponent implements OnInit {
     const tercero = this.estado() === 'OBSERVADO'
       ? quien('OBSERVADO', 'Observado por')
       : this.estado() === 'RECHAZADO' ? quien('RECHAZADO', 'Rechazado por') : quien('APROBADO', 'Aprobado por');
-    return [quien('ELABORADO', 'Elaborado por'), quien('VERIFICADO', 'Verificado por'), tercero];
+    return [quien('ELABORADO', 'Elaborado por'), quien('VERIFICADO', 'Verificado por'), quien('VALIDADO', 'Validado por'), tercero];
   });
 
   // ── Modales y avisos ──────────────────────────────────────────────
   readonly modalGrabar = signal(false);
   readonly modalVerificar = signal(false);
   readonly modalEliminar = signal(false);
+  readonly modalValidar = signal(false);
   readonly modalAprobar = signal(false);
   readonly modalObservar = signal(false);
   readonly modalRechazar = signal(false);
@@ -436,14 +442,22 @@ export class ItemEstrategicoRequestComponent implements OnInit {
     this.accion((id) => this.solicitudesApi.cambiarEstado(id, { estadoNuevo: 'ELIMINADO' }), 'creation-deleted');
   }
 
+  abrirValidar(): void { this.comentario.set(''); this.modalValidar.set(true); }
   abrirAprobar(): void { this.comentario.set(''); this.modalAprobar.set(true); }
   abrirObservar(): void { this.comentario.set(''); this.modalObservar.set(true); }
   abrirRechazar(): void { this.comentario.set(''); this.motivoRechazo.set(''); this.modalRechazar.set(true); }
 
   cerrarModalesAprobador(): void {
+    this.modalValidar.set(false);
     this.modalAprobar.set(false);
     this.modalObservar.set(false);
     this.modalRechazar.set(false);
+  }
+
+  onConfirmarValidar(): void {
+    if (!this.comentario().trim()) return;
+    this.modalValidar.set(false);
+    this.accion((id) => this.solicitudesFacade.validar(id, this.comentario()), 'creation-validated');
   }
 
   onConfirmarAprobar(): void {

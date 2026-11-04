@@ -107,7 +107,7 @@ export type DocumentsRecordsConfig = {
   recordFilterValorOptions?: DocumentsRecordsFilterOption[];
   // Controla el botón de acción principal en la sección de documentos
   // 'verificar' = rol CREADOR (selecciona Elaborados y verifica)
-  // 'aprobar'   = rol APROBADOR (selecciona Verificados y aprueba)
+  // 'aprobar'   = rol APROBADOR (selecciona Validados y aprueba)
   accionPrincipal?: 'verificar' | 'aprobar';
   /**
    * Proceso de solo consulta: sin botón "+Crear documento" ni acción

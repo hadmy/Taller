@@ -9,6 +9,7 @@ import { TextFieldComponent } from '../../shared/ui/text-field/text-field.compon
 import { SolicitudesFacadeService } from '../../core/state/solicitudes-facade.service';
 import { SolicitudesStateService } from '../../core/state/solicitudes-state.service';
 import { PermissionService } from '../../core/auth/permission.service';
+import { respondeSolicitudes } from '../../core/auth/role.model';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationsStateService } from '../../core/realtime/notifications-state.service';
 import { AuthApiService } from '../../core/api/auth-api.service';
@@ -159,8 +160,12 @@ export class VirtualDeskComponent implements OnInit {
       // Aprobador: los que ya procesó
       return solicitudes.filter(s => ESTADOS_RESPUESTA_APROBADOR.includes(s.estado)).length;
     }
+    if (role === 'reviewer') {
+      // Evaluador: los que ya validó u observó
+      return solicitudes.filter(s => [ESTADO.VALIDADO, ...ESTADOS_RESPUESTA_APROBADOR].includes(s.estado)).length;
+    }
     // Creador: los que ya envió (verificados o procesados)
-    return solicitudes.filter(s => [ESTADO.VERIFICADO, ...ESTADOS_RESPUESTA_APROBADOR].includes(s.estado)).length;
+    return solicitudes.filter(s => [ESTADO.VERIFICADO, ESTADO.VALIDADO, ...ESTADOS_RESPUESTA_APROBADOR].includes(s.estado)).length;
   });
 
   readonly recibidosCount = computed(() => {
@@ -168,6 +173,9 @@ export class VirtualDeskComponent implements OnInit {
     const solicitudes = this.solicitudesState.solicitudes();
     if (role === 'approver') {
       // Aprobador: lo que llega para su acción
+      return solicitudes.filter(s => s.estado === ESTADO.VALIDADO).length;
+    }
+    if (role === 'reviewer') {
       return solicitudes.filter(s => s.estado === ESTADO.VERIFICADO).length;
     }
     // Creador: respuestas del aprobador (observadas, aprobadas, rechazadas)
@@ -188,7 +196,7 @@ export class VirtualDeskComponent implements OnInit {
 
   ngOnInit(): void {
     const role = this.permissionService.currentRole();
-    if (role === 'approver') {
+    if (respondeSolicitudes(role)) {
       this.solicitudesFacade.cargarBandejaAprobador();
     } else {
       this.solicitudesFacade.cargarBandejaCreador();

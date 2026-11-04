@@ -10,6 +10,7 @@ describe('ESTADO (etiquetas de UI)', () => {
     expect(ESTADO).toEqual({
       ELABORADO: 'Elaborado',
       VERIFICADO: 'Verificado',
+      VALIDADO: 'Validado',
       APROBADO: 'Aprobado',
       RECHAZADO: 'Rechazado',
       OBSERVADO: 'Observado',

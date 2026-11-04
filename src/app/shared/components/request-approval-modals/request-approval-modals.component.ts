@@ -100,6 +100,22 @@ import { SnackbarComponent, SnackbarVariant } from '../../ui/snackbar/snackbar.c
     />
 
     <siaf-modal
+      variant="validate"
+      [open]="validateOpen"
+      confirmVariant="primary"
+      title="¿Validar documento?"
+      description="Como resultado de la evaluación del documento, el documento pasará a estado validado."
+      [reason]="reason"
+      reasonLabel="Comentarios de evaluación"
+      [reasonMaxLength]="200"
+      [confirmDisabled]="saving || reason.trim().length === 0"
+      (reasonChange)="reasonChange.emit($event)"
+      (canceled)="approvalClosed.emit()"
+      (closed)="approvalClosed.emit()"
+      (confirmed)="validateConfirmed.emit()"
+    />
+
+    <siaf-modal
       variant="approve"
       [open]="approveOpen"
       confirmVariant="primary"
@@ -164,6 +180,7 @@ export class RequestApprovalModalsComponent {
   @Input() saveOpen = false;
   @Input() verifyOpen = false;
   @Input() deleteOpen = false;
+  @Input() validateOpen = false;
   @Input() approveOpen = false;
   @Input() observeOpen = false;
   @Input() rejectOpen = false;
@@ -196,6 +213,7 @@ export class RequestApprovalModalsComponent {
   @Output() saveConfirmed = new EventEmitter<void>();
   @Output() verifyConfirmed = new EventEmitter<void>();
   @Output() deleteConfirmed = new EventEmitter<void>();
+  @Output() validateConfirmed = new EventEmitter<void>();
   @Output() approveConfirmed = new EventEmitter<void>();
   @Output() observeConfirmed = new EventEmitter<void>();
   @Output() rejectConfirmed = new EventEmitter<void>();
@@ -204,7 +222,7 @@ export class RequestApprovalModalsComponent {
   @Output() saveClosed = new EventEmitter<void>();
   @Output() verifyClosed = new EventEmitter<void>();
   @Output() deleteClosed = new EventEmitter<void>();
-  /** Cierre de cualquiera de los modales de aprobación (approve/observe/reject). */
+  /** Cierre de cualquiera de los modales de aprobación (validate/approve/observe/reject). */
   @Output() approvalClosed = new EventEmitter<void>();
 
   // ── Observar / Rechazar ──

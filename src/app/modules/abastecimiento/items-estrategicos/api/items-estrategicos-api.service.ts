@@ -6,7 +6,7 @@ import { APP_CONFIG } from '../../../../core/config/app.config';
 import { ItemEstrategico, ItemEstrategicoCatalogo, ItemEstrategicoRegistro } from '../models/item-estrategico.model';
 
 /**
- * Endpoints propios de la Solicitud de Ítems Estratégicos. En el taller los responde el backend simulado
+ * Endpoints propios de la Solicitud de Necesidades Estratégicas. En el taller los responde el backend simulado
  * (`src/app/mock/mock-backend.interceptor.ts`); con un backend real serían las mismas URLs.
  */
 @Injectable({ providedIn: 'root' })
@@ -24,7 +24,7 @@ export class ItemsEstrategicosApiService {
     return this.http.get<ItemEstrategicoCatalogo[]>(`${this.base}/items-estrategicos/catalogo`);
   }
 
-  /** Ítems estratégicos aprobados: pestaña Registros. */
+  /** Necesidades estratégicas aprobadas: pestaña Registros. */
   listarRegistros(): Observable<ItemEstrategicoRegistro[]> {
     return this.http.get<ItemEstrategicoRegistro[]>(`${this.base}/items-estrategicos`);
   }

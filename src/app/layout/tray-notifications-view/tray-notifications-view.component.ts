@@ -304,12 +304,12 @@ export class TrayNotificationsViewComponent implements OnInit {
   }
 
   private resolveRoute(notif: NotificacionResponse): string {
-    // Taller: la Solicitud de Registro de Cuenta Bancaria (SRCB) y la de Ítems Estratégicos del CMN (SIE).
+    // Taller: las solicitudes del CMN: Necesidades Estratégicas (SIE) y Anexo N.º 02, Fase 1 (SA2F1).
     const codigo = (notif.documento?.catDocumento?.codigo ?? notif.solicitud?.tipoDocumento?.codigo ?? '').toUpperCase();
     const rutas: Record<string, string> = {
-      SRCB: '/procesos/registro-cuentas-bancarias/solicitud',
-      SIE: '/procesos/cuadro-multianual-necesidades/solicitudes/items-estrategicos/solicitud',
+      SIE: '/procesos/cuadro-multianual-necesidades/solicitudes/necesidades-estrategicas/solicitud',
+      SA2F1: '/procesos/cmn-programacion/anexo-2-fase-1',
     };
-    return rutas[codigo] ?? '/procesos/registro-cuentas-bancarias/solicitud';
+    return rutas[codigo] ?? '/panel';
   }
 }

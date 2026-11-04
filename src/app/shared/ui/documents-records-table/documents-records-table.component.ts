@@ -27,7 +27,7 @@ export type DocumentsRecordsSelectionChange = {
  * - Cuando las columnas vienen de configuración (`DocumentsRecordsColumn` con `kind`, `align` y `widthClass`) y el
  *   panel de columnas decide cuáles se ven.
  * - Con `selectionDisabled` para dejar marcables solo los documentos de la acción masiva: Elaborados para el creador
- *   (Verificar) y Verificados para el aprobador (Aprobar).
+ *   (Verificar) y Validados para el aprobador (Aprobar).
  * @evitar
  * - Para un listado de solo lectura con texto plano: `siaf-table`.
  * - Usarla sola, sin barra ni paginado: va dentro de la grilla estándar (`siaf-table-controls` arriba, con el

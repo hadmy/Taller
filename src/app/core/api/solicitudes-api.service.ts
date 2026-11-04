@@ -4,8 +4,8 @@ import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../config/app.config';
 import { EstadoDocumento } from '../models/documento.model';
+import type { AreaUsuariaAnexo1 } from '../../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import type { ItemEstrategico } from '../../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
-import type { CuentaBancariaDatos } from '../../modules/tesoreria/cuentas-bancarias/models/cuenta-bancaria.model';
 
 // ─────────────────────────────────────────────────────────────
 // DTOs de creación — mantienen los nombres viejos por compat
@@ -97,6 +97,8 @@ export interface HistorialItem {
       rol: { codigo: string; nombre: string } | null;
     } | null;
   } | null;
+  /** Unidad orgánica de quien hizo el cambio (columna «Unidad organizacional» del historial del documento). */
+  unidadOrganica?: { nombre: string } | null;
 }
 
 export interface SustentoItem {
@@ -311,10 +313,10 @@ export interface SolicitudResponse {
     items: EventoContableItemResponse[];
   } | null; // SEC / SCMEC
   detalleAsientoAjuste?: AsientoAjusteResponse | null; // SRAA
-  /** Taller: cuenta bancaria propuesta en la solicitud SRCB (proceso de ejemplo). */
-  detalleCuentaBancaria?: (CuentaBancariaDatos & { documentoId: string }) | null; // SRCB
   /** Taller: ítems propuestos como estratégicos en la solicitud SIE (CMN). */
   detalleItemsEstrategicos?: { documentoId: string; items: ItemEstrategico[] } | null; // SIE
+  /** Taller: áreas usuarias (Anexos 01) incluidas en la solicitud del Anexo 02, Fase 1 (CMN). */
+  detalleAnexo2Fase1?: { documentoId: string; areas: AreaUsuariaAnexo1[] } | null; // SA2F1
   detalleConfiguracionMensual?: {
     documentoId: string;
     periodoContableId: string;

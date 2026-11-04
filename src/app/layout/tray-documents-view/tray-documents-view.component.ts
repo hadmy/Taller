@@ -11,6 +11,7 @@ import { TableControlsComponent } from '../../shared/components/table-controls/t
 import { SolicitudesStateService, SolicitudDemo } from '../../core/state/solicitudes-state.service';
 import { SolicitudesFacadeService } from '../../core/state/solicitudes-facade.service';
 import { PermissionService } from '../../core/auth/permission.service';
+import { respondeSolicitudes } from '../../core/auth/role.model';
 import { TooltipDirective } from '../../shared/ui/tooltip/tooltip.directive';
 import { ESTADO, ESTADOS_RESPUESTA_APROBADOR } from '../../core/models/documento.model';
 
@@ -25,7 +26,7 @@ type TrayDocumentRow = {
   entity: string;
 };
 
-type TrayDocumentStatus = 'Elaborado' | 'Verificado' | 'Eliminado' | 'Aprobado' | 'Observado' | 'Rechazado';
+type TrayDocumentStatus = 'Elaborado' | 'Verificado' | 'Validado' | 'Eliminado' | 'Aprobado' | 'Observado' | 'Rechazado';
 type TrayTitle = 'Recibidos' | 'Enviados' | 'Borradores' | 'Papelera' | string;
 
 type AppliedCustomFilter = {
@@ -305,28 +306,33 @@ export class TrayDocumentsViewComponent implements OnInit, OnChanges {
   private readonly SECTION_STATES: Record<string, Record<string, TrayDocumentStatus[]>> = {
     creator: {
       Recibidos:  ESTADOS_RESPUESTA_APROBADOR,
-      Enviados:   [ESTADO.VERIFICADO],
+      Enviados:   [ESTADO.VERIFICADO, ESTADO.VALIDADO],
       Borradores: [ESTADO.ELABORADO],
       Papelera:   [ESTADO.ELIMINADO],
     },
-    approver: {
+    reviewer: {
       Recibidos: [ESTADO.VERIFICADO],
+      Enviados:  [ESTADO.VALIDADO, ...ESTADOS_RESPUESTA_APROBADOR],
+    },
+    approver: {
+      Recibidos: [ESTADO.VALIDADO],
       Enviados:  ESTADOS_RESPUESTA_APROBADOR,
     },
   };
 
   get statusFilterOptions(): TrayDocumentStatus[] {
     const role = this.permissionService.currentRole();
-    const roleKey = role === 'approver' ? 'approver' : 'creator';
+    const roleKey = respondeSolicitudes(role) ? role : 'creator';
     return this.SECTION_STATES[roleKey][this.title] ?? [];
   }
 
   readonly actionTypeFilterOptions = ['Creacion'];
 
-  /** Pendientes primero: Observado/Rechazado arriba en Recibidos del creador; Verificado arriba para el aprobador. */
+  /** Pendientes primero: Observado/Rechazado arriba en Recibidos del creador; lo pendiente arriba para el evaluador y el aprobador. */
   private readonly STATUS_PRIORITY_BY_ROLE: Record<string, Record<string, number>> = {
-    approver: { Verificado: 0, Observado: 1, Aprobado: 2, Rechazado: 3 },
-    creator:  { Observado: 0, Rechazado: 1, Elaborado: 2, Verificado: 3, Aprobado: 4, Eliminado: 5 },
+    reviewer: { Verificado: 0, Validado: 1, Observado: 2, Aprobado: 3, Rechazado: 4 },
+    approver: { Validado: 0, Observado: 1, Aprobado: 2, Rechazado: 3 },
+    creator:  { Observado: 0, Rechazado: 1, Elaborado: 2, Verificado: 3, Validado: 4, Aprobado: 5, Eliminado: 6 },
   };
 
   readonly rows: TrayDocumentRow[] = [];
@@ -376,7 +382,7 @@ export class TrayDocumentsViewComponent implements OnInit, OnChanges {
 
   private cargarBandeja(): void {
     const role = this.permissionService.currentRole();
-    if (role === 'approver') {
+    if (respondeSolicitudes(role)) {
       this.solicitudesFacade.cargarBandejaAprobador();
     } else {
       this.solicitudesFacade.cargarBandejaCreador();
@@ -385,8 +391,8 @@ export class TrayDocumentsViewComponent implements OnInit, OnChanges {
 
   get rowsForCurrentTray(): TrayDocumentRow[] {
     const role = this.permissionService.currentRole();
-    const roleKey = role === 'approver' ? 'approver' : 'creator';
-    const solicitudes = role === 'approver'
+    const roleKey = respondeSolicitudes(role) ? role : 'creator';
+    const solicitudes = respondeSolicitudes(role)
       ? this.solicitudesState.bandejaAprobador()
       : this.solicitudesState.bandejaCreador();
 

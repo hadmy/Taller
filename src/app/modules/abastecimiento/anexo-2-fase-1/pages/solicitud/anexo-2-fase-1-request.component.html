@@ -1,0 +1,259 @@
+<div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
+  <!-- La cabecera (migas, título, estado y botones según rol y estado) la pinta el layout de solicitudes. -->
+  <siaf-solicitude-page-layout
+    [breadcrumbs]="breadcrumbs"
+    [role]="headerRole()"
+    [state]="headerState()"
+    [loading]="cargando()"
+    [heading]="heading"
+    [secondaryText]="tipoAccion"
+    [showReturn]="true"
+    [saveDisabled]="!formValido() || saving()"
+    [verifyDisabled]="!puedeVerificar() || cargando()"
+    [hideReject]="true"
+    (returned)="regresar()"
+    (canceled)="regresar()"
+    (saved)="modalGrabar.set(true)"
+    (edited)="editar()"
+    (verified)="modalVerificar.set(true)"
+    (deleted)="modalEliminar.set(true)"
+    (validated)="abrirValidar()"
+    (approved)="abrirAprobar()"
+    (observed)="abrirObservar()"
+    (rejected)="abrirRechazar()"
+  >
+    @if (cargando() || !contexto()) {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl">
+        <div class="grid grid-cols-3 gap-siaf-md">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="siaf-skeleton-pulse h-4 w-32 rounded bg-[var(--sys-color-bg-surfaces-surface-low)]"></div>
+          }
+        </div>
+      </div>
+    } @else {
+      @if (elaborado()) {
+        <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
+          <siaf-solicitude-info-card [fields]="camposCabecera()" [captureOpenDate]="true" />
+          <siaf-document-summary-card [documentNumber]="numeroDocumento()" [status]="estadoDocumento()" />
+        </section>
+      } @else {
+        <siaf-solicitude-info-card [fields]="camposCabecera()" [captureOpenDate]="true" />
+      }
+
+      <!-- ── Datos del Anexo 02 ── -->
+      <siaf-solicitude-form-card title="Datos del Anexo 02">
+        <div class="grid gap-x-siaf-lg gap-y-siaf-lg pt-siaf-sm sm:grid-cols-2 lg:grid-cols-3">
+          @for (campo of camposAnexo(); track campo.caption) {
+            <readonly-field [caption]="campo.caption" [value]="campo.value" />
+          }
+        </div>
+      </siaf-solicitude-form-card>
+
+      <!-- ── Resumen del proceso de consolidación ── -->
+      <siaf-solicitude-form-card title="Resumen del proceso de consolidación">
+        <ul class="m-0 grid list-none gap-siaf-sm p-0 sm:grid-cols-2 lg:grid-cols-5">
+          @for (tarjeta of tarjetasResumen(); track tarjeta.titulo) {
+            <li class="flex flex-col gap-siaf-xs rounded-siaf-md border border-[var(--sys-color-divider-strong)] bg-surface px-siaf-md py-siaf-sm">
+              <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.titulo }}</span>
+              <strong class="text-lg font-bold leading-6 text-[var(--sys-color-text-neutral-high)]">{{ tarjeta.valor }}</strong>
+              <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.detalle }}</span>
+            </li>
+          }
+        </ul>
+      </siaf-solicitude-form-card>
+
+      <!-- ── Marco presupuestario (un bloque por año del CMN) ── -->
+      <siaf-solicitude-form-card title="Marco presupuestario">
+        <div class="grid gap-siaf-sm lg:grid-cols-3">
+          @for (anio of marcoPresupuestario(); track anio.anio) {
+            <section class="overflow-hidden rounded-siaf-sm bg-[var(--sys-color-bg-surfaces-surface-low)]" [attr.aria-label]="'CMN ' + anio.anio">
+              <h3 class="m-0 bg-[var(--sys-color-bg-surfaces-surface-high)] px-siaf-md py-siaf-sm text-sm font-bold text-[var(--sys-color-text-neutral-high)]">CMN {{ anio.anio }}</h3>
+              <dl class="m-0 grid grid-cols-[160px_1fr] items-center gap-x-siaf-xs gap-y-siaf-xs px-siaf-md py-siaf-md">
+                <dt class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">Referencia:</dt>
+                <dd class="m-0 text-sm font-bold text-text">{{ anio.referencia }}</dd>
+                <dt class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">Techo presupuestal</dt>
+                <dd class="m-0 text-sm font-bold text-text">{{ formatearSoles(anio.techoPresupuestal) }}</dd>
+                <dt class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">Consolidado Anexo 01:</dt>
+                <dd class="m-0 text-sm font-bold text-text">{{ formatearSoles(anio.consolidadoAnexo1) }}</dd>
+                <div class="col-span-2 py-siaf-xs">
+                  <siaf-loading-progress variant="bar" [value]="anio.avance" [label]="'Consolidado del techo presupuestal CMN ' + anio.anio" />
+                </div>
+                <dt class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">Saldo:</dt>
+                <dd class="m-0 text-sm font-bold text-text">{{ formatearSoles(anio.saldo) }}</dd>
+              </dl>
+            </section>
+          }
+        </div>
+      </siaf-solicitude-form-card>
+
+      <!-- ── Seleccionar registros (Figma RC-01: botón de búsqueda y modal de selección) ── -->
+      <siaf-solicitude-form-card title="Seleccionar registros">
+        @if (!soloLectura()) {
+          <siaf-button
+            card-actions
+            variant="accent"
+            size="md"
+            icon="search"
+            [iconOnly]="true"
+            ariaLabel="Seleccionar registros"
+            (click)="abrirPanel()"
+          />
+        }
+
+        @if (areas().length === 0) {
+          <message-box text="No se ha seleccionado ningún tipo. Haga clic en el botón para realizar una selección." />
+        } @else {
+          <siaf-table-controls
+            [showSelection]="!soloLectura()"
+            [checked]="paginaAreasCompleta()"
+            [indeterminate]="paginaAreasParcial()"
+            [selectedCount]="areasMarcadas().size"
+            [showDeleteAction]="!soloLectura()"
+            selectAllLabel="Seleccionar las áreas usuarias de la página"
+            deleteLabel="Quitar las áreas usuarias seleccionadas"
+            [page]="paginaAreas()"
+            [pageSize]="filasPorPaginaAreas"
+            [totalItems]="areas().length"
+            [totalPages]="totalPaginasAreas()"
+            (selectionChange)="marcarPaginaAreas($event)"
+            (delete)="quitarMarcadas()"
+            (previous)="paginaAreasAnterior()"
+            (next)="paginaAreasSiguiente()"
+          />
+
+          <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+            <table class="w-full min-w-[640px] border-collapse text-sm">
+              <thead>
+                <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                  @if (!soloLectura()) {
+                    <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Selección</span></th>
+                  }
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Áreas usuarias</th>
+                  <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Ítems</th>
+                  <th class="w-60 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Monto programado A01</th>
+                  @if (!soloLectura()) {
+                    <th class="w-20 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Acción</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (area of areasPaginadas(); track area.id) {
+                  <tr
+                    class="border-b border-[var(--sys-color-divider-default)]"
+                    [class.bg-[var(--sys-color-bg-states-light-selected)]]="areasMarcadas().has(area.id)"
+                  >
+                    @if (!soloLectura()) {
+                      <td class="p-siaf-sm text-center">
+                        <input
+                          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                          type="checkbox"
+                          [attr.aria-label]="'Seleccionar ' + area.nombre"
+                          [checked]="areasMarcadas().has(area.id)"
+                          (change)="marcarArea(area.id, $any($event.target).checked)"
+                        />
+                      </td>
+                    }
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.nombre }}</td>
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.items }}</td>
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ formatearSoles(area.montoProgramado) }}</td>
+                    @if (!soloLectura()) {
+                      <td class="px-siaf-md py-siaf-xs text-center">
+                        <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" [ariaLabel]="'Quitar ' + area.nombre" (click)="quitarArea(area.id)" />
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="bg-[var(--sys-color-bg-surfaces-surface-low)] font-bold text-[var(--sys-color-text-neutral-high)]">
+                  @if (!soloLectura()) {
+                    <td></td>
+                  }
+                  <th scope="row" class="px-siaf-md py-siaf-sm text-left">Total</th>
+                  <td class="px-siaf-md py-siaf-sm">{{ totalItems() }}</td>
+                  <td class="px-siaf-md py-siaf-sm">{{ formatearSoles(totalMonto()) }}</td>
+                  @if (!soloLectura()) {
+                    <td></td>
+                  }
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        }
+      </siaf-solicitude-form-card>
+
+      <!-- ── Comentarios del aprobador y trazabilidad ── -->
+      @if (historial().length > 0 || comentarioActual()) {
+        <siaf-detail-history-tabs [comentario]="comentarioActual()" [entries]="historial()" />
+      }
+
+      @if (numeroDocumento()) {
+        <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
+      }
+    }
+  </siaf-solicitude-page-layout>
+
+  <!-- ── Seleccionar registros (Figma «Registro-solicitud», con el panel de selección del kit) ── -->
+  <siaf-selection-side-nav
+    [open]="panelAbierto()"
+    title="Seleccionar registros"
+    mode="multiple"
+    [rows]="filasPanel()"
+    [columns]="columnasPanel"
+    [searchValue]="busquedaPanel()"
+    [selectedIds]="seleccionPanel()"
+    emptyMessage="No hay Anexos 01 recibidos que coincidan con la búsqueda."
+    [paginated]="true"
+    [showTopPagination]="true"
+    [page]="paginaPanel()"
+    [totalPages]="totalPaginasPanel()"
+    [pageSize]="filasPorPaginaPanel()"
+    [totalItems]="totalFilasPanel()"
+    [rowsPerPage]="filasPorPaginaPanel()"
+    [rowsPerPageOptions]="opcionesFilasPorPagina"
+    [showSelectAll]="true"
+    [selectAllChecked]="paginaPanelCompleta()"
+    [selectAllIndeterminate]="paginaPanelParcial()"
+    selectAllLabel="Seleccionar las áreas usuarias de la página"
+    (searchChange)="buscarEnPanel($event)"
+    (selectionChange)="seleccionPanel.set($event)"
+    (selectAllChange)="marcarPaginaPanel($event)"
+    (previousPage)="paginaPanelAnterior()"
+    (nextPage)="paginaPanelSiguiente()"
+    (rowsPerPageChange)="cambiarFilasPanel($event)"
+    (closed)="panelAbierto.set(false)"
+    (accepted)="aceptarSeleccion($event)"
+  />
+
+  <siaf-request-approval-modals
+    [saveOpen]="modalGrabar()"
+    [verifyOpen]="modalVerificar()"
+    [deleteOpen]="modalEliminar()"
+    [validateOpen]="modalValidar()"
+    [approveOpen]="modalAprobar()"
+    [observeOpen]="modalObservar()"
+    [rejectOpen]="modalRechazar()"
+    [saving]="saving()"
+    [reason]="comentario()"
+    [rejectReasonType]="motivoRechazo()"
+    [rejectReasonTypeOptions]="motivosRechazo"
+    [snackbarVariant]="aviso()"
+    [snackbarOpen]="avisoAbierto()"
+    requestType="creación"
+    [requestNumber]="numeroDocumento()"
+    (saveConfirmed)="onConfirmarGrabar()"
+    (verifyConfirmed)="onConfirmarVerificar()"
+    (deleteConfirmed)="onConfirmarEliminar()"
+    (validateConfirmed)="onConfirmarValidar()"
+    (approveConfirmed)="onConfirmarAprobar()"
+    (observeConfirmed)="onConfirmarObservar()"
+    (rejectConfirmed)="onConfirmarRechazar()"
+    (saveClosed)="modalGrabar.set(false)"
+    (verifyClosed)="modalVerificar.set(false)"
+    (deleteClosed)="modalEliminar.set(false)"
+    (approvalClosed)="cerrarModalesAprobador()"
+    (reasonChange)="comentario.set($event)"
+    (rejectReasonTypeChange)="motivoRechazo.set($event)"
+    (snackbarClosed)="avisoAbierto.set(false)"
+  />
+</div>

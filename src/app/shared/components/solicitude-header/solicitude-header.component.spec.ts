@@ -41,7 +41,8 @@ describe('SolicitudeHeaderComponent', () => {
       ['creator', 'edit', ['Cancelar', 'Grabar'], 'save'],
       ['creator', 'elaborated', ['Eliminar', 'Editar', 'Verificar'], 'task_alt'],
       ['creator', 'observed', ['Eliminar', 'Editar'], 'edit'],
-      ['approver', 'verified', ['Rechazar', 'Observar', 'Aprobar'], 'inventory'],
+      ['reviewer', 'verified', ['Rechazar', 'Observar', 'Validar'], 'assignment'],
+      ['approver', 'validated', ['Rechazar', 'Observar', 'Aprobar'], 'inventory'],
     ];
     for (const [role, state, textos, icono] of casos) {
       configurar({ role, state });
@@ -62,7 +63,7 @@ describe('SolicitudeHeaderComponent', () => {
   });
 
   it('cada botón de la barra emite su evento', () => {
-    configurar({ role: 'approver', state: 'verified' });
+    configurar({ role: 'approver', state: 'validated' });
     const emitidos: string[] = [];
     const header = fixture.componentInstance;
     header.rejected.subscribe(() => emitidos.push('rejected'));
@@ -71,6 +72,13 @@ describe('SolicitudeHeaderComponent', () => {
 
     barraMovil().queryAll(By.css('button')).forEach((b) => (b.nativeElement as HTMLButtonElement).click());
     expect(emitidos).toEqual(['rejected', 'observed', 'approved']);
+  });
+
+  it('el evaluador no responde lo validado y hideReject quita Rechazar', () => {
+    configurar({ role: 'reviewer', state: 'validated' });
+    expect(barraMovil()).toBeNull();
+    configurar({ state: 'verified', hideReject: true });
+    expect(acciones().map((a) => a.texto)).toEqual(['Observar', 'Validar']);
   });
 
   it('no pinta la barra sin botonera, con acciones proyectadas, cargando o sin acciones', () => {

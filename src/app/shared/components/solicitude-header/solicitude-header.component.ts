@@ -46,6 +46,7 @@ type SolicitudeHeaderConfig = {
   deleteDisabled?: boolean;
   showEdit: boolean;
   showVerify: boolean;
+  showValidate?: boolean;
   showApprove?: boolean;
   showObserve?: boolean;
   showReject?: boolean;
@@ -86,6 +87,16 @@ const CREATOR_HEADER_CONFIG: Partial<Record<SolicitudeHeaderState, SolicitudeHea
     showVerify: true
   },
   verified: {
+    type: 'readonly',
+    showTag: false,
+    tagLabel: '',
+    tagTone: 'accent',
+    saveVariant: 'secondary',
+    showDelete: false,
+    showEdit: false,
+    showVerify: false
+  },
+  validated: {
     type: 'readonly',
     showTag: false,
     tagLabel: '',
@@ -172,6 +183,16 @@ const APPROVER_HEADER_CONFIG: Partial<Record<SolicitudeHeaderState, SolicitudeHe
     saveVariant: 'secondary',
     showDelete: false,
     showEdit: false,
+    showVerify: false
+  },
+  validated: {
+    type: 'readonly',
+    showTag: false,
+    tagLabel: '',
+    tagTone: 'accent',
+    saveVariant: 'secondary',
+    showDelete: false,
+    showEdit: false,
     showVerify: false,
     showApprove: true,
     showObserve: true,
@@ -209,8 +230,28 @@ const APPROVER_HEADER_CONFIG: Partial<Record<SolicitudeHeaderState, SolicitudeHe
   }
 };
 
+/** El evaluador responde lo verificado; lo demás lo ve en solo lectura, igual que el aprobador. */
+const REVIEWER_HEADER_CONFIG: Partial<Record<SolicitudeHeaderState, SolicitudeHeaderConfig>> = {
+  ...APPROVER_HEADER_CONFIG,
+  verified: {
+    type: 'readonly',
+    showTag: false,
+    tagLabel: '',
+    tagTone: 'accent',
+    saveVariant: 'secondary',
+    showDelete: false,
+    showEdit: false,
+    showVerify: false,
+    showValidate: true,
+    showObserve: true,
+    showReject: true
+  },
+  validated: APPROVER_HEADER_CONFIG.verified
+};
+
 const HEADER_CONFIG_BY_ROLE: Partial<Record<SolicitudeHeaderRole, Partial<Record<SolicitudeHeaderState, SolicitudeHeaderConfig>>>> = {
   creator: CREATOR_HEADER_CONFIG,
+  reviewer: REVIEWER_HEADER_CONFIG,
   approver: APPROVER_HEADER_CONFIG
 };
 
@@ -371,6 +412,9 @@ const MOBILE_PRIMARY_ACTION_CLASS =
           @if (resolvedShowEdit) {
             <siaf-button [variant]="resolvedEditVariant" size="md" icon="edit" (click)="edited.emit()">{{ editLabel }}</siaf-button>
           }
+          @if (resolvedShowValidate) {
+            <siaf-button size="md" icon="assignment" (click)="validated.emit()">{{ validateLabel }}</siaf-button>
+          }
           @if (resolvedShowApprove) {
             <siaf-button size="md" icon="inventory" (click)="approved.emit()">{{ approveLabel }}</siaf-button>
           }
@@ -439,7 +483,10 @@ export class SolicitudeHeaderComponent {
   @Input() deleteLabel = 'Eliminar';
   @Input() editLabel = 'Editar';
   @Input() verifyLabel = 'Verificar';
+  @Input() validateLabel = 'Validar';
   @Input() approveLabel = 'Aprobar';
+  /** Oculta Rechazar en los procesos que solo observan (Figma del Anexo N.º 02). */
+  @Input() hideReject = false;
   @Input() observeLabel = 'Observar';
   @Input() rejectLabel = 'Rechazar';
 
@@ -449,6 +496,7 @@ export class SolicitudeHeaderComponent {
   @Output() saved = new EventEmitter<void>();
   @Output() verified = new EventEmitter<void>();
   @Output() edited = new EventEmitter<void>();
+  @Output() validated = new EventEmitter<void>();
   @Output() approved = new EventEmitter<void>();
   @Output() observed = new EventEmitter<void>();
   @Output() rejected = new EventEmitter<void>();
@@ -507,12 +555,16 @@ export class SolicitudeHeaderComponent {
     return this.roleStateConfig?.showApprove ?? false;
   }
 
+  get resolvedShowValidate(): boolean {
+    return this.roleStateConfig?.showValidate ?? false;
+  }
+
   get resolvedShowObserve(): boolean {
     return this.roleStateConfig?.showObserve ?? false;
   }
 
   get resolvedShowReject(): boolean {
-    return this.roleStateConfig?.showReject ?? false;
+    return !this.hideReject && (this.roleStateConfig?.showReject ?? false);
   }
 
   readonly mobileActionClass = MOBILE_ACTION_CLASS;
@@ -542,6 +594,7 @@ export class SolicitudeHeaderComponent {
     add(this.resolvedShowObserve, this.observeLabel, 'assignment_late', 'secondary', false, this.observed);
     add(this.resolvedShowDelete, this.deleteLabel, 'delete', 'secondary', this.resolvedDeleteDisabled, this.deleted);
     add(this.resolvedShowEdit, this.editLabel, 'edit', this.resolvedEditVariant, false, this.edited);
+    add(this.resolvedShowValidate, this.validateLabel, 'assignment', 'accent', false, this.validated);
     add(this.resolvedShowApprove, this.approveLabel, 'inventory', 'accent', false, this.approved);
     add(this.resolvedShowVerify, this.verifyLabel, 'task_alt', 'accent', this.verifyDisabled, this.verified);
     return actions;

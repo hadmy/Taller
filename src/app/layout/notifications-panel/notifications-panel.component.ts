@@ -185,12 +185,12 @@ export class NotificationsPanelComponent {
    * Prefiere el código (estable) sobre el nombre.
    */
   private resolveRoute(codigo: string, _nombre: string): string {
-    // Taller: la Solicitud de Registro de Cuenta Bancaria (SRCB) y la de Ítems Estratégicos del CMN (SIE).
+    // Taller: las solicitudes del CMN: Necesidades Estratégicas (SIE) y Anexo N.º 02, Fase 1 (SA2F1).
     const rutas: Record<string, string> = {
-      SRCB: '/procesos/registro-cuentas-bancarias/solicitud',
-      SIE: '/procesos/cuadro-multianual-necesidades/solicitudes/items-estrategicos/solicitud',
+      SIE: '/procesos/cuadro-multianual-necesidades/solicitudes/necesidades-estrategicas/solicitud',
+      SA2F1: '/procesos/cmn-programacion/anexo-2-fase-1',
     };
-    return rutas[codigo] ?? '/procesos/registro-cuentas-bancarias/solicitud';
+    return rutas[codigo] ?? '/panel';
   }
 
   formatDate(iso: string): string {

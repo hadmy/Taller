@@ -4473,7 +4473,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "components",
     "importacion": "@siaf/shared/components/document-history-panel/document-history-panel.component",
     "archivo": "src/app/shared/components/document-history-panel/document-history-panel.component.ts",
-    "descripcion": "Panel lateral a pantalla completa «Historial del documento», que abre la bandeja `siaf-documents-records-page`\ndesde la pestaña Documentos.\n\nMuestra el documento, su N° y el tipo de acción, una sección plegable opcional de atributos y la tabla «Historial\nde estados» (usuario, unidad organizacional, fecha y estado con `siaf-flow-status-tag`), que pide a la API con\n`solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o pulsando el fondo, que emiten `closed`.",
+    "descripcion": "Modal centrado «Historial del documento» (Figma «CMN Programación · Solicitud de Ítems Estratégicos», nodo\n18911:7221), que abre la bandeja `siaf-documents-records-page` desde la pestaña Documentos.\n\nMuestra el documento en su fila y debajo su N° y el tipo de acción, una sección plegable opcional de atributos y la\ntabla del historial de estados (usuario y unidad organizacional en mayúsculas, fecha y hora en una línea y el estado\ncon `siaf-flow-status-tag`), que pide a la API con\n`solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o pulsando el fondo, que emiten `closed`.",
     "usaSesion": true,
     "proyectaContenido": false,
     "entradas": [
@@ -4502,8 +4502,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "usar": "- Para ver desde la pestaña Documentos de cualquier bandeja quién movió el documento y cuándo pasó por Elaborado,\n  Verificado, Observado o Aprobado, sin abrir la solicitud.\n- Con `attributes` y `staticRows` para documentos que no son solicitudes del flujo, como los asientos de apertura\n  anual (Registrado, Procesado, Anulado).",
     "evitar": "- Para registros (pestaña Registros): usar `siaf-account-history-panel` o `siaf-asiento-history-panel`.\n- Dentro de la solicitud abierta: usar `siaf-detail-history-tabs` y `siaf-action-tracker` en la página.\n- Para mostrar comentarios u observaciones: la tabla no pinta el `comentario` aunque viaje en cada fila; usar\n  `siaf-detail-history-tabs`.",
     "teclado": "- **Tab**: al abrir, el foco entra en la X; recorre el botón de atributos y da la vuelta sin salir del panel.\n- **Enter / Espacio** en la X: cierran el panel (emite `closed`).\n- **Escape**: cierra el panel (emite `closed`) y el foco vuelve al botón de historial.\n- **Enter / Espacio** en el botón de atributos: pliegan o despliegan la sección.",
-    "accesibilidad": "- **Pendiente · 4.1.2 Nombre, función y valor (A)**: es `role=\"dialog\"` con `aria-modal`, nombre desde su título y\n  la X «Cerrar historial»; pero el botón de atributos no publica `aria-expanded` ni `aria-controls`: su estado solo\n  se ve en la flecha.\n- **1.3.1 Información y relaciones (A)**: título `h2`, subtítulo `h3` y estados en una `table` con `thead` y `th`.\n- **1.4.1 Uso del color (A)**: cada estado va escrito en `siaf-flow-status-tag`.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: etiquetas `text-neutral-low` 5.01:1 (oscuro 8.86:1), valores\n  `text-neutral-high` 16.29:1 (16.53:1) y celdas `text-neutral-medium` 14.53:1 (12.87:1) cumplen, pero el estado\n  Observado da 3.39:1 en claro.\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir lleva el foco a la X y lo retiene en el panel; al cerrar (X,\n  Escape o clic en el fondo) lo devuelve al botón de historial.\n- **2.4.7 Foco visible (AA)**: la X y el botón de atributos no definen estilo de foco: muestran el contorno por\n  defecto del navegador.\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: la carga pinta filas grises animadas sin texto ni `aria-busy`, así\n  que no se anuncia.",
-    "figma": [],
+    "accesibilidad": "- **Pendiente · 4.1.2 Nombre, función y valor (A)**: es `role=\"dialog\"` con `aria-modal`, nombre desde su título y\n  la X «Cerrar historial»; pero el botón de atributos no publica `aria-expanded` ni `aria-controls`: su estado solo\n  se ve en la flecha.\n- **1.3.1 Información y relaciones (A)**: título `h2` y estados en una `table` con `thead` y `th`, dentro de una\n  sección nombrada «Historial de estados».\n- **1.4.1 Uso del color (A)**: cada estado va escrito en `siaf-flow-status-tag`.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: etiquetas `text-neutral-low` 5.01:1 (oscuro 8.86:1), valores\n  `text-neutral-high` 16.29:1 (16.53:1) y celdas `text-neutral-medium` 14.53:1 (12.87:1) cumplen, pero el estado\n  Observado da 3.39:1 en claro.\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir lleva el foco a la X y lo retiene en el panel; al cerrar (X,\n  Escape o clic en el fondo) lo devuelve al botón de historial.\n- **2.4.7 Foco visible (AA)**: la X y el botón de atributos no definen estilo de foco: muestran el contorno por\n  defecto del navegador.\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: la carga pinta filas grises animadas sin texto ni `aria-busy`, así\n  que no se anuncia.",
+    "figma": [
+      {
+        "nodo": "18911:7221",
+        "nombre": null
+      }
+    ],
     "aria": {
       "roles": [
         "dialog"
@@ -4555,8 +4560,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-color-text-neutral-low",
         "via": [
-          "text-text-muted",
-          "var()"
+          "text-text-muted"
         ]
       },
       {
@@ -4568,14 +4572,17 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-lg",
         "via": [
-          "gap-siaf-lg"
+          "gap-siaf-lg",
+          "gap-y-siaf-lg",
+          "p-siaf-lg"
         ]
       },
       {
         "token": "--sys-gap-base-md",
         "via": [
           "gap-siaf-md",
-          "mb-siaf-md",
+          "gap-x-siaf-md",
+          "ml-siaf-md",
           "mt-siaf-md",
           "p-siaf-md",
           "px-siaf-md",
@@ -4609,7 +4616,6 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-radius-md",
         "via": [
-          "rounded-l-siaf-md",
           "rounded-siaf-md"
         ]
       },
@@ -5031,7 +5037,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- En las pestañas Documentos / Registros de `siaf-documents-records-page` (plan de cuentas, asiento de ajuste,\n  catálogo de ajuste, catálogos de eventos, apertura contable y contabilización).\n- Cuando las columnas vienen de configuración (`DocumentsRecordsColumn` con `kind`, `align` y `widthClass`) y el\n  panel de columnas decide cuáles se ven.\n- Con `selectionDisabled` para dejar marcables solo los documentos de la acción masiva: Elaborados para el creador\n  (Verificar) y Verificados para el aprobador (Aprobar).",
+    "usar": "- En las pestañas Documentos / Registros de `siaf-documents-records-page` (plan de cuentas, asiento de ajuste,\n  catálogo de ajuste, catálogos de eventos, apertura contable y contabilización).\n- Cuando las columnas vienen de configuración (`DocumentsRecordsColumn` con `kind`, `align` y `widthClass`) y el\n  panel de columnas decide cuáles se ven.\n- Con `selectionDisabled` para dejar marcables solo los documentos de la acción masiva: Elaborados para el creador\n  (Verificar) y Validados para el aprobador (Aprobar).",
     "evitar": "- Para un listado de solo lectura con texto plano: `siaf-table`.\n- Usarla sola, sin barra ni paginado: va dentro de la grilla estándar (`siaf-table-controls` arriba, con el\n  seleccionar todo, y `siaf-pagination` con `position=\"Bottom\"` y `rowPage` abajo).\n- Mientras llegan las filas: `siaf-table-skeleton` con las mismas columnas y `minWidthClass`, no la tabla vacía.\n- Copiar su marcado en otra pantalla: `siaf-tray-documents-view` todavía tiene una tabla parecida hecha a mano.",
     "teclado": "- **Tab**: recorre, fila por fila, el checkbox (solo en Documentos), el enlace al documento y el botón de historial;\n  un checkbox deshabilitado queda fuera.\n- **Espacio**: marca o desmarca el checkbox de la fila (emite `selectionChanged`).\n- **Enter**: en el enlace, abre el documento (`routerLink`).\n- **Enter / Espacio**: en el botón de historial, emiten `historyOpened`.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: `<table>` con `<thead>` y un `<th>` por columna (sin `scope`, que con una\n  sola fila de cabecera no hace falta); las columnas del checkbox y del historial tienen el `<th>` vacío. No ordena\n  columnas, así que no aplica `aria-sort`.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: el checkbox de cada fila no tiene nombre (ni `aria-label` ni\n  `<label>`). El botón de historial sí lleva `aria-label`, pero en Registros dice siempre «Ver historial de cuenta\n  contable», también en los asientos de ajuste.\n- **Pendiente · 2.1.1 Teclado (A)**: la fila no es clicable y sus acciones son nativas, pero el texto completo de\n  las cabeceras y celdas cortadas solo sale con `siafTooltip` al pasar el mouse: esas celdas no reciben foco (el\n  enlace sí lo muestra al enfocarlo).\n- **1.4.13 Contenido en hover o foco (AA)**: ese tooltip se cierra con Escape y se puede recorrer con el puntero.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: el enlace va en `text-neutral-high` (16.29:1 / 16.53:1) y «Nuevo» en\n  blanco sobre `bg-brand-primary` (8.79:1 / 6.67:1), pero la etiqueta Observado de `siaf-flow-status-tag` (también\n  Pendiente y Fallido) da 3.39:1 en claro, y el enlace en hover (`text-brand-primary`) pinta en oscuro con\n  `bg-brand-primary` (2.66:1 sobre la superficie).\n- **1.4.1 Uso del color (A)**: los estados llevan su nombre en la etiqueta y «Nuevo» es texto.\n- **2.4.7 Foco visible (AA)**: sin estilo propio: enlace, checkbox y botón muestran el anillo nativo del navegador.\n- **2.5.8 Tamaño del objetivo (AA)**: botón de historial de 32 px; el checkbox mide 16 px, pero cumple por\n  espaciado (celda de 40 × 58 px).",
@@ -8807,7 +8813,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "layout",
     "importacion": "@siaf/layout/process-menu-tree/process-menu-tree.component",
     "archivo": "src/app/layout/process-menu-tree/process-menu-tree.component.ts",
-    "descripcion": "Árbol canónico de procesos del shell: el menú jerárquico que abre la opción \"Procesos\" del sidebar.\n\nSus datos por defecto son `DEFAULT_PROCESS_TREE` de `shared/utils/process-tree.util` (este archivo solo\nre-exporta el tipo y las utilidades). Es el único menú en árbol: el shell también lo usa para \"Ajustes\" con\n`ADMIN_MENU_TREE` y otros textos, así que un árbol nuevo es solo otro arreglo de nodos. El campo de búsqueda\nfunciona como paleta de comandos: filtra la navegación en vivo, sin ir al servidor, y expande las ramas\ncon coincidencias. Los nodos `comingSoon` solo expanden — nunca emiten `nodeSelected`.",
+    "descripcion": "Árbol canónico de procesos del shell: el menú jerárquico que abre la opción \"Procesos\" del sidebar.\n\nSus datos por defecto son `DEFAULT_PROCESS_TREE` de `shared/utils/process-tree.util` (este archivo solo\nre-exporta el tipo y las utilidades). Es el único menú en árbol: el shell también lo usa para \"Ajustes\" con\n`ADMIN_MENU_TREE` y otros textos, así que un árbol nuevo es solo otro arreglo de nodos. Cada nodo es un ítem de\nlista (Figma «A.2-OA-EV-007»): los grupos llevan el ícono de información y el elegido va en negrita sobre el fondo de\nselección. El campo de búsqueda funciona como paleta de comandos: al escribir, el árbol se cambia por la lista plana\nde coincidencias bajo «Procesos» (Figma «A.2-OA-EV-008»), sin ir al servidor. Los nodos `comingSoon` solo\nexpanden — nunca emiten `nodeSelected`.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
@@ -8824,6 +8830,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "'Buscar proceso o procedimiento'",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "resultsLabel",
+        "tipo": "string",
+        "porDefecto": "'Procesos'",
+        "requerida": false,
+        "descripcion": "Encabezado de la lista de resultados de la búsqueda."
       },
       {
         "nombre": "searchLabel",
@@ -8856,12 +8869,15 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     ],
     "usar": "- Para el panel Procesos del armazón: `siaf-app-shell` lo abre desde el rail y navega a la `moduleRoute` o\n  `createRoute` del nodo emitido (plan de cuentas contables, catálogo de eventos, asientos de ajuste, apertura\n  contable…).\n- Para el menú Ajustes: el mismo componente con `ADMIN_MENU_TREE` y sus textos (`title`, `subtitle`, `placeholder`,\n  `searchLabel`), con gestión de usuarios, entidades y auditoría.\n- Para cualquier menú jerárquico nuevo del armazón: basta otro arreglo de `ProcessMenuNode`.",
     "evitar": "- Para envolverlo o copiarlo en otro componente de menú: por eso se retiró `siaf-admin-menu`; basta pasarle otros\n  `nodes` y textos.\n- Para mostrar datos jerárquicos de solo lectura dentro de una pantalla: usar `siaf-tree-view`.\n- Para buscar registros en el servidor: usar `siaf-form-table-search` (en Documentos y registros y la bandeja, su\n  variante `siaf-records-search-toolbar`); este buscador solo filtra la navegación en memoria.",
-    "teclado": "- **Tab**: pasa por el buscador y su lupa, y luego por los nodos visibles en orden. La lupa no hace nada: el filtro\n  se aplica al escribir.\n- **Escribir en el buscador**: filtra el árbol en vivo, sin distinguir tildes ni mayúsculas, y abre las ramas con\n  coincidencias.\n- **Enter / Espacio** en un nodo: lo marca y emite `nodeSelected`; si tiene hijos, además los muestra u oculta. Los\n  nodos `comingSoon` solo expanden.",
-    "accesibilidad": "- **Pendiente · 1.3.1 Información y relaciones (A)**: es un `<aside>` con `h2` y `h3`, pero la jerarquía solo se ve\n  (sangría y línea a la izquierda): los nodos son botones en `div` anidados, sin `ul`/`li` ni `role=\"tree\"`, y el\n  lector no anuncia nivel ni cantidad. Además, el `aria-label` del `aside` es fijo («Menu de procesos») y también se\n  lee en Ajustes.\n- **Pendiente · 1.4.1 Uso del color (A)**: el nodo elegido (y su ancestro de primer nivel) se distingue solo por el\n  fondo `bg-states-light-selected` y el color del texto; el peso de la fuente no cambia.\n- **1.4.3 Contraste mínimo (AA)**: en claro, título `text-neutral-high` 16.29:1 y nodos `text-neutral-medium` 14.53:1\n  sobre blanco; en oscuro el panel usa `bg-surfaces-field` y falta medirlo.\n- **1.4.11 Contraste no textual (AA)**: el contorno de foco es el azul del kit (`border-states-focus`, 5.35:1 claro\n  / 10.15:1 oscuro sobre la superficie).\n- **Pendiente · 2.4.3 Orden del foco (A)**: no toma el foco al abrirse ni cierra con Escape. El armazón lo pinta\n  después del rail: desde Procesos el Tab pasa antes por Ayuda y Ajustes, y si lo pide una página\n  (`ShellNavigationService`) queda antes que el botón que lo abrió.\n- **2.4.7 Foco visible (AA)**: cada nodo muestra un contorno azul de 2 px con `focus-visible`.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: los nodos con hijos publican `aria-expanded`, pero el elegido no\n  publica `aria-current`.\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: al filtrar no se anuncia cuántos nodos quedan y, sin coincidencias,\n  el árbol queda vacío y sin mensaje.",
+    "teclado": "- **Tab**: pasa por el buscador y su lupa, y luego por los nodos visibles en orden. La lupa no hace nada: el filtro\n  se aplica al escribir.\n- **Escribir en el buscador**: muestra en vivo la lista de coincidencias, sin distinguir tildes ni mayúsculas;\n  elegir una limpia el buscador y la muestra en su rama del árbol.\n- **Enter / Espacio** en un nodo: lo marca y emite `nodeSelected`; si tiene hijos, además los muestra u oculta. Los\n  nodos `comingSoon` solo expanden.",
+    "accesibilidad": "- **Pendiente · 1.3.1 Información y relaciones (A)**: es un `<aside>` con `h2` y `h3`, pero la jerarquía solo se ve\n  (sangría y línea a la izquierda): los nodos son botones en `div` anidados, sin `ul`/`li` ni `role=\"tree\"`, y el\n  lector no anuncia nivel ni cantidad. Además, el `aria-label` del `aside` es fijo («Menu de procesos») y también se\n  lee en Ajustes.\n- **1.4.1 Uso del color (A)**: el nodo elegido se distingue por el fondo `bg-states-light-selected`, el color y la\n  negrita.\n- **1.4.3 Contraste mínimo (AA)**: en claro, título `text-neutral-high` 16.29:1 y nodos `text-neutral-medium` 14.53:1\n  sobre blanco; en oscuro el panel usa `bg-surfaces-field` y falta medirlo.\n- **1.4.11 Contraste no textual (AA)**: el contorno de foco es el azul del kit (`border-states-focus`, 5.35:1 claro\n  / 10.15:1 oscuro sobre la superficie).\n- **Pendiente · 2.4.3 Orden del foco (A)**: no toma el foco al abrirse ni cierra con Escape. El armazón lo pinta\n  después del rail: desde Procesos el Tab pasa antes por Ayuda y Ajustes, y si lo pide una página\n  (`ShellNavigationService`) queda antes que el botón que lo abrió.\n- **2.4.7 Foco visible (AA)**: cada nodo muestra un contorno azul de 2 px con `focus-visible`.\n- **4.1.2 Nombre, función y valor (A)**: los nodos con hijos publican `aria-expanded` y el elegido `aria-current`.\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: al buscar no se anuncia cuántas coincidencias hay; sin\n  coincidencias se muestra «No se encontraron procesos.» con `role=\"status\"`.",
     "figma": [],
     "aria": {
-      "roles": [],
+      "roles": [
+        "status"
+      ],
       "atributos": [
+        "aria-current",
         "aria-expanded",
         "aria-label"
       ]
@@ -8910,7 +8926,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
-        "token": "--sys-color-divider-strong",
+        "token": "--sys-color-icon-states-enabled",
         "via": [
           "var()"
         ]
@@ -8925,6 +8941,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-color-text-neutral-high",
         "via": [
           "text-text",
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-low",
+        "via": [
           "var()"
         ]
       },
@@ -8944,7 +8966,6 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-gap-base-md",
         "via": [
           "gap-siaf-md",
-          "mr-siaf-md",
           "p-siaf-md",
           "px-siaf-md"
         ]
@@ -8952,6 +8973,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-sm",
         "via": [
+          "pl-siaf-sm",
           "py-siaf-sm"
         ]
       },
@@ -8964,7 +8986,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-xxs",
         "via": [
-          "py-siaf-xxs"
+          "gap-siaf-xxs"
         ]
       },
       {
@@ -9396,7 +9418,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-table-skeleton",
       "siaf-tabs"
     ],
-    "sinUso": false
+    "sinUso": true
   },
   {
     "selector": "siaf-radio-group",
@@ -10182,6 +10204,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "validateOpen",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
         "nombre": "verifyOpen",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -10193,7 +10222,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "nombre": "approvalClosed",
         "tipo": "void",
-        "descripcion": "Cierre de cualquiera de los modales de aprobación (approve/observe/reject)."
+        "descripcion": "Cierre de cualquiera de los modales de aprobación (validate/approve/observe/reject)."
       },
       {
         "nombre": "approveConfirmed",
@@ -10242,6 +10271,11 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       },
       {
         "nombre": "snackbarClosed",
+        "tipo": "void",
+        "descripcion": null
+      },
+      {
+        "nombre": "validateConfirmed",
         "tipo": "void",
         "descripcion": null
       },
@@ -11827,6 +11861,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "hideReject",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Oculta Rechazar en los procesos que solo observan (Figma del Anexo N.º 02)."
+      },
+      {
         "nombre": "loading",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -11953,6 +11994,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "validateLabel",
+        "tipo": "string",
+        "porDefecto": "'Validar'",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
         "nombre": "verifyDisabled",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -12005,6 +12053,11 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       },
       {
         "nombre": "saved",
+        "tipo": "void",
+        "descripcion": null
+      },
+      {
+        "nombre": "validated",
         "tipo": "void",
         "descripcion": null
       },
@@ -12258,6 +12311,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "hideReject",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Oculta Rechazar en los procesos que solo observan."
+      },
+      {
         "nombre": "loading",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -12366,6 +12426,11 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       },
       {
         "nombre": "saved",
+        "tipo": "void",
+        "descripcion": null
+      },
+      {
+        "nombre": "validated",
         "tipo": "void",
         "descripcion": null
       },
@@ -14409,7 +14474,8 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "figma": [],
     "aria": {
       "roles": [
-        "button"
+        "button",
+        "creator"
       ],
       "atributos": [
         "aria-hidden",
@@ -15189,7 +15255,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-input",
       "siaf-uploader"
     ],
-    "sinUso": false
+    "sinUso": true
   },
   {
     "selector": "siaf-uploaded-file-card",
@@ -15326,7 +15392,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "[siafTooltip]",
       "siaf-icon"
     ],
-    "sinUso": false
+    "sinUso": true
   },
   {
     "selector": "siaf-uploader",

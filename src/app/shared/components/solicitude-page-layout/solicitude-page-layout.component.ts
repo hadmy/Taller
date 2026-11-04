@@ -66,6 +66,7 @@ import { SolicitudeHeaderComponent, SolicitudeHeaderRole, SolicitudeHeaderState 
           [showButtonGroup]="showButtonGroup"
           [saveDisabled]="saveDisabled"
           [verifyDisabled]="verifyDisabled"
+          [hideReject]="hideReject"
           [loading]="loading"
           (returned)="returned.emit()"
           (canceled)="canceled.emit()"
@@ -73,6 +74,7 @@ import { SolicitudeHeaderComponent, SolicitudeHeaderRole, SolicitudeHeaderState 
           (edited)="edited.emit()"
           (verified)="verified.emit()"
           (deleted)="deleted.emit()"
+          (validated)="validated.emit()"
           (approved)="approved.emit()"
           (observed)="observed.emit()"
           (rejected)="rejected.emit()"
@@ -102,6 +104,8 @@ export class SolicitudePageLayoutComponent {
   @Input() showButtonGroup = true;
   @Input() saveDisabled = false;
   @Input() verifyDisabled = false;
+  /** Oculta Rechazar en los procesos que solo observan. */
+  @Input() hideReject = false;
   @Input() trayMenuOpen = false;
   @Input() floatingPanelOpen = false;
   @Input() loading = false;
@@ -112,6 +116,7 @@ export class SolicitudePageLayoutComponent {
   @Output() edited = new EventEmitter<void>();
   @Output() verified = new EventEmitter<void>();
   @Output() deleted = new EventEmitter<void>();
+  @Output() validated = new EventEmitter<void>();
   @Output() approved = new EventEmitter<void>();
   @Output() observed = new EventEmitter<void>();
   @Output() rejected = new EventEmitter<void>();

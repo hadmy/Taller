@@ -6,22 +6,23 @@ import type { CambiarPerfilResponse, LoginResponse, PerfilItem } from '../core/a
 import type { SolicitudResponse } from '../core/api/solicitudes-api.service';
 import { APP_CONFIG } from '../core/config/app.config';
 import type { EstadoDocumento } from '../core/models/documento.model';
+import type { AreaUsuariaAnexo1, RegistroAnexo2 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import type { ItemEstrategico } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
-import type { CuentaBancariaDatos } from '../modules/tesoreria/cuentas-bancarias/models/cuenta-bancaria.model';
 import {
   CATALOGO_ITEMS_ESTRATEGICOS,
+  CONTEXTO_ANEXO_2_FASE_1,
   DatosTaller,
   ENTIDAD_CREADORA,
   NotificacionMock,
   TIPOS_DOCUMENTO,
-  TIPO_DOCUMENTO,
+  TIPO_DOCUMENTO_SA2F1,
   TIPO_DOCUMENTO_SIE,
   UNIDAD_CREADORA,
   filaHistorial,
   guardarDatos,
   leerDatos,
   nuevoId,
-  numeroDocumento,
+  numeroDocumentoAnexo2Fase1,
   numeroDocumentoItemsEstrategicos,
   tipoDocumentoDe,
 } from './mock-db';
@@ -32,7 +33,7 @@ import { CONTRASENA_DEMO, USUARIOS_DEMO, UsuarioDemo, buscarUsuarioPorPerfil } f
  *
  * Responde las llamadas a `APP_CONFIG.api.baseUrl` como lo haría el backend de SIAF-RP, con los datos de `mock-db.ts`,
  * y deja pasar todo lo demás (assets). Respeta las reglas del flujo de una solicitud: quién puede hacer cada
- * transición, comentario obligatorio al observar o rechazar, sustento obligatorio para elaborar, número al elaborar y
+ * transición, comentario obligatorio al observar o rechazar, datos obligatorios para elaborar, número al elaborar y
  * registro al aprobar. Para sumar un endpoint: una entrada en `RUTAS` con su manejador.
  */
 
@@ -103,8 +104,10 @@ function respuestaLogin(usuario: UsuarioDemo): LoginResponse {
 
 const login: Manejador = ({ req }) => {
   const { dni, password } = (req.body ?? {}) as { dni?: string; password?: string };
-  const usuario = USUARIOS_DEMO.find((u) => u.dni === dni?.trim());
-  if (!usuario || password !== CONTRASENA_DEMO) return error(401, 'DNI o contraseña incorrectos.');
+  // El campo «Usuario» del login acepta el DNI o el correo.
+  const credencial = dni?.trim().toLowerCase();
+  const usuario = USUARIOS_DEMO.find((u) => u.dni === credencial || u.email === credencial);
+  if (!usuario || password !== CONTRASENA_DEMO) return error(401, 'Usuario o contraseña incorrectos.');
   return ok(respuestaLogin(usuario));
 };
 
@@ -140,18 +143,18 @@ const verificarOtp: Manejador = ({ req }) => {
 
 const tiposDocumento: Manejador = () => ok([
   {
-    ...TIPO_DOCUMENTO,
-    modulo: 'tesoreria',
-    esActivo: true,
-    accionesPermitidas: [{ tipoAccion: 'creacion' }],
-    proceso: { codigo: 'registro-cuentas-bancarias', nombre: 'Registro de cuentas bancarias', modulo: 'tesoreria' },
-  },
-  {
     ...TIPO_DOCUMENTO_SIE,
     modulo: 'abastecimiento',
     esActivo: true,
     accionesPermitidas: [{ tipoAccion: 'inclusion' }],
-    proceso: { codigo: 'items-estrategicos', nombre: 'Ítems estratégicos', modulo: 'abastecimiento' },
+    proceso: { codigo: 'items-estrategicos', nombre: 'Necesidades estratégicas', modulo: 'abastecimiento' },
+  },
+  {
+    ...TIPO_DOCUMENTO_SA2F1,
+    modulo: 'abastecimiento',
+    esActivo: true,
+    accionesPermitidas: [{ tipoAccion: 'creacion' }],
+    proceso: { codigo: 'cmn-anexo-2-fase-1', nombre: 'CMN Programación', modulo: 'abastecimiento' },
   },
 ]);
 
@@ -217,6 +220,10 @@ function esItemsEstrategicos(s: SolicitudResponse): boolean {
   return s.catDocumento?.codigo === TIPO_DOCUMENTO_SIE.codigo;
 }
 
+function esAnexo2Fase1(s: SolicitudResponse): boolean {
+  return s.catDocumento?.codigo === TIPO_DOCUMENTO_SA2F1.codigo;
+}
+
 function bandeja(ctx: Contexto, estados?: EstadoDocumento[]): Respuesta {
   const { datos, sesion, query } = ctx;
   if (!sesion) return error(401, 'Sesión expirada.');
@@ -254,8 +261,8 @@ const crearSolicitud: Manejador = ({ req, datos, sesion }) => {
   if (!sesion) return error(401, 'Sesión expirada.');
   if (sesion.perfil.rolCodigo !== 'CREADOR') return error(403, 'Solo un creador puede registrar solicitudes.');
   const dto = (req.body ?? {}) as { tipoDocumentoId?: string; tipoAccion?: string; organoLinea?: string; justificacion?: string };
-  // Sin `tipoDocumentoId` (o con uno desconocido) la solicitud es del proceso de ejemplo.
-  const tipo = TIPOS_DOCUMENTO.find((t) => t.id === dto.tipoDocumentoId) ?? TIPO_DOCUMENTO;
+  const tipo = TIPOS_DOCUMENTO.find((t) => t.id === dto.tipoDocumentoId);
+  if (!tipo) return error(400, 'El tipo de documento no existe.');
   const ahora = new Date().toISOString();
   const id = nuevoId(datos, 'sol');
   const s: SolicitudResponse = {
@@ -265,15 +272,21 @@ const crearSolicitud: Manejador = ({ req, datos, sesion }) => {
     tipoAccion: dto.tipoAccion ?? 'creacion',
     estado: 'NUEVO',
     asuntoMotivo: `[${dto.organoLinea ?? ''}] ${dto.justificacion ?? ''}`,
-    entidadCreadora: ENTIDAD_CREADORA,
-    unidadCreadora: UNIDAD_CREADORA,
+    // La solicitud queda en la entidad y la unidad del perfil que la crea (así la ve en su bandeja).
+    entidadCreadora: {
+      id: sesion.perfil.entidadId ?? ENTIDAD_CREADORA.id,
+      codMef: sesion.perfil.entidadCodigo ?? ENTIDAD_CREADORA.codMef,
+      siglas: sesion.perfil.entidadSiglas ?? ENTIDAD_CREADORA.siglas,
+      nombre: sesion.perfil.entidad ?? ENTIDAD_CREADORA.nombre,
+    },
+    unidadCreadora: { id: sesion.perfil.unidadId ?? UNIDAD_CREADORA.id, sigla: sesion.perfil.unidadSigla ?? UNIDAD_CREADORA.sigla, nombre: sesion.perfil.unidad ?? UNIDAD_CREADORA.nombre },
     creador: { id: sesion.usuario.id, nombres: sesion.usuario.nombres, apellidoPaterno: sesion.usuario.apellidoPaterno, apellidoMaterno: sesion.usuario.apellidoMaterno },
     fechaRegistro: ahora,
     createdAt: ahora,
     updatedAt: ahora,
     itemsCuenta: [],
-    detalleCuentaBancaria: null,
     detalleItemsEstrategicos: null,
+    detalleAnexo2Fase1: null,
     sustentos: [],
     historialEstados: [filaHistorial(datos, null, 'NUEVO', ahora, sesion.usuario, rolDe(sesion.perfil))],
   };
@@ -294,32 +307,37 @@ const actualizarSolicitud: Manejador = ({ req, datos, params, sesion }) => {
   return ok(s);
 };
 
-const guardarCuentaBancaria: Manejador = ({ req, datos, params }) => {
-  const s = buscarSolicitud(datos, params[0]);
-  if (!s) return error(404, 'La solicitud no existe.');
-  if (!['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'La solicitud ya no admite cambios.');
-  const cuenta = req.body as CuentaBancariaDatos;
-  if (!/^\d{10,20}$/.test(cuenta?.numeroCuenta ?? '')) return error(400, 'El número de cuenta debe tener entre 10 y 20 dígitos.');
-  s.detalleCuentaBancaria = { documentoId: s.id, ...cuenta };
-  s.updatedAt = new Date().toISOString();
-  guardarDatos(datos);
-  return ok({ message: 'Cuenta guardada' });
-};
-
 const guardarItemsEstrategicos: Manejador = ({ req, datos, params }) => {
   const s = buscarSolicitud(datos, params[0]);
   if (!s) return error(404, 'La solicitud no existe.');
-  if (!esItemsEstrategicos(s)) return error(400, 'La solicitud no es de ítems estratégicos.');
+  if (!esItemsEstrategicos(s)) return error(400, 'La solicitud no es de necesidades estratégicas.');
   if (!['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'La solicitud ya no admite cambios.');
   const items = ((req.body ?? {}) as { items?: ItemEstrategico[] }).items ?? [];
-  if (!items.length) return error(400, 'Seleccione al menos un ítem estratégico.');
+  if (!items.length) return error(400, 'Seleccione al menos una necesidad estratégica.');
   const codigos = new Set(items.map((i) => i.codigo));
-  if (codigos.size !== items.length) return error(400, 'Hay ítems repetidos en la solicitud.');
-  if (items.some((i) => !CATALOGO_ITEMS_ESTRATEGICOS.some((c) => c.codigo === i.codigo))) return error(400, 'Hay ítems que no están en el catálogo.');
+  if (codigos.size !== items.length) return error(400, 'Hay necesidades repetidas en la solicitud.');
+  if (items.some((i) => !CATALOGO_ITEMS_ESTRATEGICOS.some((c) => c.codigo === i.codigo))) return error(400, 'Hay necesidades que no están en el catálogo.');
   s.detalleItemsEstrategicos = { documentoId: s.id, items: items.map(({ codigo, descripcion }) => ({ codigo, descripcion })) };
   s.updatedAt = new Date().toISOString();
   guardarDatos(datos);
-  return ok({ message: 'Ítems guardados' });
+  return ok({ message: 'Necesidades guardadas' });
+};
+
+const guardarAnexo2Fase1: Manejador = ({ req, datos, params }) => {
+  const s = buscarSolicitud(datos, params[0]);
+  if (!s) return error(404, 'La solicitud no existe.');
+  if (!esAnexo2Fase1(s)) return error(400, 'La solicitud no es del Anexo N.º 02.');
+  if (!['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'La solicitud ya no admite cambios.');
+  const areas = ((req.body ?? {}) as { areas?: AreaUsuariaAnexo1[] }).areas ?? [];
+  if (!areas.length) return error(400, 'Seleccione al menos un área usuaria.');
+  if (new Set(areas.map((a) => a.id)).size !== areas.length) return error(400, 'Hay áreas usuarias repetidas en la solicitud.');
+  const recibidas = CONTEXTO_ANEXO_2_FASE_1.areas;
+  if (areas.some((a) => !recibidas.some((r) => r.id === a.id))) return error(400, 'Hay áreas usuarias sin Anexo 01 recibido.');
+  // Se guardan los datos del Anexo 01 recibido, no los que mande el cliente.
+  s.detalleAnexo2Fase1 = { documentoId: s.id, areas: recibidas.filter((r) => areas.some((a) => a.id === r.id)) };
+  s.updatedAt = new Date().toISOString();
+  guardarDatos(datos);
+  return ok({ message: 'Áreas usuarias guardadas' });
 };
 
 const subirSustento: Manejador = ({ req, datos, params }) => {
@@ -386,11 +404,10 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
     return error(409, 'No se puede eliminar una solicitud que fue observada.');
   }
   const items = esItemsEstrategicos(s);
+  const anexo2 = esAnexo2Fase1(s);
   if (nuevo === 'ELABORADO') {
-    if (items && !s.detalleItemsEstrategicos?.items.length) return error(400, 'Seleccione al menos un ítem estratégico.');
-    if (!items && !s.detalleCuentaBancaria) return error(400, 'Registre los datos de la cuenta bancaria.');
-    // La solicitud de ítems estratégicos ya no lleva documento de sustento (Figma «2. Registro de solicitud»).
-    if (!items && !(s.sustentos ?? []).length) return error(400, 'Adjunte el documento de sustento.');
+    if (items && !s.detalleItemsEstrategicos?.items.length) return error(400, 'Seleccione al menos una necesidad estratégica.');
+    if (anexo2 && !s.detalleAnexo2Fase1?.areas.length) return error(400, 'Seleccione al menos un área usuaria.');
   }
 
   const ahora = new Date().toISOString();
@@ -400,9 +417,9 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
     if (items) {
       datos.correlativoItemsEstrategicos += 1;
       s.numero = numeroDocumentoItemsEstrategicos(datos.correlativoItemsEstrategicos, new Date());
-    } else {
-      datos.correlativoDocumento += 1;
-      s.numero = numeroDocumento(datos.correlativoDocumento, new Date());
+    } else if (anexo2) {
+      datos.correlativoAnexo2Fase1 += 1;
+      s.numero = numeroDocumentoAnexo2Fase1(datos.correlativoAnexo2Fase1);
     }
   }
   // Volver a grabar un ELABORADO no deja fila en el historial.
@@ -414,22 +431,6 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
   s.updatedAt = ahora;
   if (nuevo === 'VERIFICADO') s.fechaEvaluacion = ahora;
   if (nuevo === 'APROBADO') s.fechaAprobacion = ahora;
-
-  // Al aprobar, la cuenta pasa a los registros.
-  if (nuevo === 'APROBADO' && s.detalleCuentaBancaria && !datos.registros.some((r) => r.documentoId === s.id)) {
-    const { documentoId: _documento, ...cuenta } = s.detalleCuentaBancaria;
-    datos.correlativoRegistro += 1;
-    datos.registros.push({
-      id: nuevoId(datos, 'cb'),
-      codigo: `CB-${String(datos.correlativoRegistro).padStart(4, '0')}`,
-      estado: 'Activo',
-      entidadSiglas: s.entidadCreadora?.siglas ?? '',
-      documentoId: s.id,
-      numeroDocumento: s.numero ?? '',
-      fechaRegistro: ahora,
-      ...cuenta,
-    });
-  }
 
   // Al aprobar, los ítems pasan a los registros como vigentes; uno ya registrado vuelve a quedar vigente.
   if (nuevo === 'APROBADO' && s.detalleItemsEstrategicos) {
@@ -455,17 +456,32 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
   return ok({ message: 'Estado actualizado', numero: s.numero });
 };
 
-// ─── Proceso de ejemplo ────────────────────────────────────────────
-
-const registrosCuentas: Manejador = ({ datos, sesion }) =>
-  ok(datos.registros.filter((r) => !sesion || r.entidadSiglas === sesion.perfil.entidadSiglas));
-
-// ─── Ítems estratégicos del CMN ────────────────────────────────────
+// ─── Necesidades estratégicas del CMN ────────────────────────────────────
 
 const registrosItemsEstrategicos: Manejador = ({ datos, sesion }) =>
   ok(datos.registrosItemsEstrategicos.filter((r) => !sesion || r.entidadSiglas === sesion.perfil.entidadSiglas));
 
 const catalogoItemsEstrategicos: Manejador = () => ok(CATALOGO_ITEMS_ESTRATEGICOS);
+
+// ─── Anexo N.º 02, Fase 1 del CMN ──────────────────────────────────
+
+const contextoAnexo2Fase1: Manejador = () => ok(CONTEXTO_ANEXO_2_FASE_1);
+
+/** Registros de CMN Programación: las áreas usuarias de los Anexos 02 aprobados de la entidad. */
+const registrosAnexo2Fase1: Manejador = ({ datos, sesion }) => {
+  const registros: RegistroAnexo2[] = datos.solicitudes
+    .filter((s) => esAnexo2Fase1(s) && s.estado === 'APROBADO' && (!sesion || s.entidadCreadora?.id === sesion.perfil.entidadId))
+    .flatMap((s) => (s.detalleAnexo2Fase1?.areas ?? []).map((area) => ({
+      id: `${s.id}-${area.id}`,
+      area: area.nombre,
+      items: area.items,
+      montoProgramado: area.montoProgramado,
+      documentoId: s.id,
+      numeroDocumento: s.numero ?? '',
+      fechaAprobacion: s.fechaAprobacion ?? s.updatedAt ?? s.createdAt,
+    })));
+  return ok(registros);
+};
 
 // ─── Configuración: áreas usuarias del CMN ─────────────────────────
 
@@ -505,7 +521,7 @@ const guardarItemsAreaUsuaria: Manejador = ({ req, datos, params }) => {
     ...(items ?? []).map((i) => ({ ...i, id: i.id.startsWith('nuevo-') ? nuevoId(datos, 'aui') : i.id, areaUsuariaId: area.id })),
   ];
   guardarDatos(datos);
-  return ok({ message: 'Ítems guardados' });
+  return ok({ message: 'Necesidades guardadas' });
 };
 
 // ─── Configuración: servicios básicos excluidos de la ley ──────────
@@ -875,16 +891,17 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/solicitudes\/bandeja-aprobador$/, bandejaAprobador],
   ['POST', /^\/solicitudes$/, crearSolicitud],
   ['PATCH', /^\/solicitudes\/([^/]+)\/estado$/, cambiarEstado],
-  ['POST', /^\/solicitudes\/([^/]+)\/cuenta-bancaria$/, guardarCuentaBancaria],
   ['POST', /^\/solicitudes\/([^/]+)\/items-estrategicos$/, guardarItemsEstrategicos],
   ['POST', /^\/solicitudes\/([^/]+)\/sustentos$/, subirSustento],
   ['GET', /^\/solicitudes\/([^/]+)\/sustentos$/, listarSustentos],
   ['DELETE', /^\/solicitudes\/([^/]+)\/sustentos\/([^/]+)$/, eliminarSustento],
   ['GET', /^\/solicitudes\/([^/]+)$/, detalleSolicitud],
   ['PATCH', /^\/solicitudes\/([^/]+)$/, actualizarSolicitud],
-  ['GET', /^\/cuentas-bancarias$/, registrosCuentas],
   ['GET', /^\/items-estrategicos$/, registrosItemsEstrategicos],
   ['GET', /^\/items-estrategicos\/catalogo$/, catalogoItemsEstrategicos],
+  ['POST', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1$/, guardarAnexo2Fase1],
+  ['GET', /^\/cmn\/anexo-2-fase-1\/contexto$/, contextoAnexo2Fase1],
+  ['GET', /^\/cmn\/anexo-2-fase-1\/registros$/, registrosAnexo2Fase1],
   ['GET', /^\/configuracion\/areas-usuarias$/, listarAreasUsuarias],
   ['PUT', /^\/configuracion\/areas-usuarias$/, guardarAreasUsuarias],
   ['POST', /^\/configuracion\/areas-usuarias\/sincronizar$/, sincronizarAreasUsuarias],

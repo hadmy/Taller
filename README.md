@@ -2,8 +2,8 @@
 
 Arquetipo para clases demostrativas: muestra cómo se arman las pantallas del SIAF-RP con los componentes del diseño de
 Figma y **datos simulados**, sin backend. Trae el login, el escritorio virtual y un proceso de ejemplo completo
-(Documentos y registros, la solicitud con su formulario y Consultas y reportes), con usuarios de demostración para
-alternar roles y perfiles.
+(Documentos y registros y la solicitud con su formulario), con usuarios de demostración para alternar roles y
+perfiles.
 
 > Es material de clase: corre solo en local y no se mantiene como producto. Nada de lo que se graba sale del navegador.
 
@@ -22,14 +22,15 @@ Abrir <http://127.0.0.1:4200>. Otro puerto: `npm start -- --port 4300`.
 
 ## Usuarios de demostración
 
-La contraseña de todos es **`Taller2026*`**. En el login, el panel «Usuarios de demostración» llena el DNI y la
-contraseña con un clic.
+La contraseña de todos es **`Taller2026*`**. En el login, el campo «Usuario» acepta el correo o el DNI, y el panel
+«Usuarios de demostración» llena el correo y la contraseña con un clic.
 
-| Usuario | DNI | Perfil | Qué puede hacer |
-| --- | --- | --- | --- |
-| Ana Torres Díaz | `11111111` | Creador | Crear, grabar, editar, verificar y eliminar solicitudes |
-| Luis Ramírez Soto | `22222222` | Aprobador | Aprobar, observar (con comentario) o rechazar lo verificado |
-| Carla Mendoza Ríos | `33333333` | Creador y Aprobador | Lo mismo que los dos anteriores: cambia de perfil desde su menú de usuario |
+| Usuario | Correo | DNI | Perfil | Qué puede hacer |
+| --- | --- | --- | --- | --- |
+| Ana Torres Díaz | `ana.torres@taller.pe` | `11111111` | Creador | Crear, grabar, editar, verificar y eliminar solicitudes |
+| Luis Ramírez Soto | `luis.ramirez@taller.pe` | `22222222` | Aprobador | Aprobar, observar (con comentario) o rechazar lo verificado |
+| Carla Mendoza Ríos | `carla.mendoza@taller.pe` | `33333333` | Creador y Aprobador | Lo mismo que los dos anteriores: cambia de perfil desde su menú de usuario |
+| Usuario Especialista OA | `especialista-oa@minedu.gob.pe` | `44444444` | Creador (Ministerio de Educación) | Registra las solicitudes del CMN, como el Anexo N.º 02 |
 
 «Olvidé mi contraseña» también funciona: con el correo de un usuario (por ejemplo `ana.torres@taller.pe`) el código de
 verificación es `123456`.
@@ -37,20 +38,21 @@ verificación es `123456`.
 ## Recorrido sugerido para la clase
 
 1. **Login** como Ana. El escritorio virtual muestra la bandeja, los contadores y sus notificaciones.
-2. **Procesos → Gestión de tesorería → Registro de cuentas bancarias → Documentos y registros**. La pestaña Documentos
-   es la bandeja; Registros, las cuentas ya aprobadas (con el historial de la solicitud que las creó).
-3. **Crear documento → Solicitud de Registro de Cuenta Bancaria**: llenar el formulario, adjuntar un PDF de sustento
-   y **Grabar**. La solicitud recibe su número (`PCB-SRCB-00013-2026-MEF-OGA`) y queda Elaborada; luego **Verificar**.
+2. **Procesos → Gestión de abastecimiento → Cuadro Multianual de Necesidades → Solicitudes del Cuadro Multianual de
+   Necesidades → Necesidades estratégicas** (Documentos y registros). La pestaña Documentos es la bandeja; Registros,
+   los ítems ya aprobados (con el historial de la solicitud que los incluyó).
+3. **Crear documento → Solicitud de necesidades estratégicas**: elegir los ítems y **Grabar**. La solicitud recibe su
+   número (`CMN-SIE-00007-2026-MEF-OGA`) y queda Elaborada; luego **Verificar**.
 4. **Cerrar sesión** y entrar como Luis: tiene la notificación «Solicitud por aprobar». Abrir la solicitud y
-   **Aprobar** (la cuenta aparece en Registros con el código `CB-0009`), **Observar** o **Rechazar** (piden comentario).
+   **Aprobar** (los ítems aparecen en Registros), **Observar** o **Rechazar** (piden comentario).
 5. Volver a entrar como Ana: le llega el aviso. Una solicitud observada se corrige y se vuelve a verificar, pero ya no
    se puede eliminar.
 6. Entrar como Carla y cambiar de perfil desde el menú del usuario: el avatar pasa de «CR» a «AP» y cambian la bandeja,
    los botones y las notificaciones.
-7. **Consultas y reportes**: elegir el rango de fechas de apertura y consultar. Probar los filtros, la **vista de
-   gráficas** (KPI, barras, dona y línea) y **Exportar** a Excel, CSV o PDF.
-8. **Catálogo de componentes** en `/ui-kit` (enlace «Ver componentes» del login): cada componente con su ficha, sus
-   entradas y su ejemplo.
+7. **CMN** como la Especialista OA: en **Procesos**, buscar «CMN Programación» (o Gestión de abastecimiento →
+   Programación multianual de bienes, servicios y obras → CMN Programación) y, en Documentos y registros, **Crear
+   documento → Solicitud de CMN - Anexo N.º 02**.
+8. **Catálogo de componentes** en `/ui-kit`: cada componente con su ficha, sus entradas y su ejemplo.
 
 Para empezar de cero: **Reiniciar datos** en el login (o borrar el almacenamiento del sitio).
 
@@ -58,24 +60,25 @@ Para empezar de cero: **Reiniciar datos** en el login (o borrar el almacenamient
 
 | Ruta | Pantalla | Plantilla o componente principal |
 | --- | --- | --- |
-| `/login` | Inicio de sesión y usuarios de demostración | `siaf-tabs`, `siaf-input`, `siaf-list` |
+| `/login` | Inicio de sesión y usuarios de demostración | `siaf-input`, `siaf-list` |
 | `/login/recuperar-contrasena` | Recuperar contraseña con código | — |
 | `/panel` | Escritorio virtual | `siaf-desk-card` |
-| `/procesos/registro-cuentas-bancarias` | Documentos y registros | `siaf-documents-records-page` |
-| `/procesos/registro-cuentas-bancarias/solicitud` y `/solicitud/:id` | Solicitud de Registro de Cuenta Bancaria | `siaf-solicitude-page-layout` |
-| `/procesos/registro-cuentas-bancarias/consultas` | Consultas y reportes | `siaf-query-report-page` |
+| `/procesos/cmn-programacion` | CMN Programación: Documentos y registros | `siaf-documents-records-page` |
+| `/procesos/cmn-programacion/anexo-2-fase-1` y `/:id` | Solicitud de CMN - Anexo N.º 02 | Fase 1 | `siaf-solicitude-page-layout` |
+| `/procesos/cuadro-multianual-necesidades/solicitudes/necesidades-estrategicas` | Necesidades estratégicas: Documentos y registros | `siaf-documents-records-page` |
+| `…/necesidades-estrategicas/solicitud` y `/solicitud/:id` | Solicitud de necesidades estratégicas | `siaf-solicitude-page-layout` |
 | `/ui-kit` | Catálogo de componentes (sin sesión) | — |
 
 ## Cómo funcionan los datos simulados
 
 - **`src/app/mock/mock-backend.interceptor.ts`** hace de backend: responde las llamadas a `/api/v1` con las mismas
   rutas y respuestas que el backend real del SIAF-RP, y aplica sus reglas (quién puede hacer cada cambio de estado,
-  comentario obligatorio al observar o rechazar, sustento obligatorio para elaborar, número al elaborar, registro al
+  comentario obligatorio al observar o rechazar, datos obligatorios para elaborar, número al elaborar, registro al
   aprobar, notificaciones para cada rol). Simula 250 ms de latencia. Si una pantalla llama a una ruta que no simula,
   lo avisa en la consola con `[mock] Endpoint no simulado`.
 - **`src/app/mock/mock-db.ts`** guarda los datos en el `localStorage` del navegador (clave `taller-siaf-rp:datos`): lo
-  que graba un usuario lo ve otro al entrar, en el mismo navegador. Trae 12 solicitudes en todos los estados, 8 cuentas
-  registradas y notificaciones. Si cambian la forma de los datos, suban `VERSION` y se regeneran solos.
+  que graba un usuario lo ve otro al entrar, en el mismo navegador. Trae 6 solicitudes de necesidades estratégicas en
+  todos los estados, sus ítems registrados, la configuración del CMN y notificaciones. Si cambian la forma de los datos, suban `VERSION` y se regeneran solos.
 - **`src/app/mock/usuarios-demo.ts`** define los usuarios y sus perfiles. El token es un JWT sin firma: la app solo lee
   su vencimiento.
 - Las notificaciones en tiempo real (socket) están apagadas: la campana se actualiza al iniciar sesión y al abrirla.
@@ -89,12 +92,15 @@ src/app/
 ├── layout/          armazón: barra superior, menú lateral, menú de procesos, bandeja y escritorio virtual
 ├── mock/            backend simulado, datos iniciales y usuarios de demostración
 ├── modules/
-│   └── tesoreria/cuentas-bancarias/
-│       ├── api/     llamadas del proceso
-│       ├── config/  rutas, columnas y filtros de Documentos y registros
-│       ├── models/  tipos y catálogos (bancos, monedas, tipos de cuenta)
-│       ├── pages/   documents · solicitud · consultas
-│       └── utils/   exportación a Excel, CSV y PDF
+│   ├── abastecimiento/
+│   │   ├── anexo-2-fase-1/      CMN Programación (proceso de ejemplo)
+│   │   │   ├── api/     llamadas del proceso
+│   │   │   ├── config/  rutas, columnas y filtros de Documentos y registros
+│   │   │   ├── models/  tipos del Anexo N.º 02
+│   │   │   ├── pages/   documents · solicitud
+│   │   │   └── utils/   formato de montos
+│   │   └── items-estrategicos/  Necesidades estratégicas
+│   └── configuracion/           configuración del CMN
 └── shared/
     ├── ui/          componentes del diseño de Figma (sin dependencias del dominio)
     ├── components/  componentes compuestos y plantillas de pantalla
@@ -103,7 +109,7 @@ src/app/
 
 ## Cómo sumar un proceso
 
-Tomen como modelo `modules/tesoreria/cuentas-bancarias/`:
+Tomen como modelo `modules/abastecimiento/anexo-2-fase-1/`:
 
 1. **Modelo y API** del proceso en `modules/<área>/<proceso>/`.
 2. **Backend simulado**: sus rutas en `RUTAS` de `mock-backend.interceptor.ts` y sus datos iniciales en `mock-db.ts`.

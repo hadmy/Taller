@@ -38,7 +38,7 @@
         <siaf-solicitude-info-card [fields]="camposEntidad()" [captureOpenDate]="true" />
       }
 
-      <!-- ── Ítems estratégicos (Figma «2. Registro de solicitud»: «+», tarjeta Agregar y tabla Año / Cantidad de ítems) ── -->
+      <!-- ── Necesidades estratégicas (Figma «2. Registro de solicitud»: «+», tarjeta Agregar y tabla Año / Cantidad de necesidades) ── -->
       @if (modoAgregar()) {
         <siaf-solicitude-form-card title="Agregar">
           <div card-actions class="flex gap-siaf-sm">
@@ -47,17 +47,17 @@
           </div>
 
           <div class="flex min-h-10 items-center justify-between gap-siaf-md">
-            <h3 class="m-0 text-sm font-bold uppercase text-text">Ítems estratégicos</h3>
-            <siaf-button variant="accent" size="md" icon="search" [iconOnly]="true" ariaLabel="Seleccionar ítems estratégicos" (click)="abrirPanelItems()" />
+            <h3 class="m-0 text-sm font-bold uppercase text-text">Necesidades estratégicas</h3>
+            <siaf-button variant="accent" size="md" icon="search" [iconOnly]="true" ariaLabel="Seleccionar necesidades estratégicas" (click)="abrirPanelItems()" />
           </div>
 
           @if (items().length === 0) {
-            <message-box text="No se ha seleccionado ningún ítem. Haga clic en el botón para realizar una selección." />
+            <message-box text="No se ha seleccionado ninguna necesidad. Haga clic en el botón para realizar una selección." />
           } @else {
             <siaf-form-table-search
               [value]="busquedaItems()"
               placeholder="Buscar"
-              ariaLabel="Buscar ítems de la solicitud"
+              ariaLabel="Buscar necesidades de la solicitud"
               [showActions]="false"
               (valueChange)="buscarItems($event)"
             />
@@ -67,8 +67,8 @@
               [indeterminate]="paginaItemsParcial()"
               [selectedCount]="itemsMarcados().size"
               [showDeleteAction]="true"
-              selectAllLabel="Seleccionar los ítems de la página"
-              deleteLabel="Quitar los ítems seleccionados"
+              selectAllLabel="Seleccionar las necesidades de la página"
+              deleteLabel="Quitar las necesidades seleccionadas"
               [page]="paginaItems()"
               [pageSize]="filasPorPaginaItems()"
               [totalItems]="itemsFiltrados().length"
@@ -99,7 +99,7 @@
                         <input
                           class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
                           type="checkbox"
-                          [attr.aria-label]="'Seleccionar el ítem ' + item.descripcion"
+                          [attr.aria-label]="'Seleccionar la necesidad ' + item.descripcion"
                           [checked]="itemsMarcados().has(item.codigo)"
                           (change)="marcarItem(item.codigo, $any($event.target).checked)"
                         />
@@ -107,12 +107,12 @@
                       <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.codigo }}</td>
                       <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcion }}</td>
                       <td class="px-siaf-md py-siaf-xs text-center">
-                        <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" [ariaLabel]="'Quitar el ítem ' + item.descripcion" (click)="quitarItem(item.codigo)" />
+                        <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" [ariaLabel]="'Quitar la necesidad ' + item.descripcion" (click)="quitarItem(item.codigo)" />
                       </td>
                     </tr>
                   } @empty {
                     <tr>
-                      <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" colspan="4">No se encontraron ítems.</td>
+                      <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" colspan="4">No se encontraron necesidades.</td>
                     </tr>
                   }
                 </tbody>
@@ -136,7 +136,7 @@
           }
         </siaf-solicitude-form-card>
       } @else {
-        <siaf-solicitude-form-card title="Ítems estratégicos">
+        <siaf-solicitude-form-card title="Necesidades estratégicas">
           @if (!soloLectura()) {
             <siaf-button
               card-actions
@@ -144,7 +144,7 @@
               size="md"
               icon="add"
               [iconOnly]="true"
-              ariaLabel="Agregar ítems estratégicos"
+              ariaLabel="Agregar necesidades estratégicas"
               [disabled]="items().length > 0"
               (click)="abrirAgregar()"
             />
@@ -160,7 +160,7 @@
               [showEditAction]="!soloLectura()"
               [editDisabled]="!resumenMarcado()"
               selectAllLabel="Seleccionar la fila"
-              editLabel="Editar los ítems del año"
+              editLabel="Editar las necesidades del año"
               [page]="1"
               [pageSize]="25"
               [totalItems]="1"
@@ -177,7 +177,7 @@
                       <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Selección</span></th>
                     }
                     <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Año</th>
-                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Cantidad de ítems</th>
+                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Cantidad de necesidades</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -214,17 +214,17 @@
     }
   </siaf-solicitude-page-layout>
 
-  <!-- ── Seleccionar ítems estratégicos (Figma RC-016, con el panel de selección del kit) ── -->
+  <!-- ── Seleccionar necesidades estratégicas (Figma RC-016, con el panel de selección del kit) ── -->
   <siaf-selection-side-nav
     [open]="panelItemsAbierto()"
-    title="Seleccionar ítems estratégicos"
+    title="Seleccionar necesidades estratégicas"
     mode="multiple"
     [rows]="filasPanel()"
     [columns]="columnasPanel"
     [searchValue]="busquedaPanel()"
     [selectedIds]="seleccionPanel()"
     [disabledIds]="idsDeshabilitadosPanel()"
-    emptyMessage="No hay ítems disponibles para agregar."
+    emptyMessage="No hay necesidades disponibles para agregar."
     [paginated]="true"
     [showTopPagination]="true"
     [page]="paginaPanel()"
@@ -236,7 +236,7 @@
     [showSelectAll]="true"
     [selectAllChecked]="paginaPanelCompleta()"
     [selectAllIndeterminate]="paginaPanelParcial()"
-    selectAllLabel="Seleccionar los ítems de la página"
+    selectAllLabel="Seleccionar las necesidades de la página"
     (searchChange)="buscarEnPanel($event)"
     (selectionChange)="seleccionPanel.set($event)"
     (selectAllChange)="marcarPaginaPanel($event)"

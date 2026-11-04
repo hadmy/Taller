@@ -1,5 +1,5 @@
 /**
- * Proceso «Solicitud de Ítems Estratégicos» del Cuadro Multianual de Necesidades (CMN).
+ * Proceso «Solicitud de Necesidades Estratégicas» del Cuadro Multianual de Necesidades (CMN).
  *
  * Una solicitud (documento SIE) propone incluir VARIOS ítems del catálogo como estratégicos. El creador elige los
  * ítems, adjunta el sustento, graba y verifica; el aprobador aprueba, observa o rechaza. Al aprobarse, los ítems pasan
@@ -8,7 +8,7 @@
 
 /** Código del documento en el catálogo de documentos. */
 export const CODIGO_DOCUMENTO = 'SIE';
-export const NOMBRE_DOCUMENTO = 'Solicitud de Ítems Estratégicos';
+export const NOMBRE_DOCUMENTO = 'Solicitud de necesidades estratégicas';
 
 /** Única acción del documento: incluir ítems como estratégicos. */
 export const TIPO_ACCION = 'inclusion';
@@ -17,7 +17,7 @@ export const ETIQUETA_TIPO_ACCION = 'Creación';
 /** Sistema nacional al que pertenece el proceso (columna «Sistemas Nacionales»). */
 export const SISTEMA_NACIONAL = 'Sistema Nacional de Abastecimiento';
 
-/** Un ítem del catálogo: lo que se elige en «Seleccionar ítems estratégicos». */
+/** Un ítem del catálogo: lo que se elige en «Seleccionar necesidades estratégicas». */
 export interface ItemEstrategico {
   /** Código del ítem en el catálogo (16 dígitos). */
   codigo: string;

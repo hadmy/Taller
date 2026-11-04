@@ -20,7 +20,7 @@ import {
 } from '../../models/item-estrategico.model';
 
 /**
- * «Documentos y registros» de los ítems estratégicos del CMN. La pantalla entera la arma `siaf-documents-records-page`:
+ * «Documentos y registros» de los necesidades estratégicas del CMN. La pantalla entera la arma `siaf-documents-records-page`:
  * esta página carga la bandeja (solicitudes SIE) y los ítems aprobados (registros) y los pasa como filas.
  */
 @Component({

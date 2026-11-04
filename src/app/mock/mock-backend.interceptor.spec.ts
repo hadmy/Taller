@@ -5,8 +5,8 @@ import { Observable } from 'rxjs';
 
 import type { LoginResponse } from '../core/api/auth-api.service';
 import type { SolicitudResponse } from '../core/api/solicitudes-api.service';
+import type { ContextoAnexo2 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import type { ItemEstrategicoCatalogo, ItemEstrategicoRegistro } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
-import type { CuentaBancariaDatos, CuentaBancariaRegistro } from '../modules/tesoreria/cuentas-bancarias/models/cuenta-bancaria.model';
 import { mockBackendInterceptor } from './mock-backend.interceptor';
 import { reiniciarDatosDemo } from './mock-db';
 import { CONTRASENA_DEMO } from './usuarios-demo';
@@ -20,15 +20,9 @@ describe('mockBackendInterceptor', () => {
   let http: HttpClient;
   let red: HttpTestingController;
 
-  const CUENTA: CuentaBancariaDatos = {
-    bancoCodigo: '002',
-    tipoCuenta: 'CORRIENTE',
-    moneda: 'PEN',
-    numeroCuenta: '19412345678901',
-    denominacion: 'Cuenta de prueba',
-    fechaApertura: '2026-09-10',
-    esRecaudadora: false,
-  };
+  /** Solicitud de necesidades estratégicas: el tipo de documento con el que se prueban las reglas generales. */
+  const NUEVA_SIE = { tipoDocumentoId: 'td-sie', tipoAccion: 'inclusion', organoLinea: 'OGA', justificacion: 'Ítems nuevos' };
+  const ITEMS = [{ codigo: '4215271000010524', descripcion: 'Placas radiográficas' }];
 
   /** Resuelve la petición simulada (tiene una latencia de 250 ms) y devuelve la respuesta o el error. */
   function esperar<T>(peticion: Observable<T>): { valor?: T; error?: HttpErrorResponse } {
@@ -67,7 +61,7 @@ describe('mockBackendInterceptor', () => {
     const { error } = esperar(http.post(`${API}/auth/login`, { dni: '11111111', password: 'otra' }));
 
     expect(error?.status).toBe(401);
-    expect(error?.error.message).toContain('DNI o contraseña incorrectos');
+    expect(error?.error.message).toContain('Usuario o contraseña incorrectos');
   }));
 
   it('entrega los perfiles del usuario y cambia al que se elige', fakeAsync(() => {
@@ -82,26 +76,32 @@ describe('mockBackendInterceptor', () => {
 
   it('la bandeja no muestra solicitudes en NUEVO y pagina si se pide', fakeAsync(() => {
     const headers = entrar('11111111');
-    esperar(http.post(`${API}/solicitudes`, { tipoAccion: 'creacion', organoLinea: 'OGA', justificacion: 'Borrador' }, { headers }));
+    esperar(http.post(`${API}/solicitudes`, NUEVA_SIE, { headers }));
 
-    const { valor } = esperar(http.get<{ data: SolicitudResponse[]; total: number }>(`${API}/solicitudes/bandeja-creador?tipos=SRCB&page=1&limit=5`, { headers }));
+    const { valor } = esperar(http.get<{ data: SolicitudResponse[]; total: number }>(`${API}/solicitudes/bandeja-creador?tipos=SIE&page=1&limit=5`, { headers }));
 
     expect(valor?.data.length).toBe(5);
-    expect(valor?.total).toBe(12);
+    expect(valor?.total).toBe(6);
   }));
 
-  it('recorre el flujo completo: elaborar, verificar y aprobar crea la cuenta y avisa a cada rol', fakeAsync(() => {
+  it('no crea solicitudes de un tipo de documento que no existe', fakeAsync(() => {
+    const headers = entrar('11111111');
+    const { error } = esperar(http.post(`${API}/solicitudes`, { ...NUEVA_SIE, tipoDocumentoId: 'td-inexistente' }, { headers }));
+
+    expect(error?.status).toBe(400);
+  }));
+
+  it('recorre el flujo completo: elaborar, verificar y aprobar avisa a cada rol', fakeAsync(() => {
     const ana = entrar('11111111');
-    const creada = esperar(http.post<SolicitudResponse>(`${API}/solicitudes`, { tipoAccion: 'creacion', organoLinea: 'OGA', justificacion: 'Cuenta nueva' }, { headers: ana }));
+    const creada = esperar(http.post<SolicitudResponse>(`${API}/solicitudes`, NUEVA_SIE, { headers: ana }));
     const id = creada.valor!.id;
 
-    // Sin datos ni sustento no se puede elaborar.
+    // Sin datos no se puede elaborar.
     expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana })).error?.status).toBe(400);
 
-    esperar(http.post(`${API}/solicitudes/${id}/cuenta-bancaria`, CUENTA, { headers: ana }));
-    esperar(http.post(`${API}/solicitudes/${id}/sustentos`, archivo(), { headers: ana }));
+    esperar(http.post(`${API}/solicitudes/${id}/items-estrategicos`, { items: ITEMS }, { headers: ana }));
     const elaborada = esperar(http.patch<{ numero: string }>(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
-    expect(elaborada.valor?.numero).toMatch(/^PCB-SRCB-00013-\d{4}-MEF-OGA$/);
+    expect(elaborada.valor?.numero).toMatch(/^CMN-SIE-00007-\d{4}-MEF-OGA$/);
 
     // El creador no puede aprobar.
     expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: ana })).error?.status).toBe(409);
@@ -113,11 +113,6 @@ describe('mockBackendInterceptor', () => {
 
     esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: luis }));
 
-    const registros = esperar(http.get<CuentaBancariaRegistro[]>(`${API}/cuentas-bancarias`, { headers: luis }));
-    const cuenta = registros.valor?.find((r) => r.documentoId === id);
-    expect(cuenta?.codigo).toBe('CB-0009');
-    expect(cuenta?.numeroCuenta).toBe(CUENTA.numeroCuenta);
-
     const detalle = esperar(http.get<SolicitudResponse>(`${API}/solicitudes/${id}`, { headers: luis }));
     expect(detalle.valor?.historialEstados?.map((h) => h.estadoNuevo)).toEqual(['NUEVO', 'ELABORADO', 'VERIFICADO', 'APROBADO']);
 
@@ -127,7 +122,7 @@ describe('mockBackendInterceptor', () => {
 
   it('observar pide comentario y una solicitud observada ya no se puede eliminar', fakeAsync(() => {
     const luis = entrar('22222222');
-    const bandeja = esperar(http.get<SolicitudResponse[]>(`${API}/solicitudes/bandeja-aprobador?tipos=SRCB`, { headers: luis }));
+    const bandeja = esperar(http.get<SolicitudResponse[]>(`${API}/solicitudes/bandeja-aprobador?tipos=SIE`, { headers: luis }));
     const verificada = bandeja.valor!.find((s) => s.estado === 'VERIFICADO')!;
 
     expect(esperar(http.patch(`${API}/solicitudes/${verificada.id}/estado`, { estadoNuevo: 'OBSERVADO' }, { headers: luis })).error?.status).toBe(400);
@@ -141,7 +136,7 @@ describe('mockBackendInterceptor', () => {
     expect(eliminar.error?.error.message).toContain('observada');
   }));
 
-  it('ítems estratégicos: elaborar pide ítems, numera con su serie y aprobar deja los ítems vigentes', fakeAsync(() => {
+  it('necesidades estratégicas: elaborar pide ítems, numera con su serie y aprobar deja los ítems vigentes', fakeAsync(() => {
     const ana = entrar('11111111');
     const creada = esperar(http.post<SolicitudResponse>(`${API}/solicitudes`, { tipoDocumentoId: 'td-sie', tipoAccion: 'inclusion', organoLinea: 'OGA', justificacion: 'Ítems nuevos' }, { headers: ana }));
     const id = creada.valor!.id;
@@ -171,6 +166,29 @@ describe('mockBackendInterceptor', () => {
     const nuevos = registros.filter((r) => r.documentoId === id);
     expect(nuevos.map((r) => r.codigo)).toEqual(elegidos.map((i) => i.codigo));
     expect(nuevos.every((r) => r.vigente)).toBeTrue();
+  }));
+
+  it('anexo 02, fase 1: elaborar pide áreas usuarias con Anexo 01 recibido, sin sustento, y numera con su serie', fakeAsync(() => {
+    const ana = entrar('11111111');
+    const contexto = esperar(http.get<ContextoAnexo2>(`${API}/cmn/anexo-2-fase-1/contexto`, { headers: ana })).valor!;
+    expect(contexto.areas.length).toBe(contexto.resumen.anexosRecibidos);
+
+    const creada = esperar(http.post<SolicitudResponse>(`${API}/solicitudes`, { tipoDocumentoId: 'td-sa2f1', tipoAccion: 'creacion', organoLinea: 'OGA', justificacion: '' }, { headers: ana }));
+    const id = creada.valor!.id;
+    expect(creada.valor?.catDocumento?.codigo).toBe('SA2F1');
+
+    // Sin áreas no se puede elaborar, y no se aceptan áreas sin Anexo 01 recibido.
+    expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana })).error?.status).toBe(400);
+    const ajena = { ...contexto.areas[0], id: 'otra', nombre: 'Otra oficina' };
+    expect(esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1`, { areas: [ajena] }, { headers: ana })).error?.status).toBe(400);
+
+    esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1`, { areas: contexto.areas.slice(0, 2) }, { headers: ana }));
+    const elaborada = esperar(http.patch<{ numero: string }>(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
+    // Los dos Anexos 02 sembrados (Figma EV-009) son el 0001 y el 0002.
+    expect(elaborada.valor?.numero).toBe('0003');
+
+    const detalle = esperar(http.get<SolicitudResponse>(`${API}/solicitudes/${id}`, { headers: ana })).valor!;
+    expect(detalle.detalleAnexo2Fase1?.areas.map((a) => a.id)).toEqual(contexto.areas.slice(0, 2).map((a) => a.id));
   }));
 
   it('deja pasar lo que no es de la API (los assets)', () => {

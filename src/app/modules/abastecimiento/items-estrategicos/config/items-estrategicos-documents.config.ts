@@ -10,7 +10,7 @@ import { ETIQUETA_TIPO_ACCION, NOMBRE_DOCUMENTO } from '../models/item-estrategi
 import { CREATE_DOCUMENT_OPTIONS, PROCESS_ID, PROCESS_ROUTE, REQUEST_ROUTE } from './items-estrategicos.rutas';
 
 /**
- * Configuración de «Documentos y registros» de los ítems estratégicos. La pantalla completa la pinta
+ * Configuración de «Documentos y registros» de los necesidades estratégicas. La pantalla completa la pinta
  * `siaf-documents-records-page`: aquí solo se dice qué columnas, filtros y opciones tiene.
  */
 
@@ -64,7 +64,7 @@ const filterValorOptions: DocumentsRecordsFilterOption[] = [
 ];
 
 export const ITEMS_ESTRATEGICOS_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
-  title: 'Ítems estratégicos',
+  title: 'Necesidades estratégicas',
   processId: PROCESS_ID,
   defaultRequestRoute: REQUEST_ROUTE,
   createDocumentOptions: CREATE_DOCUMENT_OPTIONS,

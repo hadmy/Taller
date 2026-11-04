@@ -41,12 +41,12 @@ import {
 } from '../../models/item-estrategico.model';
 
 /**
- * Solicitud de Ítems Estratégicos (SIE) del CMN, armada sobre el patrón de solicitud del Figma «B.1 Rol Creador»
+ * Solicitud de Necesidades Estratégicas (SIE) del CMN, armada sobre el patrón de solicitud del Figma «B.1 Rol Creador»
  * (Registro, Elaborada, Verificada y Observada).
  *
- * El creador elige los ítems del catálogo en «Seleccionar ítems estratégicos» (`siaf-selection-side-nav`), los quita de
+ * El creador elige los ítems del catálogo en «Seleccionar necesidades estratégicas» (`siaf-selection-side-nav`), los quita de
  * a uno o en bloque. Con el «+» se abre la tarjeta «Agregar» (Cancelar / Aceptar) y, al aceptar, queda la tabla Año /
- * Cantidad de ítems (Figma «2. Registro de solicitud»); no lleva justificación ni sustento. Grabar: crear la solicitud →
+ * Cantidad de necesidades (Figma «2. Registro de solicitud»); no lleva justificación ni sustento. Grabar: crear la solicitud →
  * guardar los ítems → pasar a ELABORADO (genera el número). El creador edita, verifica o elimina; el aprobador aprueba,
  * observa o rechaza un documento VERIFICADO. Al aprobarse, los ítems pasan a los registros con la vigencia activa.
  */
@@ -162,7 +162,7 @@ export class ItemEstrategicoRequestComponent implements OnInit {
     () => this.itemsPaginados().some((i) => this.itemsMarcados().has(i.codigo)) && !this.paginaItemsCompleta(),
   );
 
-  // ── Panel «Seleccionar ítems estratégicos» ────────────────────────
+  // ── Panel «Seleccionar necesidades estratégicas» ────────────────────────
   private readonly catalogo = signal<ItemEstrategicoCatalogo[]>([]);
   readonly panelItemsAbierto = signal(false);
   readonly busquedaPanel = signal('');
@@ -203,7 +203,7 @@ export class ItemEstrategicoRequestComponent implements OnInit {
     () => this.elegiblesPaginaPanel().some((f) => this.seleccionPanel().includes(f.id)) && !this.paginaPanelCompleta(),
   );
 
-  // ── Modo «Agregar» y tabla Año / Cantidad de ítems (Figma 2. Registro de solicitud) ──
+  // ── Modo «Agregar» y tabla Año / Cantidad de necesidades (Figma 2. Registro de solicitud) ──
   /** Tarjeta «Agregar»: se eligen y quitan ítems; «Aceptar» los confirma y «Cancelar» vuelve a la lista anterior. */
   readonly modoAgregar = signal(false);
   private respaldoItems: ItemEstrategico[] = [];

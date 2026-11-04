@@ -32,19 +32,42 @@ export interface ProcessMenuNode {
 }
 
 /**
- * Árbol de procesos del taller, tomado del nodo de Figma «Sidenav with tree view»
- * (node-id 2549-71438). Ningún proceso está implementado todavía: todas las hojas
- * van como «Próximamente». Para sumar un proceso real: una hoja con `moduleRoute`
- * (Documentos y registros) y otra para sus consultas, y sus rutas en `app.routes.ts`.
+ * Árbol de procesos del taller, tomado del Figma del CMN («A.2-OA-EV-006/007 Procesos»). Lo que no está implementado
+ * va como «Próximamente». Para sumar un proceso real: una hoja con `moduleRoute` (Documentos y registros) y otra para
+ * sus consultas, y sus rutas en `app.routes.ts`.
  */
 export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
   {
+    id: 'gestion-pasivos-financieros',
+    label: 'Gestión de pasivos financieros del sector público',
+    comingSoon: true,
+  },
+  {
     id: 'gestion-abastecimiento',
     label: 'Gestión de abastecimiento',
-    expanded: true,
-    selected: true,
-    comingSoon: true,
     children: [
+      {
+        id: 'programacion-multianual-bienes-servicios-obras',
+        label: 'Programación multianual de bienes, servicios y obras',
+        children: [
+          {
+            id: 'cmn-programacion',
+            label: 'CMN Programación',
+            moduleRoute: '/procesos/cmn-programacion',
+          },
+          {
+            id: 'cmn-ejecucion',
+            label: 'CMN Ejecución',
+            comingSoon: true,
+          },
+        ],
+      },
+      {
+        id: 'catalogo-bienes-servicios',
+        label: 'Catálogo de bienes y servicios',
+        comingSoon: true,
+      },
+      // Taller: las demás pantallas del CMN que ya existían (no están en el Figma del navegador de procesos).
       {
         id: 'cuadro-multianual-necesidades',
         label: 'Cuadro Multianual de Necesidades',
@@ -67,8 +90,8 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
             children: [
               {
                 id: 'cuadro-multianual-necesidades-solicitudes-items-estrategicos',
-                label: 'Ítems estratégicos',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/solicitudes/items-estrategicos',
+                label: 'Necesidades estratégicas',
+                moduleRoute: '/procesos/cuadro-multianual-necesidades/solicitudes/necesidades-estrategicas',
               },
               {
                 id: 'cuadro-multianual-necesidades-solicitudes-cambio-fecha-vigente',
@@ -83,11 +106,6 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
               {
                 id: 'cuadro-multianual-necesidades-solicitudes-anexo-1-fase-1',
                 label: 'Registro de Anexo 1 / Fase 1',
-                comingSoon: true,
-              },
-              {
-                id: 'cuadro-multianual-necesidades-solicitudes-anexo-2-fase-1',
-                label: 'Registro de Anexo 2 / Fase 1',
                 comingSoon: true,
               },
             ],

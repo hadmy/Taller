@@ -39,14 +39,7 @@ export const routes: Routes = [
           import('./layout/virtual-desk/virtual-desk.routes').then((m) => m.VIRTUAL_DESK_ROUTES),
         data: { permissions: ['document.read'] }
       },
-      // ── Proceso de ejemplo: Registro de cuentas bancarias ──
-      {
-        path: '',
-        loadChildren: () =>
-          import('./modules/tesoreria/tesoreria.routes').then((m) => m.TESORERIA_ROUTES),
-        data: { permissions: ['document.read'] }
-      },
-      // ── Abastecimiento · CMN: Solicitud de Ítems Estratégicos ──
+      // ── Abastecimiento · CMN: Solicitud de Necesidades Estratégicas ──
       {
         path: '',
         loadChildren: () =>

@@ -3,7 +3,6 @@ import type {
   DocumentsRecordsColumn,
   DocumentsRecordsConfig,
   DocumentsRecordsFilterOption,
-  DocumentsRecordsMenuOption,
 } from '../../../../shared/types/documents-records.types';
 import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { ETIQUETA_TIPO_ACCION, NOMBRE_DOCUMENTO } from '../models/anexo-2-fase-1.model';
@@ -36,14 +35,6 @@ const recordColumns: DocumentsRecordsColumn[] = [
   { key: 'monto', label: 'Monto programado A01', visibility: 'visible', group: 'default', widthClass: 'w-[220px]' },
   { key: 'number', label: 'Solicitud', visibility: 'visible', group: 'default', widthClass: 'w-[280px]' },
   { key: 'fechaRegistro', label: 'Fecha de aprobación', visibility: 'visible', group: 'default', widthClass: 'w-[170px]' },
-];
-
-const fieldsMenuOptions: DocumentsRecordsMenuOption[] = [
-  { label: 'Documento' },
-  { label: 'Tipo de acción' },
-  { label: 'Estado' },
-  { label: 'Fecha de registro', hasChildren: true },
-  { label: 'Entidad' },
 ];
 
 const filterCampoOptions: DocumentsRecordsFilterOption[] = [
@@ -84,7 +75,6 @@ export const CMN_PROGRAMACION_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
   actionTypeFilterOptions: [ETIQUETA_TIPO_ACCION],
   filterCampoOptions,
   filterValorOptions,
-  fieldsMenuOptions,
   recordFilterCampoOptions: [
     { label: 'Área usuaria', value: 'area' },
     { label: 'Solicitud', value: 'number' },

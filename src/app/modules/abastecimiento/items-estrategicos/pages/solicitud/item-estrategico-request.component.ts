@@ -102,7 +102,10 @@ export class ItemEstrategicoRequestComponent implements OnInit {
   });
   readonly elaborado = computed(() => this.estado() !== 'NUEVO');
   readonly soloLectura = computed(() => this.elaborado() && !this.editando());
-  readonly puedeVerificar = computed(() => ['ELABORADO', 'OBSERVADO'].includes(this.estado()));
+  /** En edición, solo sin cambios por grabar: verificar los descartaría. */
+  readonly puedeVerificar = computed(() =>
+    ['ELABORADO', 'OBSERVADO'].includes(this.estado()) && !(this.editando() && (this.hayCambios() || this.modoAgregar())),
+  );
   readonly numeroDocumento = computed(() => this.solicitud()?.numero ?? '');
 
   readonly headerState = computed<SolicitudeHeaderState>(() => {

@@ -38,7 +38,7 @@ describe('SolicitudeHeaderComponent', () => {
 
   it('en cada estado la última acción es la principal: solo ella lleva ícono', () => {
     const casos: Array<[string, string, string[], string]> = [
-      ['creator', 'edit', ['Cancelar', 'Grabar'], 'save'],
+      ['creator', 'edit', ['Cancelar', 'Grabar', 'Verificar'], 'task_alt'],
       ['creator', 'elaborated', ['Eliminar', 'Editar', 'Verificar'], 'task_alt'],
       ['creator', 'observed', ['Eliminar', 'Editar'], 'edit'],
       ['reviewer', 'verified', ['Rechazar', 'Observar', 'Validar'], 'assignment'],
@@ -53,7 +53,7 @@ describe('SolicitudeHeaderComponent', () => {
 
   it('conserva variantes y deshabilitados: Grabar sin cambios, Eliminar en observado y Editar relleno', () => {
     configurar({ role: 'creator', state: 'edit', saveDisabled: true });
-    expect(acciones()[1]).toEqual({ texto: 'Grabar', icono: 'save', variante: 'accent', deshabilitado: true });
+    expect(acciones()[1]).toEqual({ texto: 'Grabar', icono: '', variante: 'secondary', deshabilitado: true });
 
     configurar({ role: 'creator', state: 'observed', saveDisabled: false });
     expect(acciones()).toEqual([

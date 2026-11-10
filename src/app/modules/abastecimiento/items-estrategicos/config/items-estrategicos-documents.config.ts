@@ -3,7 +3,6 @@ import type {
   DocumentsRecordsColumn,
   DocumentsRecordsConfig,
   DocumentsRecordsFilterOption,
-  DocumentsRecordsMenuOption,
 } from '../../../../shared/types/documents-records.types';
 import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { ETIQUETA_TIPO_ACCION, NOMBRE_DOCUMENTO } from '../models/item-estrategico.model';
@@ -37,14 +36,6 @@ const recordColumns: DocumentsRecordsColumn[] = [
   { key: 'descripcion', label: 'Descripción', visibility: 'visible', group: 'default', widthClass: 'min-w-[320px]' },
   { key: 'number', label: 'Solicitud', visibility: 'visible', group: 'default', widthClass: 'w-[280px]' },
   { key: 'fechaRegistro', label: 'Fecha de registro', visibility: 'visible', group: 'default', widthClass: 'w-[170px]' },
-];
-
-const fieldsMenuOptions: DocumentsRecordsMenuOption[] = [
-  { label: 'Documento' },
-  { label: 'Tipo de acción' },
-  { label: 'Estado' },
-  { label: 'Fecha de registro', hasChildren: true },
-  { label: 'Entidad' },
 ];
 
 const filterCampoOptions: DocumentsRecordsFilterOption[] = [
@@ -84,7 +75,6 @@ export const ITEMS_ESTRATEGICOS_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
   actionTypeFilterOptions: [ETIQUETA_TIPO_ACCION],
   filterCampoOptions,
   filterValorOptions,
-  fieldsMenuOptions,
   recordFilter1Label: 'Vigencia',
   recordFilter1Key: 'status',
   recordFilter1Options: ['Activo', 'Inactivo'],

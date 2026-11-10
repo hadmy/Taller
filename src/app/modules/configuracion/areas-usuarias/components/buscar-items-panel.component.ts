@@ -2,18 +2,17 @@
 
 import { SidePanelComponent } from '../../../../shared/ui/side-panel/side-panel.component';
 import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
-import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
 import { CatalogoItem } from '../models/area-usuaria.model';
 
 /**
- * Panel lateral «Buscar commodities u ítems» del detalle de un área usuaria (Figma «Conf-Areas usuarias-06»), armado
+ * Panel lateral «Buscar commodities u ítems» del detalle de un área usuaria (Figma «Conf-Areas usuarias-04 2», nodo 5056:124676), armado
  * con `siaf-side-panel`: buscador y tabla del catálogo con una casilla por fila; «Aceptar» emite los ítems marcados y
  * «Cancelar» (o la ✕ o Escape) cierra sin cambios. Se abre con la lupa de la sección «Comodities» del detalle.
  */
 @Component({
   selector: 'siaf-buscar-items-panel',
   standalone: true,
-  imports: [FormTableSearchComponent, PaginationComponent, SidePanelComponent],
+  imports: [FormTableSearchComponent, SidePanelComponent],
   template: `
     <siaf-side-panel
       [open]="abierto()"
@@ -25,35 +24,35 @@ import { CatalogoItem } from '../models/area-usuaria.model';
       <div class="flex flex-col gap-siaf-md">
         <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar commodity o ítem" (valueChange)="buscar($event)" />
 
-        <div class="flex items-center">
+        <div class="flex h-10 items-center pl-siaf-sm">
           <input
             class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
             type="checkbox"
             aria-label="Seleccionar todos los ítems"
             [checked]="todasVisiblesSeleccionadas()"
             [indeterminate]="algunasVisiblesSeleccionadas()"
-            [disabled]="filasPaginadas().length === 0"
+            [disabled]="filasFiltradas().length === 0"
             (change)="alternarVisibles($any($event.target).checked)"
           />
         </div>
 
-        <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
-          <table class="w-full min-w-[720px] border-collapse text-sm">
+        <div class="overflow-auto">
+          <table class="w-full min-w-[1000px] table-fixed border-collapse text-sm">
             <thead
               class="[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-surface [&_th]:bg-[linear-gradient(var(--sys-color-bg-surfaces-surface-high),var(--sys-color-bg-surfaces-surface-high))] [&_th]:shadow-[inset_0_-1px_0_var(--sys-color-divider-strong)]"
             >
               <tr class="text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
                 <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Commodity</th>
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción commodity</th>
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Item</th>
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción item</th>
+                <th class="w-[210px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Commodity</th>
+                <th class="w-[370px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción commodity</th>
+                <th class="w-[210px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Item</th>
+                <th class="w-[370px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción item</th>
               </tr>
             </thead>
             <tbody>
-              @for (fila of filasPaginadas(); track fila.id) {
+              @for (fila of filasFiltradas(); track fila.id) {
                 <tr
-                  class="border-b border-[var(--sys-color-divider-default)] last:border-b-0"
+                  class="h-12 border-b border-[var(--sys-color-divider-default)]"
                   [class.bg-[var(--sys-color-bg-states-light-selected)]]="seleccionados().has(fila.id)"
                 >
                   <td class="p-siaf-sm">
@@ -80,21 +79,6 @@ import { CatalogoItem } from '../models/area-usuaria.model';
             </tbody>
           </table>
         </div>
-
-        <siaf-pagination
-          navigation="Activate"
-          position="Bottom"
-          [rowPage]="true"
-          [page]="page()"
-          [pageSize]="rowsPerPage()"
-          [totalItems]="filasFiltradas().length"
-          [totalPages]="totalPages()"
-          [rowsPerPage]="rowsPerPage()"
-          [rowsPerPageOptions]="rowsPerPageOptions"
-          (previous)="paginaAnterior()"
-          (next)="paginaSiguiente()"
-          (rowsPerPageChange)="cambiarFilasPorPagina($event)"
-        />
       </div>
     </siaf-side-panel>
   `,
@@ -114,7 +98,6 @@ export class BuscarItemsPanelComponent {
     if (valor) {
       this.seleccionados.set(new Set());
       this.busqueda.set('');
-      this.page.set(1);
     }
   }
 
@@ -134,49 +117,24 @@ export class BuscarItemsPanelComponent {
     );
   });
 
-  readonly page = signal(1);
-  readonly rowsPerPage = signal(10);
-  readonly rowsPerPageOptions = [10, 25, 50, 100];
-
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filasFiltradas().length / this.rowsPerPage())));
-
-  readonly filasPaginadas = computed(() => {
-    const inicio = (this.page() - 1) * this.rowsPerPage();
-    return this.filasFiltradas().slice(inicio, inicio + this.rowsPerPage());
-  });
-
   readonly todasVisiblesSeleccionadas = computed(() => {
-    const visibles = this.filasPaginadas();
+    const visibles = this.filasFiltradas();
     return visibles.length > 0 && visibles.every((f) => this.seleccionados().has(f.id));
   });
 
   readonly algunasVisiblesSeleccionadas = computed(
-    () => this.filasPaginadas().some((f) => this.seleccionados().has(f.id)) && !this.todasVisiblesSeleccionadas(),
+    () => this.filasFiltradas().some((f) => this.seleccionados().has(f.id)) && !this.todasVisiblesSeleccionadas(),
   );
 
   buscar(texto: string): void {
     this.busqueda.set(texto);
-    this.page.set(1);
   }
 
-  paginaAnterior(): void {
-    this.page.update((p) => Math.max(1, p - 1));
-  }
-
-  paginaSiguiente(): void {
-    this.page.update((p) => Math.min(this.totalPages(), p + 1));
-  }
-
-  cambiarFilasPorPagina(valor: number): void {
-    this.rowsPerPage.set(valor);
-    this.page.set(1);
-  }
-
-  /** Check de la cabecera: marca o desmarca todos los ítems de la página visible. */
+  /** Check de la cabecera: marca o desmarca todos los ítems visibles. */
   alternarVisibles(marcado: boolean): void {
     this.seleccionados.update((set) => {
       const next = new Set(set);
-      for (const f of this.filasPaginadas()) {
+      for (const f of this.filasFiltradas()) {
         if (marcado) next.add(f.id);
         else next.delete(f.id);
       }

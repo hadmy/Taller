@@ -8,6 +8,10 @@ import { ETIQUETA_TIPO_ACCION, NOMBRE_DOCUMENTO_CREAR } from '../models/anexo-2-
 export const PROCESS_ROUTE = '/procesos/cmn-programacion';
 export const REQUEST_SEGMENT = 'anexo-2-fase-1';
 export const REQUEST_ROUTE = `${PROCESS_ROUTE}/${REQUEST_SEGMENT}`;
+/** «Detalle del Anexo 1» de un área usuaria de la solicitud: `REQUEST_ROUTE/:id/anexo-1/:areaId` (Figma «3. Detalle items»). */
+export const ANEXO_1_SEGMENT = 'anexo-1';
+/** «Consolidado del Anexo N.º 02» de la solicitud: `REQUEST_ROUTE/:id/consolidado`. */
+export const CONSOLIDADO_SEGMENT = 'consolidado';
 
 /** Hoja «CMN Programación» del árbol de procesos: arma las migas de pan. */
 export const PROCESS_ID = 'cmn-programacion';

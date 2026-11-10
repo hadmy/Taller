@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../../../../core/config/app.config';
-import { ServicioBasico } from '../models/servicio-basico.model';
+import { EntidadServicioBasico, ServicioBasico } from '../models/servicio-basico.model';
 
 /**
  * Endpoints de la configuración de servicios básicos excluidos de la ley. En el taller los responde el backend
@@ -24,7 +24,12 @@ export class ServiciosBasicosExcluidosApiService {
     return this.http.get<ServicioBasico[]>(`${this.base}/configuracion/servicios-basicos-excluidos/catalogo`);
   }
 
-  /** Reemplaza los servicios básicos vinculados. */
+  /** Entidades que se pueden asignar a un servicio vinculado («Asignar entidades»). */
+  listarEntidades(): Observable<EntidadServicioBasico[]> {
+    return this.http.get<EntidadServicioBasico[]>(`${this.base}/configuracion/servicios-basicos-excluidos/entidades`);
+  }
+
+  /** Reemplaza los servicios básicos vinculados, con sus entidades asignadas. */
   guardar(items: ServicioBasico[]): Observable<{ message: string }> {
     return this.http.put<{ message: string }>(`${this.base}/configuracion/servicios-basicos-excluidos`, { items });
   }

@@ -1,6 +1,11 @@
 import { Routes } from '@angular/router';
 
-import { PROCESS_ROUTE as CMN_PROGRAMACION_ROUTE, REQUEST_ROUTE as ANEXO_2_REQUEST_ROUTE } from './anexo-2-fase-1/config/anexo-2-fase-1.rutas';
+import {
+  ANEXO_1_SEGMENT,
+  CONSOLIDADO_SEGMENT,
+  PROCESS_ROUTE as CMN_PROGRAMACION_ROUTE,
+  REQUEST_ROUTE as ANEXO_2_REQUEST_ROUTE,
+} from './anexo-2-fase-1/config/anexo-2-fase-1.rutas';
 import { PROCESS_ROUTE, REQUEST_ROUTE } from './items-estrategicos/config/items-estrategicos.rutas';
 
 /**
@@ -43,5 +48,15 @@ export const ABASTECIMIENTO_ROUTES: Routes = [
     path: `${ANEXO_2_REQUEST_ROUTE.slice(1)}/:id`,
     loadComponent: () =>
       import('./anexo-2-fase-1/pages/solicitud/anexo-2-fase-1-request.component').then((m) => m.Anexo2Fase1RequestComponent),
+  },
+  {
+    path: `${ANEXO_2_REQUEST_ROUTE.slice(1)}/:id/${ANEXO_1_SEGMENT}/:areaId`,
+    loadComponent: () =>
+      import('./anexo-2-fase-1/pages/detalle-anexo-1/detalle-anexo-1.component').then((m) => m.DetalleAnexo1Component),
+  },
+  {
+    path: `${ANEXO_2_REQUEST_ROUTE.slice(1)}/:id/${CONSOLIDADO_SEGMENT}`,
+    loadComponent: () =>
+      import('./anexo-2-fase-1/pages/consolidado-anexo-2/consolidado-anexo-2.component').then((m) => m.ConsolidadoAnexo2Component),
   },
 ];

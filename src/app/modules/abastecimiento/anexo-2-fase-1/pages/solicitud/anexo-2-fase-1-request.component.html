@@ -86,34 +86,47 @@
         </div>
       </siaf-solicitude-form-card>
 
-      <!-- ── Seleccionar registros (Figma RC-01: botón de búsqueda y modal de selección) ── -->
-      <siaf-solicitude-form-card title="Seleccionar registros">
-        @if (!soloLectura()) {
-          <siaf-button
-            card-actions
-            variant="accent"
-            size="md"
-            icon="search"
-            [iconOnly]="true"
-            ariaLabel="Seleccionar registros"
-            (click)="abrirPanel()"
-          />
-        }
+      <!-- ── Registros (Figma RC-01 y «A.1-RC-031»: botón de búsqueda, modal de selección y detalle de las áreas) ── -->
+      <siaf-solicitude-form-card [title]="areas().length === 0 ? 'Seleccionar registros' : 'Registros'">
+        <div card-actions class="flex items-center gap-siaf-xs">
+          <!-- Hoja aparte con el formato del Anexo N.º 02 (los Anexos 01 ya revisados por la OA). -->
+          @if (puedeVerConsolidado()) {
+            <siaf-button variant="outline" size="md" icon="table_view" (click)="verConsolidado()">Ver consolidado</siaf-button>
+          }
+          @if (!soloLectura()) {
+            <siaf-button
+              variant="accent"
+              size="md"
+              icon="search"
+              [iconOnly]="true"
+              ariaLabel="Seleccionar registros"
+              (click)="abrirPanel()"
+            />
+          }
+        </div>
 
         @if (areas().length === 0) {
           <message-box text="No se ha seleccionado ningún tipo. Haga clic en el botón para realizar una selección." />
         } @else {
+          <siaf-form-table-search
+            [value]="busquedaAreas()"
+            placeholder="Buscar"
+            ariaLabel="Buscar áreas usuarias de la solicitud"
+            [showActions]="false"
+            (valueChange)="buscarAreas($event)"
+          />
+
           <siaf-table-controls
-            [showSelection]="!soloLectura()"
+            [showSelection]="puedeMarcarAreas()"
             [checked]="paginaAreasCompleta()"
             [indeterminate]="paginaAreasParcial()"
             [selectedCount]="areasMarcadas().size"
-            [showDeleteAction]="!soloLectura()"
+            [showDeleteAction]="puedeMarcarAreas()"
             selectAllLabel="Seleccionar las áreas usuarias de la página"
             deleteLabel="Quitar las áreas usuarias seleccionadas"
             [page]="paginaAreas()"
-            [pageSize]="filasPorPaginaAreas"
-            [totalItems]="areas().length"
+            [pageSize]="filasPorPaginaAreas()"
+            [totalItems]="areasFiltradas().length"
             [totalPages]="totalPaginasAreas()"
             (selectionChange)="marcarPaginaAreas($event)"
             (delete)="quitarMarcadas()"
@@ -121,19 +134,17 @@
             (next)="paginaAreasSiguiente()"
           />
 
-          <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
-            <table class="w-full min-w-[640px] border-collapse text-sm">
+          <div class="overflow-auto">
+            <table class="w-full min-w-[760px] border-collapse text-sm">
               <thead>
                 <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-                  @if (!soloLectura()) {
+                  @if (puedeMarcarAreas()) {
                     <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Selección</span></th>
                   }
                   <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Áreas usuarias</th>
                   <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Ítems</th>
                   <th class="w-60 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Monto programado A01</th>
-                  @if (!soloLectura()) {
-                    <th class="w-20 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Acción</th>
-                  }
+                  <th class="w-60 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Estado evaluación Anexo 01</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,7 +153,7 @@
                     class="border-b border-[var(--sys-color-divider-default)]"
                     [class.bg-[var(--sys-color-bg-states-light-selected)]]="areasMarcadas().has(area.id)"
                   >
-                    @if (!soloLectura()) {
+                    @if (puedeMarcarAreas()) {
                       <td class="p-siaf-sm text-center">
                         <input
                           class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
@@ -153,32 +164,55 @@
                         />
                       </td>
                     }
-                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.nombre }}</td>
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">
+                      @if (areaConDetalle(area.id)) {
+                        <!-- Abre «Detalle del Anexo 1» (Figma «3. Detalle items»). -->
+                        <button
+                          type="button"
+                          class="cursor-pointer rounded-siaf-xs text-left text-[var(--sys-color-text-neutral-medium)] underline-offset-2 hover:text-[var(--sys-color-text-neutral-high)] hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+                          [attr.aria-label]="'Ver el detalle del Anexo 1 de ' + area.nombre"
+                          (click)="verDetalleAnexo1(area.id)"
+                        >{{ area.nombre }}</button>
+                      } @else {
+                        {{ area.nombre }}
+                      }
+                    </td>
                     <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.items }}</td>
                     <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ formatearSoles(area.montoProgramado) }}</td>
-                    @if (!soloLectura()) {
-                      <td class="px-siaf-md py-siaf-xs text-center">
-                        <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" [ariaLabel]="'Quitar ' + area.nombre" (click)="quitarArea(area.id)" />
-                      </td>
-                    }
+                    <td class="px-siaf-md py-siaf-sm">
+                      <siaf-status-tag
+                        appearance="outline"
+                        size="small"
+                        [tone]="estiloEvaluacion[area.estadoEvaluacion].tone"
+                        [icon]="estiloEvaluacion[area.estadoEvaluacion].icon"
+                      >{{ estiloEvaluacion[area.estadoEvaluacion].texto }}</siaf-status-tag>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-low)]" [attr.colspan]="puedeMarcarAreas() ? 5 : 4">
+                      No hay áreas usuarias que coincidan con la búsqueda.
+                    </td>
                   </tr>
                 }
               </tbody>
-              <tfoot>
-                <tr class="bg-[var(--sys-color-bg-surfaces-surface-low)] font-bold text-[var(--sys-color-text-neutral-high)]">
-                  @if (!soloLectura()) {
-                    <td></td>
-                  }
-                  <th scope="row" class="px-siaf-md py-siaf-sm text-left">Total</th>
-                  <td class="px-siaf-md py-siaf-sm">{{ totalItems() }}</td>
-                  <td class="px-siaf-md py-siaf-sm">{{ formatearSoles(totalMonto()) }}</td>
-                  @if (!soloLectura()) {
-                    <td></td>
-                  }
-                </tr>
-              </tfoot>
             </table>
           </div>
+
+          <siaf-pagination
+            navigation="Activate"
+            position="Bottom"
+            [rowPage]="true"
+            [page]="paginaAreas()"
+            [pageSize]="filasPorPaginaAreas()"
+            [totalItems]="areasFiltradas().length"
+            [totalPages]="totalPaginasAreas()"
+            [rowsPerPage]="filasPorPaginaAreas()"
+            [rowsPerPageOptions]="opcionesFilasPorPagina"
+            (previous)="paginaAreasAnterior()"
+            (next)="paginaAreasSiguiente()"
+            (rowsPerPageChange)="cambiarFilasAreas($event)"
+          />
         }
       </siaf-solicitude-form-card>
 

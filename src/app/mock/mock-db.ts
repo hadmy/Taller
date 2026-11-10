@@ -7,7 +7,7 @@ import {
   NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SIE,
   TIPO_ACCION as TIPO_ACCION_SIE,
 } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
-import type { ContextoAnexo2 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
+import { ANIOS_CMN, type AreaUsuariaAnexo1, type ContextoAnexo2, type ItemAnexo1 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import {
   CODIGO_DOCUMENTO as CODIGO_DOCUMENTO_SA2F1,
   NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SA2F1,
@@ -146,6 +146,72 @@ export const CONTEXTO_ANEXO_2_FASE_1: ContextoAnexo2 = {
     { id: 'a1-oc', nombre: 'Oficina de Contabilidad', items: 3, montoProgramado: 112_200, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(4) },
   ],
 };
+
+/**
+ * Ítems de catálogo con que se arman los Anexos 01 (los tres primeros son los del Figma «Detalle del Anexo 1»): tipo,
+ * unidad de medida, precio unitario (solo bienes) y clasificador de gastos, como en el formato del Anexo N.º 02.
+ */
+const ITEMS_CATALOGO_ANEXO_1: {
+  item: string;
+  descripcion: string;
+  tipo: ItemAnexo1['tipo'];
+  unidadMedida: string;
+  precioUnitario: number | null;
+  clasificador: string;
+}[] = [
+  { item: '1520283078101801', descripcion: 'Papel bond A4 75 gr', tipo: 'Bien', unidadMedida: 'EMPAQUE X 500', precioUnitario: 14.5, clasificador: '3 - Bienes' },
+  { item: '1520283543211502', descripcion: 'Monitor LED 24 pulgadas', tipo: 'Bien', unidadMedida: 'UNIDAD', precioUnitario: 650, clasificador: '7 - Adquisición de Activos No Financieros' },
+  { item: '1520284584131600', descripcion: 'Servicio de fotocopiado externo', tipo: 'Servicio', unidadMedida: 'SERVICIO', precioUnitario: null, clasificador: '4 - Servicios' },
+  { item: '1520284618150101', descripcion: 'Guantes de seguridad industrial', tipo: 'Bien', unidadMedida: 'PAR', precioUnitario: 18.5, clasificador: '3 - Bienes' },
+  { item: '1520288111220102', descripcion: 'Servicio de soporte técnico de computadoras', tipo: 'Servicio', unidadMedida: 'SERVICIO', precioUnitario: null, clasificador: '4 - Servicios' },
+  { item: '1520287315210803', descripcion: 'Servicio de mantenimiento de equipos', tipo: 'Servicio', unidadMedida: 'SERVICIO', precioUnitario: null, clasificador: '4 - Servicios' },
+  { item: '1520284412170504', descripcion: 'Tóner para impresora láser', tipo: 'Bien', unidadMedida: 'UNIDAD', precioUnitario: 290, clasificador: '3 - Bienes' },
+  { item: '1520285612100105', descripcion: 'Silla ergonómica de oficina', tipo: 'Bien', unidadMedida: 'UNIDAD', precioUnitario: 480, clasificador: '7 - Adquisición de Activos No Financieros' },
+];
+
+/** Actividad operativa y meta de cada área usuaria (información presupuestaria del Anexo 01). */
+const PRESUPUESTO_AREA_ANEXO_1: Record<string, { actividad: string; meta: string }> = {
+  'a1-rrhh': { actividad: 'CP-RRHH-003 - Gestión de recursos humanos', meta: '0030' },
+  'a1-oti': { actividad: 'CP-TEC-001 - Gestión de tecnologías de la información', meta: '0015' },
+  'a1-oa': { actividad: 'CP-OA-002 - Gestión administrativa y de abastecimiento', meta: '0020' },
+  'a1-oc': { actividad: 'CP-ADM-001 - Gestión contable', meta: '0012' },
+};
+
+/** Reparto del monto de un ítem entre los años del CMN (40 % el Año 1 y 30 % cada uno de los otros dos). */
+const REPARTO_ANIOS_CMN = [0.4, 0.3, 0.3];
+
+const redondear = (n: number): number => Math.round(n * 100) / 100;
+
+/**
+ * Ítems del Anexo 01 de un área usuaria: tantos como `area.items`, con el monto programado repartido en partes iguales
+ * (Oficina de Contabilidad: 3 × S/ 37,400.00 = S/ 112,200.00, como en el Figma) y cada monto repartido entre los años
+ * del CMN. Todos van con fuente RO/00 y la actividad operativa y meta del área.
+ */
+export function itemsAnexo1(area: AreaUsuariaAnexo1): ItemAnexo1[] {
+  const base = Math.floor((area.montoProgramado / area.items) * 100) / 100;
+  const presupuesto = PRESUPUESTO_AREA_ANEXO_1[area.id] ?? { actividad: 'CP-GEN-000 - Gestión institucional', meta: '0001' };
+  return Array.from({ length: area.items }, (_, i) => {
+    const catalogo = ITEMS_CATALOGO_ANEXO_1[i % ITEMS_CATALOGO_ANEXO_1.length];
+    // El último ítem se lleva el redondeo para que la suma sea el monto del Anexo 01; lo mismo el último año.
+    const monto = i === area.items - 1 ? redondear(area.montoProgramado - base * (area.items - 1)) : base;
+    const montosPorAnio: Record<number, number> = {};
+    let repartido = 0;
+    ANIOS_CMN.forEach((anio, k) => {
+      const valor = k === ANIOS_CMN.length - 1 ? redondear(monto - repartido) : redondear(monto * REPARTO_ANIOS_CMN[k]);
+      montosPorAnio[anio] = valor;
+      repartido = redondear(repartido + valor);
+    });
+    return {
+      id: `${area.id}-item-${i + 1}`,
+      ...catalogo,
+      montoProgramado: monto,
+      fuente: 'RO/00',
+      actividadOperativa: presupuesto.actividad,
+      meta: presupuesto.meta,
+      montosPorAnio,
+    };
+  });
+}
 
 /** Catálogo de ítems que se pueden proponer como estratégicos (los del prototipo y algunos más para paginar). */
 export const CATALOGO_ITEMS_ESTRATEGICOS: ItemEstrategicoCatalogo[] = (
@@ -473,7 +539,7 @@ function crearDatosIniciales(): DatosTaller {
       updatedAt: historial[historial.length - 1].createdAt,
       ...(semilla.estado === 'APROBADO' ? { fechaAprobacion: historial[historial.length - 1].createdAt } : {}),
       itemsCuenta: [],
-      detalleAnexo2Fase1: { documentoId: id, areas: [...CONTEXTO_ANEXO_2_FASE_1.areas] },
+      detalleAnexo2Fase1: { documentoId: id, areas: CONTEXTO_ANEXO_2_FASE_1.areas.map((a) => ({ ...a })) },
       sustentos: [],
       historialEstados: historial,
     });

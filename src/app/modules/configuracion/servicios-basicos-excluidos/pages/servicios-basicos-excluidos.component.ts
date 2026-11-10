@@ -1,6 +1,11 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { TooltipDirective } from '../../../../shared/ui/tooltip/tooltip.directive';
+import {
+  SelectionColumn,
+  SelectionSideNavComponent,
+} from '../../../../shared/components/selection-side-nav/selection-side-nav.component';
 import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
@@ -13,12 +18,19 @@ import {
   SERVICIOS_BASICOS_EXCLUIDOS_PROCESS_ID,
   SERVICIOS_BASICOS_EXCLUIDOS_ROUTE,
 } from '../config/servicios-basicos-excluidos.rutas';
-import { ServicioBasico, codigoServicioBasico } from '../models/servicio-basico.model';
+import {
+  EntidadServicioBasico,
+  ServicioBasico,
+  codigoServicioBasico,
+  resumenEntidades,
+} from '../models/servicio-basico.model';
 
 /**
  * Configuración de servicios básicos excluidos de la ley (Figma «CMN Programación · Configuración», nodos
  * 4683:1046555 a 4683:1047819): tarjeta «Vincular servicios básicos» con la lupa roja, que abre el panel lateral
- * «Seleccionar ítems»; lo elegido se lista (ÍTEM · DESCRIPCIÓN · VIGENCIA con papelera) y «Grabar» lo guarda.
+ * «Seleccionar ítems»; lo elegido se lista (ÍTEM · DESCRIPCIÓN · VIGENCIA con papelera · ENTIDADES) y «Grabar» lo guarda.
+ * En la columna «Entidades», el ícono abre «Asignar entidades» (municipalidades del Gobierno Regional de Tumbes en el
+ * taller); lo asignado viaja con cada ítem al grabar.
  */
 @Component({
   selector: 'siaf-servicios-basicos-excluidos',
@@ -30,6 +42,8 @@ import { ServicioBasico, codigoServicioBasico } from '../models/servicio-basico.
     PageShellComponent,
     PaginationComponent,
     SeleccionarItemsPanelComponent,
+    SelectionSideNavComponent,
+    TooltipDirective,
   ],
   templateUrl: './servicios-basicos-excluidos.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,6 +56,7 @@ export class ServiciosBasicosExcluidosComponent implements OnInit {
     SERVICIOS_BASICOS_EXCLUIDOS_ROUTE,
   );
   readonly codigo = codigoServicioBasico;
+  readonly resumenEntidades = resumenEntidades;
 
   readonly items = signal<ServicioBasico[]>([]);
   readonly guardando = signal(false);
@@ -78,11 +93,31 @@ export class ServiciosBasicosExcluidosComponent implements OnInit {
     return this.itemsFiltrados().slice(inicio, inicio + this.rowsPerPage());
   });
 
+  // ─── Asignar entidades ───────────────────────────────────────────
+  readonly entidades = signal<EntidadServicioBasico[]>([]);
+  /** Ítem al que se le asignan entidades; `null` con el panel cerrado. */
+  readonly itemEntidades = signal<ServicioBasico | null>(null);
+  readonly seleccionEntidades = signal<string[]>([]);
+  readonly busquedaEntidades = signal('');
+  readonly columnasEntidades: SelectionColumn<EntidadServicioBasico>[] = [
+    { key: 'codigo', label: 'Código', widthClass: 'w-40' },
+    { key: 'nombre', label: 'Entidad' },
+  ];
+
+  readonly entidadesFiltradas = computed(() => {
+    const texto = this.busquedaEntidades().trim().toLowerCase();
+    if (!texto) return this.entidades();
+    return this.entidades().filter((e) => `${e.codigo} ${e.nombre}`.toLowerCase().includes(texto));
+  });
+
+  private readonly nombrePorEntidad = computed(() => new Map(this.entidades().map((e) => [e.id, e.nombre])));
+
   readonly huboCambios = computed(() =>
     hayCambiosRespectoAlSnapshot(this.snapshotInicial(), crearSnapshotFormulario({ items: this.items() })),
   );
 
   ngOnInit(): void {
+    this.api.listarEntidades().subscribe((e) => this.entidades.set(e));
     this.api.listar().subscribe((items) => {
       this.items.set(items);
       this.snapshotInicial.set(crearSnapshotFormulario({ items }));
@@ -117,6 +152,30 @@ export class ServiciosBasicosExcluidosComponent implements OnInit {
   quitar(id: string): void {
     this.items.update((lista) => lista.filter((i) => i.id !== id));
     this.page.update((p) => Math.min(p, this.totalPages()));
+  }
+
+  /** Nombres de las entidades asignadas, para el tooltip de la columna. */
+  nombresEntidades(item: ServicioBasico): string {
+    return (item.entidades ?? []).map((id) => this.nombrePorEntidad().get(id) ?? id).join(', ');
+  }
+
+  abrirEntidades(item: ServicioBasico): void {
+    this.itemEntidades.set(item);
+    this.seleccionEntidades.set([...(item.entidades ?? [])]);
+    this.busquedaEntidades.set('');
+  }
+
+  cerrarEntidades(): void {
+    this.itemEntidades.set(null);
+  }
+
+  /** «Aceptar» reemplaza las entidades del ítem (vacío deja «Sin asignar»); se guardan con «Grabar». */
+  asignarEntidades(ids: string[]): void {
+    const item = this.itemEntidades();
+    if (!item) return;
+    const orden = this.entidades().map((e) => e.id).filter((id) => ids.includes(id));
+    this.items.update((lista) => lista.map((i) => (i.id === item.id ? { ...i, entidades: orden } : i)));
+    this.itemEntidades.set(null);
   }
 
   grabar(): void {

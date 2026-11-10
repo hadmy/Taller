@@ -1,8 +1,8 @@
 import { buildProcessBreadcrumbs, buildProcessPath } from './breadcrumbs.util';
 
 // Hoja real del árbol de procesos, con dos ancestros agrupadores.
-const PROCESS_ID = 'cuadro-multianual-necesidades-documentos';
-const PROCESS_ROUTE = '/procesos/cuadro-multianual-necesidades';
+const PROCESS_ID = 'cmn-programacion';
+const PROCESS_ROUTE = '/procesos/cmn-programacion';
 
 describe('breadcrumbs.util', () => {
   describe('buildProcessBreadcrumbs', () => {

@@ -296,7 +296,6 @@ export const BANDEJA_CONFIG_DE_MUESTRA: DocumentsRecordsConfig = {
     { label: ESTADO.ELABORADO, value: ESTADO.ELABORADO },
     { label: ESTADO.VERIFICADO, value: ESTADO.VERIFICADO },
   ],
-  fieldsMenuOptions: [{ label: 'Documento' }, { label: 'Estado' }, { label: 'Fecha de registro' }],
 };
 
 /** Servicios falsos de la pantalla de bandeja: acciones sobre documentos e historial de la pestaña Registros. */

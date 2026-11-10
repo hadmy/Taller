@@ -31,6 +31,7 @@
               @if (editando()) {
                 <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigencia</th>
               }
+              <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Entidades</th>
             </tr>
           </thead>
           <tbody>
@@ -50,10 +51,34 @@
                     />
                   </td>
                 }
+                <!-- Entidades: cuántas tiene (con sus nombres en el tooltip) y, al editar, el ícono para asignarlas. -->
+                <td class="px-siaf-md py-siaf-xs">
+                  <div class="flex items-center justify-between gap-siaf-xs">
+                    @if (item.entidades?.length) {
+                      <span class="text-[var(--sys-color-text-neutral-medium)]" [siafTooltip]="nombresEntidades(item)" tooltipMode="always" tabindex="0">{{
+                        resumenEntidades(item.entidades!.length)
+                      }}</span>
+                    } @else {
+                      <span class="text-[var(--sys-color-text-neutral-low)]">{{ resumenEntidades(0) }}</span>
+                    }
+                    @if (editando()) {
+                      <siaf-button
+                        variant="text"
+                        size="sm"
+                        icon="add_business"
+                        [iconOnly]="true"
+                        [ariaLabel]="'Asignar entidades a ' + item.descripcion"
+                        siafTooltip="Asignar entidades"
+                        tooltipMode="always"
+                        (click)="abrirEntidades(item)"
+                      />
+                    }
+                  </div>
+                </td>
               </tr>
             } @empty {
               <tr>
-                <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="editando() ? 3 : 2">No se encontraron servicios básicos.</td>
+                <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="editando() ? 4 : 3">No se encontraron servicios básicos.</td>
               </tr>
             }
           </tbody>
@@ -82,5 +107,23 @@
     [catalogo]="catalogoDisponible()"
     (confirmed)="agregarItems($event)"
     (canceled)="cerrarPanel()"
+  />
+
+  <!-- «Asignar entidades»: panel de selección múltiple del kit; sin marcar ninguna, el ítem queda «Sin asignar». -->
+  <siaf-selection-side-nav
+    [open]="itemEntidades() !== null"
+    [title]="'Asignar entidades · ' + (itemEntidades()?.descripcion ?? '')"
+    mode="multiple"
+    [rows]="entidadesFiltradas()"
+    [columns]="columnasEntidades"
+    [searchValue]="busquedaEntidades()"
+    searchPlaceholder="Buscar entidad"
+    [selectedIds]="seleccionEntidades()"
+    [requireSelection]="false"
+    emptyMessage="No hay entidades que coincidan con la búsqueda."
+    (searchChange)="busquedaEntidades.set($event)"
+    (selectionChange)="seleccionEntidades.set($event)"
+    (closed)="cerrarEntidades()"
+    (accepted)="asignarEntidades($event)"
   />
 </siaf-page-shell>

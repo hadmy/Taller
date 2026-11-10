@@ -37,7 +37,7 @@ const ETIQUETA_CAMPO: Record<CampoFiltro, string> = {
 /**
  * Panel lateral «Seleccionar ítems» de la configuración de servicios básicos excluidos de la ley (Figma
  * «A.2-RC-008»): buscador y, solo después de buscar o filtrar, tabla SEG · FAM · CLA · COM · ITEM · TIPO · DESCRIPCIÓN
- * con una casilla por fila. El embudo del buscador abre el «Sidenav - filtro» (Commodity / Ítems, Segmento, Familia,
+ * con una casilla por fila (sin casilla de «todos», como en «A.2-RC-011/012»). El embudo del buscador abre el «Sidenav - filtro» (Commodity / Ítems, Segmento, Familia,
  * Clase, Commodity e Ítem encadenados) y los filtros aplicados quedan como chips. «Aceptar» emite los ítems marcados;
  * «Cancelar» (o la ✕ o Escape) cierra sin cambios.
  */
@@ -73,7 +73,7 @@ const ETIQUETA_CAMPO: Record<CampoFiltro, string> = {
         @if (chips().length) {
           <div class="flex flex-wrap gap-siaf-xs">
             @for (chip of chips(); track chip.campo) {
-              <siaf-tag variant="filter" [selected]="true" [removable]="true" [removeLabel]="'Quitar filtro ' + chip.texto" (removed)="quitarChip(chip.campo)">{{ chip.texto }}</siaf-tag>
+              <siaf-tag variant="input" [removable]="true" [removeLabel]="'Quitar filtro ' + chip.texto" (removed)="quitarChip(chip.campo)">{{ chip.texto }}</siaf-tag>
             }
           </div>
         }
@@ -83,38 +83,29 @@ const ETIQUETA_CAMPO: Record<CampoFiltro, string> = {
             No se ha seleccionado ningún tipo. Realice una búsqueda para realizar una selección.
           </div>
         } @else {
-          <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
-            <table class="w-full min-w-[640px] border-collapse text-sm">
+          <!-- Tabla del Figma «A.2-RC-011/012»: sin borde exterior, filas de 48 px y anchos fijos salvo Descripción. -->
+          <div class="overflow-auto">
+            <table class="w-full min-w-[960px] table-fixed border-collapse text-sm">
               <thead>
-                <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-                  <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm">
-                    <input
-                      class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
-                      type="checkbox"
-                      aria-label="Seleccionar todos los ítems"
-                      [checked]="todasVisiblesSeleccionadas()"
-                      [indeterminate]="algunasVisiblesSeleccionadas()"
-                      [disabled]="filasPaginadas().length === 0"
-                      (change)="alternarVisibles($any($event.target).checked)"
-                    />
-                  </th>
-                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-sm py-siaf-sm text-left">Seg</th>
-                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-sm py-siaf-sm text-left">Fam</th>
-                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-sm py-siaf-sm text-left">Cla</th>
-                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-sm py-siaf-sm text-left">Com</th>
-                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-sm py-siaf-sm text-left">Item</th>
-                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-sm py-siaf-sm text-left">Tipo</th>
-                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-sm py-siaf-sm text-left">Descripción</th>
-                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-sm py-siaf-sm text-left">Vigencia</th>
+                <tr class="h-10 bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                  <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Seleccionar</span></th>
+                  <th class="w-[57px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Seg</th>
+                  <th class="w-[58px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Fam</th>
+                  <th class="w-[58px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Cla</th>
+                  <th class="w-[62px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Com</th>
+                  <th class="w-[105px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Item</th>
+                  <th class="w-[116px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Tipo</th>
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
+                  <th class="w-[92px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Vigencia</th>
                 </tr>
               </thead>
               <tbody>
                 @for (fila of filasPaginadas(); track fila.id) {
                   <tr
-                    class="border-b border-[var(--sys-color-divider-default)] last:border-b-0"
+                    class="h-12 border-b border-[var(--sys-color-divider-default)] text-[var(--sys-color-text-neutral-high)]"
                     [class.bg-[var(--sys-color-bg-states-light-selected)]]="seleccionados().has(fila.id)"
                   >
-                    <td class="p-siaf-sm">
+                    <td class="p-siaf-sm text-center">
                       <input
                         class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
                         type="checkbox"
@@ -123,14 +114,14 @@ const ETIQUETA_CAMPO: Record<CampoFiltro, string> = {
                         (change)="alternar(fila.id, $any($event.target).checked)"
                       />
                     </td>
-                    <td class="px-siaf-sm py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.segmento }}</td>
-                    <td class="px-siaf-sm py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.familia }}</td>
-                    <td class="px-siaf-sm py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.clase }}</td>
-                    <td class="px-siaf-sm py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.commodity }}</td>
-                    <td class="px-siaf-sm py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.item }}</td>
-                    <td class="px-siaf-sm py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.tipo }}</td>
-                    <td class="px-siaf-sm py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.descripcion }}</td>
-                    <td class="px-siaf-sm py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.vigente ? 'Sí' : 'No' }}</td>
+                    <td class="px-siaf-md py-siaf-sm">{{ fila.segmento }}</td>
+                    <td class="px-siaf-md py-siaf-sm">{{ fila.familia }}</td>
+                    <td class="px-siaf-md py-siaf-sm">{{ fila.clase }}</td>
+                    <td class="px-siaf-md py-siaf-sm">{{ fila.commodity }}</td>
+                    <td class="px-siaf-md py-siaf-sm">{{ fila.item }}</td>
+                    <td class="px-siaf-md py-siaf-sm">{{ fila.tipo }}</td>
+                    <td class="truncate px-siaf-md py-siaf-sm" [title]="fila.descripcion">{{ fila.descripcion }}</td>
+                    <td class="px-siaf-md py-siaf-sm">{{ fila.vigente ? 'Sí' : 'No' }}</td>
                   </tr>
                 } @empty {
                   <tr>
@@ -270,15 +261,6 @@ export class SeleccionarItemsPanelComponent {
     return this.filasFiltradas().slice(inicio, inicio + this.rowsPerPage());
   });
 
-  readonly todasVisiblesSeleccionadas = computed(() => {
-    const visibles = this.filasPaginadas();
-    return visibles.length > 0 && visibles.every((f) => this.seleccionados().has(f.id));
-  });
-
-  readonly algunasVisiblesSeleccionadas = computed(
-    () => this.filasPaginadas().some((f) => this.seleccionados().has(f.id)) && !this.todasVisiblesSeleccionadas(),
-  );
-
   buscar(texto: string): void {
     this.busqueda.set(texto);
     this.page.set(1);
@@ -352,17 +334,6 @@ export class SeleccionarItemsPanelComponent {
   }
 
   // ─── Selección ───────────────────────────────────────────────────
-
-  alternarVisibles(marcado: boolean): void {
-    this.seleccionados.update((set) => {
-      const next = new Set(set);
-      for (const f of this.filasPaginadas()) {
-        if (marcado) next.add(f.id);
-        else next.delete(f.id);
-      }
-      return next;
-    });
-  }
 
   alternar(id: string, marcado: boolean): void {
     this.seleccionados.update((set) => {

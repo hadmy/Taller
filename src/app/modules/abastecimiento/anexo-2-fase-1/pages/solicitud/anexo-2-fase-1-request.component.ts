@@ -12,6 +12,8 @@ import { SolicitudesFacadeService } from '../../../../../core/state/solicitudes-
 import { BreadcrumbItem } from '../../../../../shared/components/breadcrumb/breadcrumb.component';
 import { DetailHistoryTabsComponent } from '../../../../../shared/components/detail-history-tabs/detail-history-tabs.component';
 import { HistorialSource, buildCurrentComment, buildHistoryEntries } from '../../../../../shared/components/detail-history-tabs/detail-history-tabs.utils';
+import { FormTableSearchComponent } from '../../../../../shared/components/form-table-search/form-table-search.component';
+import { PaginationComponent } from '../../../../../shared/components/pagination/pagination.component';
 import { RequestApprovalModalsComponent } from '../../../../../shared/components/request-approval-modals/request-approval-modals.component';
 import { SelectionColumn, SelectionSideNavComponent } from '../../../../../shared/components/selection-side-nav/selection-side-nav.component';
 import { SolicitudeFormCardComponent } from '../../../../../shared/components/solicitude-form-card/solicitude-form-card.component';
@@ -27,10 +29,11 @@ import { LoadingProgressComponent } from '../../../../../shared/ui/loading-progr
 import { MessageBoxComponent } from '../../../../../shared/ui/message-box/message-box.component';
 import { ReadonlyFieldComponent } from '../../../../../shared/ui/readonly-field/readonly-field.component';
 import { SnackbarVariant } from '../../../../../shared/ui/snackbar/snackbar.component';
+import { StatusTagComponent } from '../../../../../shared/ui/status-tag/status-tag.component';
 import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../../shared/utils/form-snapshot.util';
 import { Anexo2Fase1ApiService } from '../../api/anexo-2-fase-1-api.service';
-import { PROCESS_ID, PROCESS_ROUTE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
+import { ANEXO_1_SEGMENT, CONSOLIDADO_SEGMENT, PROCESS_ID, PROCESS_ROUTE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
 import {
   AreaUsuariaAnexo1,
   CODIGO_DOCUMENTO,
@@ -39,6 +42,7 @@ import {
   TIPO_ACCION,
   TITULO_SOLICITUD,
 } from '../../models/anexo-2-fase-1.model';
+import { ESTILO_EVALUACION_ANEXO_1 } from '../../utils/evaluacion-anexo-1.util';
 import { fechaHora, formatearSoles } from '../../utils/formato.util';
 
 /**
@@ -50,6 +54,9 @@ import { fechaHora, formatearSoles } from '../../utils/formato.util';
  * áreas usuarias que entran al Anexo 02 y los quita de a uno o en bloque. Grabar: crear la solicitud → guardar las
  * áreas → pasar a ELABORADO (genera el número). El creador edita, verifica o elimina; el aprobador aprueba, observa o
  * rechaza un documento VERIFICADO.
+ *
+ * Con la solicitud grabada, el nombre de cada área de «Registros» abre «Detalle del Anexo 1»
+ * (`DetalleAnexo1Component`, Figma «3. Detalle items»), donde la OA le da conformidad o la observa.
  */
 @Component({
   selector: 'siaf-anexo-2-fase-1-request',
@@ -59,14 +66,17 @@ import { fechaHora, formatearSoles } from '../../utils/formato.util';
     ButtonComponent,
     DetailHistoryTabsComponent,
     DocumentSummaryCardComponent,
+    FormTableSearchComponent,
     LoadingProgressComponent,
     MessageBoxComponent,
+    PaginationComponent,
     ReadonlyFieldComponent,
     RequestApprovalModalsComponent,
     SelectionSideNavComponent,
     SolicitudeFormCardComponent,
     SolicitudeInfoCardComponent,
     SolicitudePageLayoutComponent,
+    StatusTagComponent,
     TableControlsComponent,
   ],
   templateUrl: './anexo-2-fase-1-request.component.html',
@@ -104,7 +114,8 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   });
   readonly elaborado = computed(() => this.estado() !== 'NUEVO');
   readonly soloLectura = computed(() => this.elaborado() && !this.editando());
-  readonly puedeVerificar = computed(() => ['ELABORADO', 'OBSERVADO'].includes(this.estado()));
+  /** En edición, solo sin cambios por grabar: verificar los descartaría. */
+  readonly puedeVerificar = computed(() => ['ELABORADO', 'OBSERVADO'].includes(this.estado()) && !(this.editando() && this.hayCambios()));
   readonly numeroDocumento = computed(() => this.solicitud()?.numero ?? '');
 
   readonly headerState = computed<SolicitudeHeaderState>(() => {
@@ -179,12 +190,31 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   /** Áreas marcadas en la tabla (por id) para quitarlas en bloque. */
   readonly areasMarcadas = signal<Set<string>>(new Set());
   readonly paginaAreas = signal(1);
-  readonly filasPorPaginaAreas = 25;
+  readonly filasPorPaginaAreas = signal(25);
+  readonly busquedaAreas = signal('');
+  /** Marcar y quitar en bloque solo al registrar: en edición las áreas se cambian desde «Seleccionar registros». */
+  readonly puedeMarcarAreas = computed(() => !this.elaborado());
+  /** Etiqueta de la evaluación del Anexo 01 (Figma «status items tags»). */
+  readonly estiloEvaluacion = ESTILO_EVALUACION_ANEXO_1;
+  /**
+   * El área abre «Detalle del Anexo 1» (Figma «3. Detalle items») cuando ya está grabada en la solicitud y no hay
+   * cambios sin grabar que se perderían al salir.
+   */
+  readonly puedeVerDetalle = computed(() => !!this.solicitud()?.id && !(this.editando() && this.hayCambios()));
+  private readonly areasGrabadas = computed(() => new Set((this.solicitud()?.detalleAnexo2Fase1?.areas ?? []).map((a) => a.id)));
+  readonly areaConDetalle = (areaId: string): boolean => this.puedeVerDetalle() && this.areasGrabadas().has(areaId);
+  /** «Ver consolidado»: con la solicitud grabada, sin cambios por grabar y con al menos un área usuaria. */
+  readonly puedeVerConsolidado = computed(() => this.puedeVerDetalle() && this.areasGrabadas().size > 0);
 
-  readonly totalPaginasAreas = computed(() => Math.max(1, Math.ceil(this.areas().length / this.filasPorPaginaAreas)));
+  readonly areasFiltradas = computed(() => {
+    const texto = this.busquedaAreas().trim().toLowerCase();
+    return texto ? this.areas().filter((a) => a.nombre.toLowerCase().includes(texto)) : this.areas();
+  });
+
+  readonly totalPaginasAreas = computed(() => Math.max(1, Math.ceil(this.areasFiltradas().length / this.filasPorPaginaAreas())));
   readonly areasPaginadas = computed(() => {
-    const inicio = (this.paginaAreas() - 1) * this.filasPorPaginaAreas;
-    return this.areas().slice(inicio, inicio + this.filasPorPaginaAreas);
+    const inicio = (this.paginaAreas() - 1) * this.filasPorPaginaAreas();
+    return this.areasFiltradas().slice(inicio, inicio + this.filasPorPaginaAreas());
   });
   readonly paginaAreasCompleta = computed(() => {
     const visibles = this.areasPaginadas();
@@ -193,8 +223,6 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   readonly paginaAreasParcial = computed(
     () => this.areasPaginadas().some((a) => this.areasMarcadas().has(a.id)) && !this.paginaAreasCompleta(),
   );
-  readonly totalItems = computed(() => this.areas().reduce((total, a) => total + a.items, 0));
-  readonly totalMonto = computed(() => this.areas().reduce((total, a) => total + a.montoProgramado, 0));
 
   // ── Panel «Seleccionar registros» ──────────────────────────────────
   readonly panelAbierto = signal(false);
@@ -309,17 +337,21 @@ export class Anexo2Fase1RequestComponent implements OnInit {
     });
   }
 
-  quitarArea(id: string): void {
-    this.areas.update((lista) => lista.filter((a) => a.id !== id));
-    this.marcarArea(id, false);
-    this.ajustarPaginaAreas();
-  }
-
   quitarMarcadas(): void {
     const marcadas = this.areasMarcadas();
     this.areas.update((lista) => lista.filter((a) => !marcadas.has(a.id)));
     this.areasMarcadas.set(new Set());
     this.ajustarPaginaAreas();
+  }
+
+  buscarAreas(texto: string): void {
+    this.busquedaAreas.set(texto);
+    this.paginaAreas.set(1);
+  }
+
+  cambiarFilasAreas(valor: number): void {
+    this.filasPorPaginaAreas.set(valor);
+    this.paginaAreas.set(1);
   }
 
   paginaAreasAnterior(): void { this.paginaAreas.update((p) => Math.max(1, p - 1)); }
@@ -328,6 +360,20 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   /** Tras quitar áreas, la página actual puede quedar vacía. */
   private ajustarPaginaAreas(): void {
     this.paginaAreas.update((p) => Math.min(p, this.totalPaginasAreas()));
+  }
+
+  /** Abre «Detalle del Anexo 1» del área usuaria. */
+  verDetalleAnexo1(areaId: string): void {
+    const id = this.solicitudId;
+    if (!id || !this.areaConDetalle(areaId)) return;
+    void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id, ANEXO_1_SEGMENT, areaId]);
+  }
+
+  /** Abre la hoja «Consolidado del Anexo N.º 02» de la solicitud. */
+  verConsolidado(): void {
+    const id = this.solicitudId;
+    if (!id || !this.puedeVerConsolidado()) return;
+    void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id, CONSOLIDADO_SEGMENT]);
   }
 
   // ── Panel de selección ────────────────────────────────────────────
@@ -506,6 +552,7 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   private restaurarFormulario(s: SolicitudResponse | null): void {
     this.areas.set([...(s?.detalleAnexo2Fase1?.areas ?? [])]);
     this.areasMarcadas.set(new Set());
+    this.busquedaAreas.set('');
     this.paginaAreas.set(1);
   }
 }

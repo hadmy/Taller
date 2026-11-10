@@ -50,16 +50,16 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
  * Pantalla «Documentos y registros» de un proceso, armada desde un `DocumentsRecordsConfig`: breadcrumb, título,
  * «Crear documento», pestañas Documentos / Registros, buscador con menús y filtros, grilla estándar con paginación y
  * los paneles de historial y de columnas.
- * Aplica las reglas de rol (el creador verifica elaborados, el aprobador aprueba verificados y el resto solo consulta;
- * `modoConsulta` quita crear y las acciones) y ejecuta verificar o aprobar en lote contra el backend.
+ * Aplica las reglas de rol (el creador crea, el aprobador aprueba validados y el resto solo consulta; `modoConsulta`
+ * quita crear y las acciones) y ejecuta aprobar en lote contra el backend.
  * Con `serverQuery` / `serverRecordsQuery` la búsqueda y la paginación las resuelve el padre en el servidor, y la
  * selección sobrevive al refresco por polling.
  *
  * @usar
  * - Como pantalla principal de cada proceso: plan de cuentas, asiento de ajuste, catálogo de ajuste, catálogo de
  *   eventos, eventos contables, contabilización y apertura contable (por entidad y anual).
- * - Cuando el creador verifica o el aprobador aprueba varias solicitudes a la vez: el botón, el modal y el snackbar
- *   salen del rol, sin código en el padre.
+ * - Cuando el aprobador aprueba varias solicitudes a la vez: el botón, el modal y el snackbar salen del rol, sin código
+ *   en el padre.
  * - Con `modoConsulta` en procesos de solo consulta (contabilización, apertura anual) y con `serverQuery` /
  *   `serverRecordsQuery` cuando el backend busca y pagina (plan de cuentas, asiento de ajuste, catálogos, apertura).
  * @evitar
@@ -89,7 +89,7 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
  * - **Pendiente · 2.4.11 Foco no oculto (AA)**: en escritorio la cabecera (breadcrumb, título y pestañas) queda fija
  *   bajo el navbar y no hay `scroll-padding`: al volver con Shift + Tab, un control de la grilla puede quedar tapado.
  * - **4.1.3 Mensajes de estado (AA)**: la carga de la grilla se anuncia con `siaf-table-skeleton` (`role="status"`) y
- *   el resultado de verificar o aprobar en lote con `siaf-snackbar` (`role="status"`; `role="alert"` si falla).
+ *   el resultado de aprobar en lote con `siaf-snackbar` (`role="status"`; `role="alert"` si falla).
  * - **2.4.7 Foco visible (AA)**: los chips de filtro personalizado y «Agregar filtro» no tienen estilo propio ni
  *   `outline-none`: queda el anillo nativo; el resto sigue su componente.
  * - **1.4.3 Contraste mínimo (AA)**: `h1` y `h2` en `text-text` (16.29:1 / 16.53:1) y el subtítulo en
@@ -125,20 +125,6 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
         [open]="documentHistoryOpen"
         [summary]="selectedHistorySummary"
         (closed)="closeDocumentHistory()"
-      />
-
-      <siaf-modal
-        [open]="verifyModalOpen"
-        variant="custom"
-        title="¿Deseas verificar múltiples solicitudes?"
-        [description]="verifyModalDescription"
-        illustrationSrc="assets/figma/modals/approve-multiple.svg"
-        confirmVariant="primary"
-        confirmLabel="Aceptar"
-        [showIllustration]="true"
-        (canceled)="closeVerifyModal()"
-        (closed)="closeVerifyModal()"
-        (confirmed)="confirmVerifyModal()"
       />
 
       <siaf-modal
@@ -222,14 +208,10 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
                 <h2 class="m-0 text-sm font-bold uppercase leading-normal text-text">
                   {{ activeTab === 'documents' ? 'Documentos existentes' : 'Registros existentes' }}
                 </h2>
-                @if (activeTab === 'documents' && effectiveConfig.accionPrincipal) {
-                  @if (effectiveConfig.accionPrincipal === 'aprobar') {
-                    <siaf-button variant="primary" icon="check_circle" [disabled]="!canApproveSelectedDocuments" (click)="openApproveModal()">
-                      Aprobar
-                    </siaf-button>
-                  } @else {
-                    <siaf-button variant="primary" icon="task_alt" [disabled]="!canVerifySelectedDocuments" (click)="openVerifyModal()">Verificar</siaf-button>
-                  }
+                @if (activeTab === 'documents' && effectiveConfig.accionPrincipal === 'aprobar') {
+                  <siaf-button variant="primary" icon="check_circle" [disabled]="!canApproveSelectedDocuments" (click)="openApproveModal()">
+                    Aprobar
+                  </siaf-button>
                 }
               </header>
 
@@ -245,17 +227,6 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
                   (searchSubmit)="onSearchSubmit($event)"
                 >
                   <ng-container actions>
-                    <siaf-icon-dropdown-menu
-                      icon="layers"
-                      ariaLabel="Campos"
-                      [items]="fieldsMenuItems"
-                    />
-                    <siaf-icon-dropdown-menu
-                      icon="star_border"
-                      ariaLabel="Favorito"
-                      [items]="favoriteMenuItems"
-                      (selected)="onFavoriteOption($any($event))"
-                    />
                     <siaf-icon-dropdown-menu
                       icon="more_vert"
                       ariaLabel="Más opciones"
@@ -447,7 +418,6 @@ export class DocumentsRecordsPageComponent implements OnChanges {
       return {
         ...this.config,
         statusFilterOptions: ESTADOS_CREADOR,
-        accionPrincipal: 'verificar',
         documentRows: this.config.documentRows.filter(r =>
           ESTADOS_CREADOR.includes(String(r['status'] ?? ''))
         ),
@@ -508,11 +478,10 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   editingCustomFilterId = '';
   accountHistoryOpen = false;
   documentHistoryOpen = false;
-  verifyModalOpen = false;
   approveModalOpen = false;
   approvalSnackbarOpen = false;
   approvalSnackbarNumbers = '';
-  /** Verbo de la acción masiva ejecutada ('verificado' / 'aprobado'). */
+  /** Verbo de la acción masiva ejecutada ('aprobado'). */
   approvalSnackbarAction = 'aprobado';
   approvalSnackbarTone: 'success' | 'error' = 'success';
   /** Mensaje del backend cuando la acción masiva falla. */
@@ -544,21 +513,6 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   readonly tabsItems: RecordsTabItem[] = [
     { id: 'documents', label: 'Documentos' },
     { id: 'records',   label: 'Registros' },
-  ];
-
-  /** Items del menú "Campos" (layers). Derivados de `effectiveConfig`. */
-  get fieldsMenuItems(): IconDropdownMenuItem[] {
-    return (this.effectiveConfig.fieldsMenuOptions ?? []).map(o => ({
-      label: o.label,
-      value: o.label,
-      hasChildren: o.hasChildren,
-    }));
-  }
-
-  /** Items del menú "Favorito" (star). Fijo. */
-  readonly favoriteMenuItems: IconDropdownMenuItem[] = [
-    { label: 'Solicitudes observadas',     value: 'observed', divider: true },
-    { label: 'Guardar búsqueda actual',    value: 'save-search' },
   ];
 
   /** Items del menú "Más opciones" (more_vert). */
@@ -649,10 +603,6 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     return this.visibleRows.slice(start, start + this.rowsPerPage);
   }
 
-  get canVerifySelectedDocuments(): boolean {
-    return this.documentRows.some((row) => row.selected && row['status'] === ESTADO.ELABORADO);
-  }
-
   get canApproveSelectedDocuments(): boolean {
     return this.documentRows.some((row) => row.selected && row['status'] === ESTADO.VALIDADO);
   }
@@ -666,7 +616,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
       return [];
     }
 
-    // APROBADOR selecciona Validados — CREADOR selecciona Elaborados
+    // Solo el APROBADOR selecciona: los Validados
     const selectableStatus = this.selectableDocumentStatus;
     if (!selectableStatus) {
       return [];
@@ -717,10 +667,6 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     return this.selectableColumnOptions.some((column) => hiddenColumns.has(column.key) !== this.draftHiddenColumns.has(column.key));
   }
 
-  get verifyModalDescription(): string {
-    return `Estás a punto de verificar ${this.selectedElaboradoDocuments.length} solicitudes en simultáneo.`;
-  }
-
   get approveModalDescription(): string {
     const count = this.selectedVerificadoCount;
     return `Estás a punto de aprobar ${count} solicitud${count !== 1 ? 'es' : ''} en simultáneo.`;
@@ -758,10 +704,6 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     return this.activeTab === 'documents' ? this.hiddenDocumentColumns : this.hiddenRecordColumns;
   }
 
-  private get selectedElaboradoDocuments(): DocumentsRecordsRow[] {
-    return this.documentRows.filter((row) => row.selected && row['status'] === ESTADO.ELABORADO);
-  }
-
   private get documentsRecordsRoleMode(): DocumentsRecordsRoleMode {
     const role = this.permissionService.currentRole() as UserRole;
 
@@ -780,11 +722,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     return 'readOnly';
   }
 
-  private get selectableDocumentStatus(): 'Elaborado' | 'Validado' | '' {
-    if (this.effectiveConfig.accionPrincipal === 'verificar') {
-      return ESTADO.ELABORADO;
-    }
-
+  private get selectableDocumentStatus(): 'Validado' | '' {
     if (this.effectiveConfig.accionPrincipal === 'aprobar') {
       return ESTADO.VALIDADO;
     }
@@ -866,8 +804,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     const selectableStatus = this.selectableDocumentStatus;
     if (!selectableStatus) return true;
 
-    // APROBADOR solo puede seleccionar Validados
-    // CREADOR solo puede seleccionar Elaborados
+    // Solo el APROBADOR selecciona: los Validados
     return row['status'] !== selectableStatus;
   };
 
@@ -879,19 +816,6 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     const documentOption = this.effectiveConfig.createDocumentOptions[0]?.documentOptions?.find((document) => document.label === row['document']);
     return documentOption?.route || this.config.defaultRequestRoute;
   };
-
-  openVerifyModal(): void {
-    if (!this.canVerifySelectedDocuments) {
-      return;
-    }
-
-    this.closeToolbarMenus();
-    this.verifyModalOpen = true;
-  }
-
-  closeVerifyModal(): void {
-    this.verifyModalOpen = false;
-  }
 
   openApproveModal(): void {
     if (!this.canApproveSelectedDocuments) return;
@@ -909,12 +833,6 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     this.ejecutarCambioMasivo(selectedRows, 'APROBADO', ESTADO.APROBADO, 'aprobado');
   }
 
-  confirmVerifyModal(): void {
-    const selectedRows = this.selectedElaboradoDocuments;
-    this.verifyModalOpen = false;
-    this.ejecutarCambioMasivo(selectedRows, 'VERIFICADO', ESTADO.VERIFICADO, 'verificado');
-  }
-
   /**
    * Ejecuta el cambio de estado REAL de las filas seleccionadas contra el
    * backend (antes solo se mutaba el status en memoria y el polling lo
@@ -923,7 +841,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
    */
   private ejecutarCambioMasivo(
     selectedRows: DocumentsRecordsRow[],
-    estadoNuevo: 'VERIFICADO' | 'APROBADO',
+    estadoNuevo: 'APROBADO',
     statusVisual: string,
     verbo: string,
   ): void {
@@ -1100,10 +1018,6 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   }
 
   // ── Handlers para los siaf-icon-dropdown-menu del toolbar ──
-
-  onFavoriteOption(_option: 'observed' | 'save-search'): void {
-    // Stub histórico: cada opción aún no tiene comportamiento real.
-  }
 
   onMoreOptionsAction(action: string): void {
     if (action === 'open-columns') {

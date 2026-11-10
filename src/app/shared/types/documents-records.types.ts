@@ -44,10 +44,6 @@ export type DocumentsRecordsFilterOption = {
   value: string;
 };
 
-export type DocumentsRecordsMenuOption = {
-  label: string;
-  hasChildren?: boolean;
-};
 
 /**
  * Consulta remota de la pestaña Documentos: búsqueda + paginación resueltas
@@ -94,7 +90,6 @@ export type DocumentsRecordsConfig = {
   actionTypeFilterOptions: string[];
   filterCampoOptions: DocumentsRecordsFilterOption[];
   filterValorOptions: DocumentsRecordsFilterOption[];
-  fieldsMenuOptions: DocumentsRecordsMenuOption[];
   // Filtros específicos para tab Registros (reemplazan Estado/Tipo de acción)
   recordFilter1Options?: string[];
   recordFilter1Label?: string;
@@ -106,9 +101,8 @@ export type DocumentsRecordsConfig = {
   recordFilterCampoOptions?: DocumentsRecordsFilterOption[];
   recordFilterValorOptions?: DocumentsRecordsFilterOption[];
   // Controla el botón de acción principal en la sección de documentos
-  // 'verificar' = rol CREADOR (selecciona Elaborados y verifica)
-  // 'aprobar'   = rol APROBADOR (selecciona Validados y aprueba)
-  accionPrincipal?: 'verificar' | 'aprobar';
+  // 'aprobar' = rol APROBADOR (selecciona Validados y aprueba)
+  accionPrincipal?: 'aprobar';
   /**
    * Proceso de solo consulta: sin botón "+Crear documento" ni acción
    * principal (Verificar/Aprobar), y sin filtrar las filas por los

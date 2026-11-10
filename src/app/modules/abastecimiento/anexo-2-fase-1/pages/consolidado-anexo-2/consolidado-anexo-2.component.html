@@ -1,0 +1,158 @@
+<siaf-page-shell [breadcrumbs]="breadcrumbs">
+  <header pageHeader class="flex items-center gap-siaf-sm bg-surface px-siaf-lg py-siaf-md">
+    <siaf-button variant="text" icon="arrow_back" [iconOnly]="true" ariaLabel="Volver a la solicitud" (click)="regresar()" />
+    <h1 class="m-0 text-base font-bold uppercase tracking-[0.02px] text-[var(--sys-color-text-neutral-high)]">{{ titulo }}</h1>
+  </header>
+
+  @if (noExiste()) {
+    <siaf-empty-state
+      illustration="no-data"
+      title="No se encontró la solicitud"
+      description="Vuelva a la solicitud del Anexo N.º 02 e intente de nuevo."
+      actionLabel="Volver"
+      (actionClicked)="regresar()"
+    />
+  } @else if (cargando()) {
+    <div class="rounded-siaf-md bg-surface p-siaf-xl">
+      <div class="siaf-skeleton-pulse h-4 w-56 rounded bg-[var(--sys-color-bg-surfaces-surface-low)]"></div>
+    </div>
+  } @else if (consolidado(); as c) {
+    <section class="flex flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg" aria-labelledby="titulo-consolidado">
+      <div>
+        <h2 id="titulo-consolidado" class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+          Consolidado del Anexo N.º 02 - Fase de Identificación
+        </h2>
+        <p class="m-0 mt-siaf-xs text-sm text-[var(--sys-color-text-neutral-medium)]">
+          Integra los Anexos N.º 01 que la OA ya revisó. Los no conformes se mantienen marcados hasta que se apruebe su versión modificada.
+        </p>
+      </div>
+
+      <!-- Encabezado del formato -->
+      <div class="rounded-siaf-md border border-[var(--sys-color-divider-default)] px-siaf-md py-siaf-sm">
+        <p class="m-0 mb-siaf-xs text-center text-sm font-bold text-[var(--sys-color-text-neutral-high)]">ANEXO N.º 02: CUADRO MULTIANUAL DE NECESIDADES</p>
+        <dl class="m-0 grid gap-siaf-xs text-sm sm:grid-cols-[2fr_1fr_1fr]">
+          <div class="flex gap-siaf-xs"><dt class="text-[var(--sys-color-text-neutral-medium)]">Entidad del Sector Público:</dt><dd class="m-0 font-bold text-[var(--sys-color-text-neutral-high)]">{{ c.entidad }}</dd></div>
+          <div class="flex gap-siaf-xs"><dt class="text-[var(--sys-color-text-neutral-medium)]">Nro. de identificación:</dt><dd class="m-0 font-bold text-[var(--sys-color-text-neutral-high)]">{{ c.numeroDocumento || '-' }}</dd></div>
+          <div class="flex gap-siaf-xs"><dt class="text-[var(--sys-color-text-neutral-medium)]">Fase:</dt><dd class="m-0 font-bold text-[var(--sys-color-text-neutral-high)]">{{ c.fase }}</dd></div>
+        </dl>
+      </div>
+
+      @if (!hayFilas()) {
+        <siaf-empty-state
+          illustration="no-data"
+          title="Aún no hay Anexos N.º 01 revisados"
+          description="Dé conformidad u observe los Anexos N.º 01 de la solicitud para integrarlos al Anexo N.º 02."
+          actionLabel="Volver a la solicitud"
+          (actionClicked)="regresar()"
+        />
+      } @else {
+        <div class="overflow-auto">
+          <table class="w-full min-w-[1280px] border-collapse text-xs text-[var(--sys-color-text-neutral-high)]">
+            <thead class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-center font-bold uppercase">
+              <tr>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs">Fuente / Rubro</th>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs">Clasificador de gastos</th>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs">Actividad operativa</th>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs">Meta</th>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs"><span class="sr-only">Sin título</span></th>
+                @for (anio of c.anios; track anio; let k = $index) {
+                  <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs" colspan="4">Año {{ k + 1 }} ({{ anio }})</th>
+                }
+              </tr>
+              <tr>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs" rowspan="2">Código del ítem</th>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs" rowspan="2">Tipo</th>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs" rowspan="2">Descripción del ítem</th>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs" rowspan="2">Unidad de medida</th>
+                <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs" rowspan="2">Precio unitario</th>
+                @for (anio of c.anios; track anio) {
+                  <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs" colspan="2">Semestre 1</th>
+                  <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs" colspan="2">Semestre 2</th>
+                }
+              </tr>
+              <tr>
+                @for (anio of c.anios; track anio) {
+                  @for (s of semestresPorAnio; track s) {
+                    <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs">Cantidad</th>
+                    <th class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs">Valor total S/</th>
+                  }
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (grupo of c.grupos; track $index) {
+                <tr class="bg-[var(--sys-color-bg-surfaces-surface-low)] font-bold">
+                  <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs">{{ grupo.fuente }}</td>
+                  <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs">{{ grupo.clasificador }}</td>
+                  <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs">{{ grupo.actividadOperativa }}</td>
+                  <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs">{{ grupo.meta }}</td>
+                  <td class="border border-[var(--sys-color-divider-default)]" [attr.colspan]="1 + columnasAnios()"></td>
+                </tr>
+                @for (fila of grupo.filas; track $index) {
+                  <tr [class.bg-[var(--sys-color-bg-feedback-light-warning)]]="fila.estadoEvaluacion === 'No conforme'">
+                    <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs font-bold">{{ fila.codigo }}</td>
+                    <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs">{{ fila.tipo }}</td>
+                    <td class="min-w-60 border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs">
+                      {{ fila.descripcion }}
+                      @if (fila.estadoEvaluacion === 'No conforme') {
+                        <div class="mt-siaf-xs">
+                          <siaf-status-tag
+                            appearance="outline"
+                            size="small"
+                            tone="warning"
+                            icon="warning"
+                            [siafTooltip]="fila.comentario ?? 'Anexo N.º 01 no conforme'"
+                            tooltipMode="always"
+                            tabindex="0"
+                          >No conforme · {{ fila.area }}</siaf-status-tag>
+                        </div>
+                      } @else {
+                        <div class="text-[var(--sys-color-text-neutral-medium)]">{{ fila.area }}</div>
+                      }
+                    </td>
+                    <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs">{{ fila.unidadMedida }}</td>
+                    <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs text-right">{{ fila.precioUnitario === null ? '' : numero(fila.precioUnitario) }}</td>
+                    @for (anio of fila.semestres; track $index) {
+                      @for (s of anio; track $index) {
+                        <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs text-right">{{ s.cantidad ?? '' }}</td>
+                        <td class="border border-[var(--sys-color-divider-default)] px-siaf-xs py-siaf-xs text-right">{{ numero(s.valor) }}</td>
+                      }
+                    }
+                  </tr>
+                }
+              }
+            </tbody>
+            <tfoot class="bg-[var(--sys-color-bg-surfaces-surface-high)] font-bold">
+              <tr>
+                <td class="border border-[var(--sys-color-divider-strong)]" colspan="4"></td>
+                <td class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs text-right">Total general en S/</td>
+                @for (total of c.totales; track $index) {
+                  <td class="border border-[var(--sys-color-divider-strong)]"></td>
+                  <td class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs text-right">{{ numero(total[0]) }}</td>
+                  <td class="border border-[var(--sys-color-divider-strong)]"></td>
+                  <td class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs text-right">{{ numero(total[1]) }}</td>
+                }
+              </tr>
+              <tr>
+                <td class="border border-[var(--sys-color-divider-strong)]" colspan="4"></td>
+                <td class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs text-right">Total Anexo N.º 02 (todos los años)</td>
+                <td class="border border-[var(--sys-color-divider-strong)] px-siaf-xs py-siaf-xs" [attr.colspan]="columnasAnios()">S/ {{ numero(c.totalGeneral) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      }
+
+      <div class="flex flex-col gap-siaf-xs text-xs text-[var(--sys-color-text-neutral-medium)]">
+        @for (nota of notas; track nota) {
+          <p class="m-0">{{ nota }}</p>
+        }
+      </div>
+
+      <div class="grid gap-siaf-xl pt-siaf-lg text-center text-xs text-[var(--sys-color-text-neutral-medium)] sm:grid-cols-2">
+        <p class="m-0 mx-siaf-xl border-t border-[var(--sys-color-divider-strong)] pt-siaf-xs">Firma 1: Responsable de la Oficina de Abastecimiento</p>
+        <p class="m-0 mx-siaf-xl border-t border-[var(--sys-color-divider-strong)] pt-siaf-xs">Firma 2: Máxima autoridad administrativa de la Entidad del Sector Público</p>
+      </div>
+    </section>
+  }
+</siaf-page-shell>

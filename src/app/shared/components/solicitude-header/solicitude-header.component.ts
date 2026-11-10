@@ -64,17 +64,16 @@ const CREATOR_HEADER_CONFIG: Partial<Record<SolicitudeHeaderState, SolicitudeHea
     showVerify: true
   },
   edit: {
-    // En modo edición solo se muestran Cancelar y Grabar.
-    // Verificar aparece únicamente en el estado ELABORADO de solo lectura,
-    // una vez que el usuario haya grabado los cambios.
+    // En edición: Cancelar, Grabar y Verificar (Figma «A.1-RC-031»). La pantalla deshabilita Verificar con
+    // `verifyDisabled` mientras haya cambios sin grabar, para no perderlos.
     type: 'actions',
     showTag: true,
     tagLabel: 'Edición',
     tagTone: 'info',
-    saveVariant: 'accent',
+    saveVariant: 'secondary',
     showDelete: false,
     showEdit: false,
-    showVerify: false
+    showVerify: true
   },
   elaborated: {
     type: 'readonly',

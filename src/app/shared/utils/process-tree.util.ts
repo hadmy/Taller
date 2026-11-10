@@ -32,23 +32,18 @@ export interface ProcessMenuNode {
 }
 
 /**
- * Árbol de procesos del taller, tomado del Figma del CMN («A.2-OA-EV-006/007 Procesos»). Lo que no está implementado
- * va como «Próximamente». Para sumar un proceso real: una hoja con `moduleRoute` (Documentos y registros) y otra para
- * sus consultas, y sus rutas en `app.routes.ts`.
+ * Árbol de procesos del taller: dos grupos, Solicitudes y Configuraciones. Para sumar un proceso real: una hoja con
+ * `moduleRoute` (Documentos y registros) en su grupo, y sus rutas en `app.routes.ts`. Lo que no está implementado va
+ * como «Próximamente».
  */
 export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
   {
-    id: 'gestion-pasivos-financieros',
-    label: 'Gestión de pasivos financieros del sector público',
-    comingSoon: true,
-  },
-  {
-    id: 'gestion-abastecimiento',
-    label: 'Gestión de abastecimiento',
+    id: 'solicitudes',
+    label: 'Solicitudes',
     children: [
       {
-        id: 'programacion-multianual-bienes-servicios-obras',
-        label: 'Programación multianual de bienes, servicios y obras',
+        id: 'solicitud-cuadro-multianual-necesidades',
+        label: 'Solicitud del cuadro multianual de necesidades',
         children: [
           {
             id: 'cmn-programacion',
@@ -56,110 +51,49 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
             moduleRoute: '/procesos/cmn-programacion',
           },
           {
-            id: 'cmn-ejecucion',
-            label: 'CMN Ejecución',
-            comingSoon: true,
-          },
-        ],
-      },
-      {
-        id: 'catalogo-bienes-servicios',
-        label: 'Catálogo de bienes y servicios',
-        comingSoon: true,
-      },
-      // Taller: las demás pantallas del CMN que ya existían (no están en el Figma del navegador de procesos).
-      {
-        id: 'cuadro-multianual-necesidades',
-        label: 'Cuadro Multianual de Necesidades',
-        comingSoon: true,
-        children: [
-          {
-            id: 'cuadro-multianual-necesidades-documentos',
-            label: 'Documentos y registros del Cuadro Multianual de Necesidades',
-            comingSoon: true,
-          },
-          {
-            id: 'cuadro-multianual-necesidades-consultas',
-            label: 'Consultas y reportes del Cuadro Multianual de Necesidades',
-            comingSoon: true,
-          },
-          {
-            id: 'cuadro-multianual-necesidades-solicitudes',
-            label: 'Solicitudes del Cuadro Multianual de Necesidades',
-            comingSoon: true,
-            children: [
-              {
-                id: 'cuadro-multianual-necesidades-solicitudes-items-estrategicos',
-                label: 'Necesidades estratégicas',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/solicitudes/necesidades-estrategicas',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-solicitudes-cambio-fecha-vigente',
-                label: 'Cambio de fecha vigente',
-                comingSoon: true,
-              },
-              {
-                id: 'cuadro-multianual-necesidades-solicitudes-cambio-fecha-vencida',
-                label: 'Cambio de fecha vencida',
-                comingSoon: true,
-              },
-              {
-                id: 'cuadro-multianual-necesidades-solicitudes-anexo-1-fase-1',
-                label: 'Registro de Anexo 1 / Fase 1',
-                comingSoon: true,
-              },
-            ],
-          },
-          {
-            id: 'cuadro-multianual-necesidades-configuracion',
-            label: 'Configuración del Cuadro Multianual de Necesidades',
-            comingSoon: true,
-            children: [
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-areas-usuarias',
-                label: 'Configuración de Áreas Usuarias',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-area-usuaria',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-servicios-basicos-excluidos-ley',
-                label: 'Configuración de Servicios Básicos Excluidos de la Ley',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/servicios-basicos-excluidos-ley',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-fechas-fase-dplaip',
-                label: 'Configuración de fechas de Fase del CMN - DPLAIP',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-cmn-dplaip',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-fechas-fase-entidad',
-                label: 'Configuración de fechas de Fase del CMN por Entidad',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-cmn-entidad',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-precios-diferenciados',
-                label: 'Configuración de Precios Diferenciados',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/precios-diferenciados',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-distribucion-interna-presupuestaria',
-                label: 'Configuración de Distribución Interna Presupuestario',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/distribucion-interna-presupuesto',
-              },
-            ],
+            id: 'cuadro-multianual-necesidades-solicitudes-items-estrategicos',
+            label: 'Necesidades estratégicas',
+            moduleRoute: '/procesos/cuadro-multianual-necesidades/solicitudes/necesidades-estrategicas',
           },
         ],
       },
     ],
   },
   {
-    id: 'clasificadores-catalogos',
-    label: 'Clasificadores y catálogos',
-    comingSoon: true,
-  },
-  {
-    id: 'consultas-reportes',
-    label: 'Consultas y reportes',
-    comingSoon: true,
+    id: 'configuraciones',
+    label: 'Configuraciones',
+    children: [
+      {
+        id: 'cuadro-multianual-necesidades-configuracion-areas-usuarias',
+        label: 'Configuración de Áreas Usuarias',
+        moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-area-usuaria',
+      },
+      {
+        id: 'cuadro-multianual-necesidades-configuracion-servicios-basicos-excluidos-ley',
+        label: 'Configuración de Servicios Básicos Excluidos de Ley',
+        moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/servicios-basicos-excluidos-ley',
+      },
+      {
+        id: 'cuadro-multianual-necesidades-configuracion-fechas-fase-dplaip',
+        label: 'Configuración de Fechas de Fase del CMN - DPLAIP',
+        moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-cmn-dplaip',
+      },
+      {
+        id: 'cuadro-multianual-necesidades-configuracion-fechas-fase-entidad',
+        label: 'Configuración de Fechas de Cierre de Fase del CMN por Área Usuaria',
+        moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-cmn-entidad',
+      },
+      {
+        id: 'cuadro-multianual-necesidades-configuracion-precios-diferenciados',
+        label: 'Configuración de Precios Diferenciados',
+        moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/precios-diferenciados',
+      },
+      {
+        id: 'cuadro-multianual-necesidades-configuracion-distribucion-interna-presupuestaria',
+        label: 'Configuración de distribución interna presupuestaria',
+        moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/distribucion-interna-presupuesto',
+      },
+    ],
   },
 ];
 

@@ -6,7 +6,15 @@ import type { CambiarPerfilResponse, LoginResponse, PerfilItem } from '../core/a
 import type { SolicitudResponse } from '../core/api/solicitudes-api.service';
 import { APP_CONFIG } from '../core/config/app.config';
 import type { EstadoDocumento } from '../core/models/documento.model';
-import type { AreaUsuariaAnexo1, RegistroAnexo2 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
+import {
+  ANIOS_CMN,
+  type AreaUsuariaAnexo1,
+  type ConsolidadoAnexo2,
+  type DetalleAnexo1,
+  type EvaluacionAnexo1Request,
+  type RegistroAnexo2,
+} from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
+import { armarConsolidado } from '../modules/abastecimiento/anexo-2-fase-1/utils/consolidado-anexo-2.util';
 import type { ItemEstrategico } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
 import {
   CATALOGO_ITEMS_ESTRATEGICOS,
@@ -20,6 +28,7 @@ import {
   UNIDAD_CREADORA,
   filaHistorial,
   guardarDatos,
+  itemsAnexo1,
   leerDatos,
   nuevoId,
   numeroDocumentoAnexo2Fase1,
@@ -343,11 +352,75 @@ const guardarAnexo2Fase1: Manejador = ({ req, datos, params, sesion }) => {
   if (new Set(areas.map((a) => a.id)).size !== areas.length) return error(400, 'Hay áreas usuarias repetidas en la solicitud.');
   const recibidas = CONTEXTO_ANEXO_2_FASE_1.areas;
   if (areas.some((a) => !recibidas.some((r) => r.id === a.id))) return error(400, 'Hay áreas usuarias sin Anexo 01 recibido.');
-  // Se guardan los datos del Anexo 01 recibido, no los que mande el cliente.
-  s.detalleAnexo2Fase1 = { documentoId: s.id, areas: recibidas.filter((r) => areas.some((a) => a.id === r.id)) };
+  // Se guardan los datos del Anexo 01 recibido, no los que mande el cliente; un área que ya estaba conserva su evaluación.
+  const previas = s.detalleAnexo2Fase1?.areas ?? [];
+  s.detalleAnexo2Fase1 = {
+    documentoId: s.id,
+    areas: recibidas
+      .filter((r) => areas.some((a) => a.id === r.id))
+      .map((r) => {
+        const previa = previas.find((p) => p.id === r.id);
+        return previa ? { ...r, estadoEvaluacion: previa.estadoEvaluacion, comentarioEvaluacion: previa.comentarioEvaluacion } : { ...r };
+      }),
+  };
   s.updatedAt = new Date().toISOString();
   guardarDatos(datos);
   return ok({ message: 'Áreas usuarias guardadas' });
+};
+
+/** La OA evalúa los Anexos 01 mientras la solicitud está en sus manos (ELABORADO u OBSERVADO). */
+const ESTADOS_EVALUACION_ANEXO_1 = ['ELABORADO', 'OBSERVADO'];
+
+/** «Detalle del Anexo 1» (Figma «3. Detalle items»): el área de la solicitud, sus ítems y si se puede evaluar. */
+const detalleAnexo1: Manejador = ({ datos, params, sesion }) => {
+  const s = buscarSolicitud(datos, params[0], sesion);
+  if (!s || !esAnexo2Fase1(s)) return error(404, 'La solicitud no existe.');
+  const area = s.detalleAnexo2Fase1?.areas.find((a) => a.id === params[1]);
+  if (!area) return error(404, 'El área usuaria no está en la solicitud.');
+  const detalle: DetalleAnexo1 = {
+    area,
+    items: itemsAnexo1(area),
+    evaluable:
+      sesion?.perfil.rolCodigo === 'CREADOR' && ESTADOS_EVALUACION_ANEXO_1.includes(s.estado) && area.estadoEvaluacion === 'Pendiente',
+  };
+  return ok(detalle);
+};
+
+/** «Consolidado del Anexo N.º 02»: los Anexos 01 de la solicitud ya revisados, agrupados y por semestre. */
+const consolidadoAnexo2: Manejador = ({ datos, params, sesion }) => {
+  const s = buscarSolicitud(datos, params[0], sesion);
+  if (!s || !esAnexo2Fase1(s)) return error(404, 'La solicitud no existe.');
+  const areas = s.detalleAnexo2Fase1?.areas ?? [];
+  const consolidado: ConsolidadoAnexo2 = {
+    solicitudId: s.id,
+    numeroDocumento: s.numero ?? '',
+    entidad: CONTEXTO_ANEXO_2_FASE_1.datos.entidad,
+    fase: CONTEXTO_ANEXO_2_FASE_1.datos.fase,
+    ...armarConsolidado(areas.map((area) => ({ area, items: itemsAnexo1(area) })), ANIOS_CMN),
+  };
+  return ok(consolidado);
+};
+
+/** «Conforme» / «No conforme» de un Anexo 01: solo el creador, una vez por área y con comentario si no es conforme. */
+const evaluarAnexo1: Manejador = ({ req, datos, params, sesion }) => {
+  if (!sesion) return error(401, 'Sesión expirada.');
+  const s = buscarSolicitud(datos, params[0], sesion);
+  if (!s || !esAnexo2Fase1(s)) return error(404, 'La solicitud no existe.');
+  if (sesion.perfil.rolCodigo !== 'CREADOR') return error(403, 'Solo la Oficina de Abastecimiento evalúa los Anexos 01.');
+  if (!ESTADOS_EVALUACION_ANEXO_1.includes(s.estado)) return error(409, 'La solicitud ya no admite evaluaciones.');
+  const area = s.detalleAnexo2Fase1?.areas.find((a) => a.id === params[1]);
+  if (!area) return error(404, 'El área usuaria no está en la solicitud.');
+  if (area.estadoEvaluacion !== 'Pendiente') return error(409, 'El Anexo 01 ya fue evaluado.');
+  const dto = (req.body ?? {}) as Partial<EvaluacionAnexo1Request>;
+  if (dto.estado !== 'Conforme' && dto.estado !== 'No conforme') return error(400, 'Indique si el Anexo 01 es conforme.');
+  const comentario = dto.comentario?.trim() ?? '';
+  if (dto.estado === 'No conforme' && !comentario) return error(400, 'Escriba el comentario de observación.');
+  if (comentario.length > 200) return error(400, 'El comentario admite hasta 200 caracteres.');
+  area.estadoEvaluacion = dto.estado;
+  area.comentarioEvaluacion = dto.estado === 'No conforme' ? comentario : undefined;
+  s.updatedAt = new Date().toISOString();
+  guardarDatos(datos);
+  return ok({ message: dto.estado === 'Conforme' ? 'Se dio conformidad al Anexo 01' : 'Anexo 01 observado' });
 };
 
 const subirSustento: Manejador = ({ req, datos, params, sesion }) => {
@@ -500,20 +573,15 @@ const registrosAnexo2Fase1: Manejador = ({ datos, sesion }) => {
 
 const listarAreasUsuarias: Manejador = ({ datos }) => ok(datos.areasUsuarias.filter((a) => !a.pendiente));
 
-/** Catálogo de commodities/ítems de «Buscar commodities u ítems» (Figma nodo 5053:72111). */
+/** Catálogo de commodities/ítems de «Buscar commodities u ítems» (Figma nodo 5056:124676). */
 const CATALOGO_COMMODITIES_ITEMS = (
   [
     ['78101800', 'Papel y cartón', '78101801', 'Papel bond A4 75gr'],
-    ['78101800', 'Papel y cartón', '78101802', 'Papel bond A4 80gr'],
-    ['44121700', 'Suministros de oficina', '44121701', 'Lapicero tinta azul'],
-    ['44121700', 'Suministros de oficina', '44121702', 'Lápiz grafito N°2'],
-    ['44121700', 'Suministros de oficina', '44121703', 'Folder manila A4'],
     ['43211500', 'Equipos de cómputo', '43211502', 'Monitor LED 24 pulgadas'],
-    ['43211500', 'Equipos de cómputo', '43211503', 'Impresora multifuncional láser'],
     ['46181500', 'Equipos de protección personal', '46181501', 'Guantes de seguridad industrial'],
     ['81112200', 'Servicios de soporte informático', '81112201', 'Servicio de soporte técnico de computadoras'],
-    ['81112501', 'Servicios de mantenimiento', '73152108', 'Servicio de mantenimiento de equipos'],
-    ['81112502', 'Servicios de publicación', '84131600', 'Servicio de fotocopiado externo'],
+    ['73152100', 'Servicios de mantenimiento y reparación de equipos', '73152108', 'Servicio de mantenimiento de equipos'],
+    ['84131600', 'Servicios de impresión y copiado', '84131600', 'Servicio de fotocopiado externo'],
   ] as const
 ).map(([commodity, descripcionCommodity, item, descripcionItem], i) => ({
   id: `cat-${i + 1}`,
@@ -564,11 +632,26 @@ const CATALOGO_SERVICIOS_BASICOS = (
 
 const catalogoServiciosBasicos: Manejador = () => ok(CATALOGO_SERVICIOS_BASICOS);
 
-const listarServiciosBasicosExcluidos: Manejador = ({ datos }) => ok(datos.serviciosBasicosExcluidos);
+/** Entidades asignables a un servicio básico: municipalidades del Gobierno Regional de Tumbes (código de ubigeo). */
+const ENTIDADES_SERVICIOS_BASICOS = [
+  { id: 'ent-mun-tumbes', codigo: '240101', nombre: 'Municipalidad Provincial de Tumbes' },
+  { id: 'ent-mun-zarumilla', codigo: '240301', nombre: 'Municipalidad Provincial de Zarumilla' },
+];
 
+const entidadesServiciosBasicos: Manejador = () => ok(ENTIDADES_SERVICIOS_BASICOS);
+
+const listarServiciosBasicosExcluidos: Manejador = ({ datos }) =>
+  ok(datos.serviciosBasicosExcluidos.map((s) => ({ ...s, entidades: s.entidades ?? [] })));
+
+/** Graba la lista vinculada; cada entidad asignada tiene que existir en el catálogo (si no, 400). */
 const guardarServiciosBasicosExcluidos: Manejador = ({ req, datos }) => {
   const { items } = (req.body ?? {}) as { items?: typeof datos.serviciosBasicosExcluidos };
-  datos.serviciosBasicosExcluidos = items ?? [];
+  const validas = new Set(ENTIDADES_SERVICIOS_BASICOS.map((e) => e.id));
+  const lista = (items ?? []).map((s) => ({ ...s, entidades: [...new Set(s.entidades ?? [])] }));
+  if (lista.some((s) => s.entidades.some((id) => !validas.has(id)))) {
+    return error(400, 'Una de las entidades asignadas no existe.');
+  }
+  datos.serviciosBasicosExcluidos = lista;
   guardarDatos(datos);
   return ok({ message: 'Servicios básicos guardados' });
 };
@@ -913,6 +996,9 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/items-estrategicos$/, registrosItemsEstrategicos],
   ['GET', /^\/items-estrategicos\/catalogo$/, catalogoItemsEstrategicos],
   ['POST', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1$/, guardarAnexo2Fase1],
+  ['GET', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1\/areas\/([^/]+)$/, detalleAnexo1],
+  ['POST', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1\/areas\/([^/]+)\/evaluacion$/, evaluarAnexo1],
+  ['GET', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1\/consolidado$/, consolidadoAnexo2],
   ['GET', /^\/cmn\/anexo-2-fase-1\/contexto$/, contextoAnexo2Fase1],
   ['GET', /^\/cmn\/anexo-2-fase-1\/registros$/, registrosAnexo2Fase1],
   ['GET', /^\/configuracion\/areas-usuarias$/, listarAreasUsuarias],
@@ -920,6 +1006,7 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['POST', /^\/configuracion\/areas-usuarias\/sincronizar$/, sincronizarAreasUsuarias],
   ['GET', /^\/configuracion\/servicios-basicos-excluidos$/, listarServiciosBasicosExcluidos],
   ['GET', /^\/configuracion\/servicios-basicos-excluidos\/catalogo$/, catalogoServiciosBasicos],
+  ['GET', /^\/configuracion\/servicios-basicos-excluidos\/entidades$/, entidadesServiciosBasicos],
   ['PUT', /^\/configuracion\/servicios-basicos-excluidos$/, guardarServiciosBasicosExcluidos],
   ['GET', /^\/configuracion\/areas-usuarias\/catalogo-items$/, catalogoItemsAreaUsuaria],
   ['PUT', /^\/configuracion\/areas-usuarias\/([^/]+)\/items$/, guardarItemsAreaUsuaria],

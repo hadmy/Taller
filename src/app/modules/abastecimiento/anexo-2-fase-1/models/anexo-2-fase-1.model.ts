@@ -32,9 +32,96 @@ export interface AreaUsuariaAnexo1 {
   estadoEvaluacion: EstadoEvaluacionAnexo1;
   /** Último día (ISO, `AAAA-MM-DD`) en que el área usuaria puede modificar su Anexo 01. */
   plazoModificacion: string;
+  /** Comentario de observación cuando la OA lo marcó «No conforme» (Figma «Observar registro»). */
+  comentarioEvaluacion?: string;
 }
 
-export type EstadoEvaluacionAnexo1 = 'Pendiente' | 'Conforme' | 'Observado';
+/** Evaluación del Anexo 01 por la OA (Figma «3. Detalle items»): «Conforme» o «No conforme» desde su detalle. */
+export type EstadoEvaluacionAnexo1 = 'Pendiente' | 'Conforme' | 'No conforme';
+
+/** Años de programación del CMN (Año 1, 2 y 3): columnas del consolidado del Anexo N.º 02. */
+export const ANIOS_CMN = [2027, 2028, 2029] as const;
+
+export type TipoItemAnexo1 = 'Bien' | 'Servicio';
+
+/** Un ítem (necesidad) del Anexo 01 de un área usuaria: tabla de «Detalle del Anexo 1» y filas del consolidado. */
+export interface ItemAnexo1 {
+  id: string;
+  /** Código del ítem del catálogo (16 dígitos). */
+  item: string;
+  descripcion: string;
+  /** Monto programado del ítem en el Anexo 01 (suma de los tres años), en soles. */
+  montoProgramado: number;
+  tipo: TipoItemAnexo1;
+  unidadMedida: string;
+  /** Solo en bienes: con él se calcula la cantidad de cada semestre. */
+  precioUnitario: number | null;
+  /** Fuente de financiamiento / rubro (p. ej. «RO/00»). */
+  fuente: string;
+  /** Clasificador de gastos (genérica). */
+  clasificador: string;
+  actividadOperativa: string;
+  meta: string;
+  /** Monto programado por año del CMN. */
+  montosPorAnio: Record<number, number>;
+}
+
+/** Lo que muestra «Detalle del Anexo 1» de un área usuaria incluida en la solicitud. */
+export interface DetalleAnexo1 {
+  area: AreaUsuariaAnexo1;
+  items: ItemAnexo1[];
+  /** La OA todavía puede dar conformidad u observar (solicitud ELABORADA u OBSERVADA y Anexo 01 pendiente). */
+  evaluable: boolean;
+}
+
+/** Cuerpo de «Conforme» / «No conforme» (el comentario es obligatorio para «No conforme»). */
+export interface EvaluacionAnexo1Request {
+  estado: Exclude<EstadoEvaluacionAnexo1, 'Pendiente'>;
+  comentario?: string;
+}
+
+/** Un semestre de un año en el consolidado: la cantidad solo existe en bienes. */
+export interface SemestreConsolidado {
+  cantidad: number | null;
+  valor: number;
+}
+
+/** Un ítem del consolidado del Anexo N.º 02, con su área usuaria y los dos semestres de cada año. */
+export interface FilaConsolidado {
+  codigo: string;
+  tipo: TipoItemAnexo1;
+  descripcion: string;
+  unidadMedida: string;
+  precioUnitario: number | null;
+  area: string;
+  estadoEvaluacion: Exclude<EstadoEvaluacionAnexo1, 'Pendiente'>;
+  /** Comentario de la observación cuando el Anexo 01 está «No conforme». */
+  comentario?: string;
+  /** Un par [semestre 1, semestre 2] por cada año de `ANIOS_CMN`, en el mismo orden. */
+  semestres: [SemestreConsolidado, SemestreConsolidado][];
+}
+
+/** Grupo del consolidado: Fuente / Rubro · Clasificador de gastos · Actividad operativa · Meta. */
+export interface GrupoConsolidado {
+  fuente: string;
+  clasificador: string;
+  actividadOperativa: string;
+  meta: string;
+  filas: FilaConsolidado[];
+}
+
+/** «Consolidado del Anexo N.º 02» de una solicitud: los Anexos 01 ya revisados (Conforme o No conforme). */
+export interface ConsolidadoAnexo2 {
+  solicitudId: string;
+  numeroDocumento: string;
+  entidad: string;
+  fase: string;
+  anios: number[];
+  grupos: GrupoConsolidado[];
+  /** Total por año: [semestre 1, semestre 2], en el orden de `anios`. */
+  totales: [number, number][];
+  totalGeneral: number;
+}
 
 /** Un área usuaria de un Anexo 02 aprobado: la pestaña Registros de CMN Programación. */
 export interface RegistroAnexo2 {

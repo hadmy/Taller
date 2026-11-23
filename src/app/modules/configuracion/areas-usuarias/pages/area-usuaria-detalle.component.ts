@@ -5,6 +5,7 @@ import { forkJoin } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { TabItem, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
+import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
 import { TooltipDirective } from '../../../../shared/ui/tooltip/tooltip.directive';
 import { SwitchComponent } from '../../../../shared/ui/switch/switch.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
@@ -14,7 +15,14 @@ import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../
 import { AreasUsuariasApiService } from '../api/areas-usuarias-api.service';
 import { AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE } from '../config/areas-usuarias.rutas';
 import { BuscarItemsPanelComponent } from '../components/buscar-items-panel.component';
-import { AreaUsuaria, AreaUsuariaItem, BANDERAS_AREA_USUARIA_DETALLE, CatalogoItem } from '../models/area-usuaria.model';
+import {
+  AreaUsuaria,
+  AreaUsuariaItem,
+  BANDERAS_AREA_USUARIA_DETALLE,
+  ESPECIALIDADES_ITEM,
+  CatalogoItem,
+  EspecialidadItem,
+} from '../models/area-usuaria.model';
 
 const TAB_ATIENDE = 'atiende';
 const TAB_PUEDE_PEDIR = 'puede-pedir';
@@ -25,7 +33,8 @@ const TAB_NECESIDADES = 'necesidades';
  * «Conf-Areas usuarias-03»): tarjeta con el nombre del área, «Cancelar» / «Grabar», las cuatro banderas y, en
  * pestañas, los commodities/ítems que atiende y que puede pedir en el Cuadro Multianual de Necesidades. Se llega acá
  * con «Editar» sobre el área marcada en `AreasUsuariasConfiguracionComponent` (o buscándola con la lupa).
- * «Necesidades Estratégicas» queda deshabilitada, igual que en el diseño.
+ * «Necesidades Estratégicas» queda deshabilitada, igual que en el diseño. En «puede pedir» la tabla suma la columna
+ * «Especialidad», un combo por ítem (General, Capacitación, Tecnología, Mobiliario; por defecto General).
  */
 @Component({
   selector: 'siaf-area-usuaria-detalle',
@@ -38,6 +47,7 @@ const TAB_NECESIDADES = 'necesidades';
     PageShellComponent,
     SwitchComponent,
     TabsComponent,
+    TextFieldComponent,
     TooltipDirective,
   ],
   templateUrl: './area-usuaria-detalle.component.html',
@@ -107,6 +117,9 @@ export class AreaUsuariaDetalleComponent implements OnInit {
 
   ngOnInit(): void {
     const areaId = this.route.snapshot.paramMap.get('areaId');
+    // El ícono de lista de la configuración abre directamente la pestaña de necesidades (`?pestana=necesidades`).
+    const pestana = this.route.snapshot.queryParamMap.get('pestana');
+    if (pestana) this.tabElegida.set(pestana);
     if (!areaId) {
       this.notFound.set(true);
       return;
@@ -132,7 +145,7 @@ export class AreaUsuariaDetalleComponent implements OnInit {
     this.area.set({ ...actual, [bandera]: marcado });
   }
 
-  /** Lupa roja de «Comodities»: abre el panel lateral «Buscar commodities u ítems». */
+  /** Lupa roja sobre la tabla: abre el panel lateral «Buscar commodities u ítems». */
   abrirPanel(): void {
     if (!this.catalogo().length) this.api.listarCatalogo().subscribe((c) => this.catalogo.set(c));
     this.panelAbierto.set(true);
@@ -156,9 +169,19 @@ export class AreaUsuariaDetalleComponent implements OnInit {
       item: c.item,
       descripcionItem: c.descripcionItem,
       vigente: true,
+      ...(tipo === TAB_PUEDE_PEDIR ? { especialidad: 'General' as const } : {}),
     }));
     this.items.update((lista) => [...lista, ...nuevos]);
     this.panelAbierto.set(false);
+  }
+
+  /** La pestaña «puede pedir» suma la columna «Especialidad». */
+  readonly esPuedePedir = computed(() => this.tabActiva() === TAB_PUEDE_PEDIR);
+  readonly opcionesEspecialidad: TextFieldOption[] = ESPECIALIDADES_ITEM.map((c) => ({ label: c, value: c }));
+
+  /** Combo de la columna «Especialidad»: el cambio se guarda con «Grabar». */
+  cambiarEspecialidad(itemId: string, especialidad: EspecialidadItem): void {
+    this.items.update((lista) => lista.map((i) => (i.id === itemId ? { ...i, especialidad } : i)));
   }
 
   /** Switch de la columna «Vigente»: el cambio se guarda con «Grabar». */

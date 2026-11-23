@@ -50,6 +50,15 @@ describe('query-report-charts', () => {
       expect(todas.progress).toBe(100);
     });
 
+    it('`decimals` cambia los decimales de una suma', () => {
+      const [entero, uno] = calcularKpis(FILAS, [
+        { title: 'Total', column: 'monto', decimals: 0 },
+        { title: 'Total', column: 'monto', decimals: 1 },
+      ]);
+      expect(entero.amount).toBe('3,900');
+      expect(uno.amount).toBe('3,899.5');
+    });
+
     it('sin filas, montos en cero y barra en 0 %', () => {
       expect(calcularKpis([], [{ title: 'Total', column: 'monto' }])[0]).toEqual(jasmine.objectContaining({ amount: '0.00', progress: 0 }));
     });
@@ -62,6 +71,7 @@ describe('query-report-charts', () => {
         description: '',
         type: 'bar',
         categories: ['ENE', 'FEB', 'MAR'],
+        keys: ['2026-01', '2026-02', '2026-03'],
         values: [1000, 1500, 800],
         seriesName: 'Monto por mes',
         categoryLabel: 'Mes',

@@ -8,6 +8,10 @@ export type SnackbarVariant =
   | 'changes-done'
   | 'record-done'
   | 'record-deleted'
+  | 'record-observed'
+  | 'record-conforming'
+  | 'record-complete'
+  | 'record-incomplete'
   | 'changes-saved'
   | 'changes-undone'
   | 'request-uploaded'
@@ -56,6 +60,28 @@ const SNACKBAR_PRESETS: Record<Exclude<SnackbarVariant, 'custom'>, SnackbarPrese
   },
   'record-deleted': {
     text: 'El registro se ha eliminado con éxito.'
+  },
+  // Figma «Creación - Registro Observado» (CMN Programación): la OA observó o dio conformidad a Anexos 01.
+  'record-observed': {
+    beforeStrong: 'El registro se ha ',
+    strong: 'observado',
+    afterStrong: ' con éxito.'
+  },
+  'record-conforming': {
+    beforeStrong: 'El registro se ha marcado como ',
+    strong: 'conforme',
+    afterStrong: ' con éxito.'
+  },
+  // Evaluación de Anexos 01 con los estados Completo / Incompleto (CMN Programación).
+  'record-complete': {
+    beforeStrong: 'El registro se ha marcado como ',
+    strong: 'completo',
+    afterStrong: ' con éxito.'
+  },
+  'record-incomplete': {
+    beforeStrong: 'El registro se ha marcado como ',
+    strong: 'incompleto',
+    afterStrong: ' con éxito.'
   },
   'changes-saved': {
     text: 'Los cambios se han guardado con éxito.'

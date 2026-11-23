@@ -23,7 +23,7 @@ describe('consolidado del Anexo N.º 02', () => {
   }
 
   function area(parcial: Partial<AreaUsuariaAnexo1>): AreaUsuariaAnexo1 {
-    return { id: 'a', nombre: 'Oficina de Abastecimiento', items: 1, montoProgramado: 0, estadoEvaluacion: 'Conforme', plazoModificacion: '2026-08-24', ...parcial };
+    return { id: 'a', nombre: 'Oficina de Abastecimiento', items: 1, montoProgramado: 0, estadoEvaluacion: 'Completo', plazoModificacion: '2026-08-24', ...parcial };
   }
 
   it('un servicio parte el año en mitades sin cantidad; un bien calcula la cantidad con el precio unitario', () => {
@@ -38,12 +38,12 @@ describe('consolidado del Anexo N.º 02', () => {
     ]);
   });
 
-  it('deja fuera los Anexos 01 pendientes, marca los no conformes y agrupa por fuente, clasificador, actividad y meta', () => {
+  it('deja fuera los Anexos 01 pendientes, marca los observados y agrupa por fuente, clasificador, actividad y meta', () => {
     const papel = item({ item: '1520283078101801', tipo: 'Bien', clasificador: '3 - Bienes', unidadMedida: 'EMPAQUE X 500', precioUnitario: 14.5, montosPorAnio: { 2027: 3480, 2028: 3480 } });
     const consolidado = armarConsolidado(
       [
         { area: area({}), items: [item({}), papel, item({ item: '1520288111220102', montosPorAnio: { 2027: 200, 2028: 400 } })] },
-        { area: area({ nombre: 'Oficina de Contabilidad', estadoEvaluacion: 'No conforme', comentarioEvaluacion: 'Sustentar cantidades' }), items: [papel] },
+        { area: area({ nombre: 'Oficina de Contabilidad', estadoEvaluacion: 'Incompleto', comentarioEvaluacion: 'Sustentar cantidades' }), items: [papel] },
         { area: area({ nombre: 'Oficina de Recursos Humanos', estadoEvaluacion: 'Pendiente' }), items: [item({})] },
       ],
       ANIOS,
@@ -55,7 +55,7 @@ describe('consolidado del Anexo N.º 02', () => {
     ]);
     expect(consolidado.grupos.flatMap((g) => g.filas.map((f) => f.area))).not.toContain('Oficina de Recursos Humanos');
     const observada = consolidado.grupos[1].filas[1];
-    expect(observada.estadoEvaluacion).toBe('No conforme');
+    expect(observada.estadoEvaluacion).toBe('Incompleto');
     expect(observada.comentario).toBe('Sustentar cantidades');
     expect(consolidado.grupos[0].filas[0].precioUnitario).toBeNull();
 

@@ -23,8 +23,7 @@ let siguienteId = 0;
  * @usar
  * - Para un panel lateral con contenido libre y, si hace falta, confirmación: un detalle breve, ayuda contextual o un
  *   formulario corto que no tiene ya su panel propio.
- * - `showFooter` en false para un panel de solo lectura; `confirmDisabled` mientras falte algo para aceptar.
- * - `showReturn` cuando el panel es un segundo paso y la flecha vuelve al anterior (emite `returned`).
+ * - `showFooter` en false para un panel de solo lectura; `confirmDisabled` mientras falte algo para aceptar. * - `showReturn` cuando el panel es un segundo paso y la flecha vuelve al anterior (emite `returned`).
  * - `embedded` para pintarlo dentro de otro contenedor, como el panel de filtros de `siaf-side-panel`.
  * @evitar
  * - Para elegir registros de un catálogo: usar `siaf-selection-side-nav`; para adjuntar archivos, `siaf-upload-side-nav`;

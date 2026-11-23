@@ -1,11 +1,14 @@
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración de servicios basicos excluidos de la ley">
-    @if (editando()) {
+  <siaf-page-header pageHeader title="Configuración del Cuadro Multianual de Necesidades">
+    <!-- «Grabar» con ítems en edición o con cambios por guardar; la vista inicial vacía y la grabada no lo llevan. -->
+    @if ((editando() && items().length > 0) || huboCambios()) {
       <siaf-button actions variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
         Grabar
       </siaf-button>
     }
   </siaf-page-header>
+
+  <siaf-configuracion-tabs activa="servicios-basicos" />
 
   <div class="flex min-h-0 flex-1 flex-col gap-siaf-md overflow-auto rounded-siaf-md bg-surface p-siaf-lg">
     <header class="flex items-center justify-between">
@@ -30,8 +33,10 @@
               <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
               @if (editando()) {
                 <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigencia</th>
+              } @else {
+                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Entidades</th>
+                <th class="w-28 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm"><span class="sr-only">Acciones</span></th>
               }
-              <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Entidades</th>
             </tr>
           </thead>
           <tbody>
@@ -39,6 +44,7 @@
               <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
                 <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ codigo(item) }}</td>
                 <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcion }}</td>
+                <!-- Vigencia: la papelera para quitar el ítem, solo al editar (antes de grabar). -->
                 @if (editando()) {
                   <td class="px-siaf-md py-siaf-xs text-center">
                     <siaf-button
@@ -50,35 +56,36 @@
                       (click)="quitar(item.id)"
                     />
                   </td>
+                } @else {
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ textoEntidades(item) }}</td>
+                  <!-- Acciones de la fila: la lupa de documento ve sus entidades; el lápiz abre «Editar servicio básico». -->
+                  <td class="px-siaf-md py-siaf-xs">
+                    <div class="flex items-center justify-center gap-siaf-xs">
+                    <siaf-button
+                      variant="text"
+                      size="sm"
+                      icon="find_in_page"
+                      [iconOnly]="true"
+                      [ariaLabel]="'Ver entidades asignadas a ' + item.descripcion"
+                      siafTooltip="Ver entidades"
+                      (click)="detalle.set(item)"
+                    />
+                    <siaf-button
+                      variant="text"
+                      size="sm"
+                      icon="edit"
+                      [iconOnly]="true"
+                      [ariaLabel]="'Editar entidades de ' + item.descripcion"
+                      siafTooltip="Editar"
+                      (click)="enEdicion.set(item)"
+                    />
+                    </div>
+                  </td>
                 }
-                <!-- Entidades: cuántas tiene (con sus nombres en el tooltip) y, al editar, el ícono para asignarlas. -->
-                <td class="px-siaf-md py-siaf-xs">
-                  <div class="flex items-center justify-between gap-siaf-xs">
-                    @if (item.entidades?.length) {
-                      <span class="text-[var(--sys-color-text-neutral-medium)]" [siafTooltip]="nombresEntidades(item)" tooltipMode="always" tabindex="0">{{
-                        resumenEntidades(item.entidades!.length)
-                      }}</span>
-                    } @else {
-                      <span class="text-[var(--sys-color-text-neutral-low)]">{{ resumenEntidades(0) }}</span>
-                    }
-                    @if (editando()) {
-                      <siaf-button
-                        variant="text"
-                        size="sm"
-                        icon="add_business"
-                        [iconOnly]="true"
-                        [ariaLabel]="'Asignar entidades a ' + item.descripcion"
-                        siafTooltip="Asignar entidades"
-                        tooltipMode="always"
-                        (click)="abrirEntidades(item)"
-                      />
-                    }
-                  </div>
-                </td>
               </tr>
             } @empty {
               <tr>
-                <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="editando() ? 4 : 3">No se encontraron servicios básicos.</td>
+                <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="editando() ? 3 : 4">No se encontraron servicios básicos.</td>
               </tr>
             }
           </tbody>
@@ -102,28 +109,43 @@
     }
   </div>
 
+  <!-- «Entidades asignadas» de un servicio: solo lectura, sin botones al pie (para editarlas, el lápiz de la fila). -->
+  <siaf-side-nav [open]="!!detalle()" title="Entidades asignadas" [showFooter]="false" (closed)="detalle.set(null)">
+    @if (detalle(); as item) {
+      <div class="flex flex-col gap-siaf-md text-sm">
+        <div class="flex flex-col gap-1">
+          <span class="text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">{{ codigo(item) }}</span>
+          <span class="text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcion }}</span>
+        </div>
+        @if (entidadesDelDetalle().length) {
+          <ul class="m-0 flex list-none flex-col p-0">
+            @for (entidad of entidadesDelDetalle(); track entidad.id) {
+              <li class="flex gap-siaf-md border-b border-[var(--sys-color-divider-default)] py-siaf-sm last:border-b-0">
+                <span class="w-16 shrink-0 text-[var(--sys-color-text-neutral-low)]">{{ entidad.codigo }}</span>
+                <span class="text-[var(--sys-color-text-neutral-high)]">{{ entidad.nombre }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <div class="rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-lowest)] px-siaf-md py-siaf-md text-[var(--sys-color-text-neutral-medium)]">
+            Este servicio básico aún no tiene entidades asignadas.
+          </div>
+        }
+      </div>
+    }
+  </siaf-side-nav>
+
+  <siaf-editar-servicio-basico-panel
+    [servicio]="enEdicion()"
+    [entidades]="entidades()"
+    (confirmed)="aplicarEdicion($event)"
+    (closed)="enEdicion.set(null)"
+  />
+
   <siaf-seleccionar-items-panel
     [open]="panelAbierto()"
     [catalogo]="catalogoDisponible()"
     (confirmed)="agregarItems($event)"
     (canceled)="cerrarPanel()"
-  />
-
-  <!-- «Asignar entidades»: panel de selección múltiple del kit; sin marcar ninguna, el ítem queda «Sin asignar». -->
-  <siaf-selection-side-nav
-    [open]="itemEntidades() !== null"
-    [title]="'Asignar entidades · ' + (itemEntidades()?.descripcion ?? '')"
-    mode="multiple"
-    [rows]="entidadesFiltradas()"
-    [columns]="columnasEntidades"
-    [searchValue]="busquedaEntidades()"
-    searchPlaceholder="Buscar entidad"
-    [selectedIds]="seleccionEntidades()"
-    [requireSelection]="false"
-    emptyMessage="No hay entidades que coincidan con la búsqueda."
-    (searchChange)="busquedaEntidades.set($event)"
-    (selectionChange)="seleccionEntidades.set($event)"
-    (closed)="cerrarEntidades()"
-    (accepted)="asignarEntidades($event)"
   />
 </siaf-page-shell>

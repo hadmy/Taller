@@ -4,7 +4,7 @@ import { FlowStatusTagComponent, FlowStatus } from '../../ui/flow-status-tag/flo
 import { IconComponent } from '../../ui/icon/icon.component';
 import { SolicitudesApiService } from '../../../core/api/solicitudes-api.service';
 import { ESTADO } from '../../../core/models/documento.model';
-import { FocoDirective } from '../../ui/foco/foco.directive';
+import { SidePanelComponent } from '../../ui/side-panel/side-panel.component';
 
 export type DocumentHistoryRow = {
   usuario: string;
@@ -52,13 +52,13 @@ const FLOW_STATUS_MAP: Record<string, FlowStatus> = {
 };
 
 /**
- * Modal centrado «Historial del documento» (Figma «CMN Programación · Solicitud de Ítems Estratégicos», nodo
- * 18911:7221), que abre la bandeja `siaf-documents-records-page` desde la pestaña Documentos.
+ * Panel lateral «Historial del documento» (`siaf-side-panel` sin pie; Figma «CMN Programación · Solicitud de Ítems
+ * Estratégicos», nodo 18911:7221), que abre la bandeja `siaf-documents-records-page` desde la pestaña Documentos.
  *
  * Muestra el documento en su fila y debajo su N° y el tipo de acción, una sección plegable opcional de atributos y la
  * tabla del historial de estados (usuario y unidad organizacional en mayúsculas, fecha y hora en una línea y el estado
  * con `siaf-flow-status-tag`), que pide a la API con
- * `solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o pulsando el fondo, que emiten `closed`.
+ * `solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o con Escape, que emiten `closed`.
  *
  * @usar
  * - Para ver desde la pestaña Documentos de cualquier bandeja quién movió el documento y cuándo pasó por Elaborado,
@@ -76,8 +76,8 @@ const FLOW_STATUS_MAP: Record<string, FlowStatus> = {
  * - **Escape**: cierra el panel (emite `closed`) y el foco vuelve al botón de historial.
  * - **Enter / Espacio** en el botón de atributos: pliegan o despliegan la sección.
  * @accesibilidad
- * - **Pendiente · 4.1.2 Nombre, función y valor (A)**: es `role="dialog"` con `aria-modal`, nombre desde su título y
- *   la X «Cerrar historial»; pero el botón de atributos no publica `aria-expanded` ni `aria-controls`: su estado solo
+ * - **Pendiente · 4.1.2 Nombre, función y valor (A)**: `siaf-side-panel` lo hace `role="dialog"` con `aria-modal`,
+ *   nombre desde su título y la X «Cerrar» más el título; pero el botón de atributos no publica `aria-expanded` ni `aria-controls`: su estado solo
  *   se ve en la flecha.
  * - **1.3.1 Información y relaciones (A)**: título `h2` y estados en una `table` con `thead` y `th`, dentro de una
  *   sección nombrada «Historial de estados».
@@ -85,166 +85,131 @@ const FLOW_STATUS_MAP: Record<string, FlowStatus> = {
  * - **Pendiente · 1.4.3 Contraste mínimo (AA)**: etiquetas `text-neutral-low` 5.01:1 (oscuro 8.86:1), valores
  *   `text-neutral-high` 16.29:1 (16.53:1) y celdas `text-neutral-medium` 14.53:1 (12.87:1) cumplen, pero el estado
  *   Observado da 3.39:1 en claro.
- * - **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir lleva el foco a la X y lo retiene en el panel; al cerrar (X,
- *   Escape o clic en el fondo) lo devuelve al botón de historial.
- * - **2.4.7 Foco visible (AA)**: la X y el botón de atributos no definen estilo de foco: muestran el contorno por
- *   defecto del navegador.
+ * - **2.4.3 Orden del foco (A)**: `siaf-side-panel` (con `siafFoco`) lleva el foco a la X al abrir y lo retiene en el
+ *   panel; al cerrar (X o Escape) lo devuelve al botón de historial.
+ * - **2.4.7 Foco visible (AA)**: la X trae el anillo de foco de `siaf-side-panel`; el botón de atributos no define
+ *   estilo de foco y muestra el contorno por defecto del navegador.
  * - **Pendiente · 4.1.3 Mensajes de estado (AA)**: la carga pinta filas grises animadas sin texto ni `aria-busy`, así
  *   que no se anuncia.
  */
 @Component({
   selector: 'siaf-document-history-panel',
   standalone: true,
-  imports: [FocoDirective, FlowStatusTagComponent, IconComponent],
+  imports: [FlowStatusTagComponent, IconComponent, SidePanelComponent],
   template: `
-    @if (open) {
-      <section
-        class="fixed inset-0 z-50 flex items-start justify-center bg-black/55 p-siaf-md sm:p-siaf-lg"
-        aria-modal="true"
-        role="dialog"
-        aria-labelledby="document-history-title"
-        (click)="closed.emit()"
-      >
-        <aside
-          class="flex h-[min(688px,calc(100vh-32px))] w-full max-w-[1288px] flex-col overflow-hidden rounded-siaf-md bg-surface shadow-siaf-lg sm:h-[min(688px,calc(100vh-48px))]"
-          [siafFoco]="open"
-          (siafFocoEscape)="closed.emit()"
-          (click)="$event.stopPropagation()"
-        >
+    <siaf-side-panel [open]="open" title="Historial del documento" [showFooter]="false" (closed)="closed.emit()">
+      <div class="flex flex-col gap-siaf-lg">
 
-          <!-- Header -->
-          <header class="flex h-14 shrink-0 items-center gap-siaf-xs border-b border-[var(--sys-color-divider-default)] px-siaf-md">
-            <h2 id="document-history-title" class="m-0 flex-1 text-base font-bold uppercase leading-normal tracking-[0.02px] text-text">
-              Historial del documento
-            </h2>
-            <button
-              class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted"
-              type="button"
-              aria-label="Cerrar historial"
-              (click)="closed.emit()"
-            >
-              <siaf-icon name="close" [size]="24" />
-            </button>
-          </header>
-
-          <!-- Body -->
-          <div class="min-h-0 flex-1 overflow-y-auto px-siaf-md py-siaf-md sm:px-siaf-xl">
-            <div class="flex flex-col gap-siaf-lg">
-
-              <!-- Summary card: el documento en su fila; N° y tipo de acción debajo (Figma 18911:7221) -->
-              <section class="rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] p-siaf-md">
-                <div class="grid gap-x-siaf-md gap-y-siaf-lg md:grid-cols-3">
-                  <div class="flex min-w-0 flex-col gap-siaf-xxs md:col-span-3">
-                    <span class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">Documento</span>
-                    <span class="text-sm font-medium text-text">{{ summary.document }}</span>
-                  </div>
-                  <div class="flex min-w-0 flex-col gap-siaf-xxs">
-                    <span class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">N° de documento</span>
-                    <span class="text-sm font-medium text-text">{{ summary.number || '—' }}</span>
-                  </div>
-                  <div class="flex min-w-0 flex-col gap-siaf-xxs">
-                    <span class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">Tipo de acción</span>
-                    <span class="text-sm font-medium text-text">{{ summary.actionType }}</span>
-                  </div>
-                </div>
-              </section>
-
-              <!-- Atributos propios del documento (opcional) -->
-              @if (summary.attributes?.length) {
-                <section class="rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] p-siaf-md">
-                  <button
-                    class="flex w-full items-center gap-siaf-xs text-left"
-                    type="button"
-                    (click)="attributesExpanded.set(!attributesExpanded())"
-                  >
-                    <siaf-icon [name]="attributesExpanded() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" [size]="20" />
-                    <span class="text-sm font-medium text-text">{{ summary.attributesTitle || 'Atributos del documento' }}</span>
-                  </button>
-                  @if (attributesExpanded()) {
-                    <div class="mt-siaf-md grid gap-siaf-md md:grid-cols-3">
-                      @for (attr of summary.attributes; track attr.label) {
-                        <div class="flex min-w-0 flex-col gap-siaf-xxs">
-                          <span class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">{{ attr.label }}</span>
-                          <span class="text-sm font-medium text-text">{{ attr.value }}</span>
-                        </div>
-                      }
-                    </div>
-                  }
-                </section>
-              }
-
-              <!-- History table -->
-              <section aria-label="Historial de estados">
-                @if (loading()) {
-                  <div class="overflow-x-auto">
-                    <table class="w-full min-w-[640px] border-collapse text-left text-sm">
-                      <thead>
-                        <tr class="h-10 bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-text">
-                          <th class="rounded-l-siaf-sm px-siaf-md py-siaf-sm">Usuario</th>
-                          <th class="px-siaf-md py-siaf-sm">Unidad Organizacional</th>
-                          <th class="px-siaf-md py-siaf-sm w-[160px]">Fecha</th>
-                          <th class="rounded-r-siaf-sm px-siaf-md py-siaf-sm w-[130px]">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (i of skeletonRows; track $index) {
-                          <tr class="border-b border-[var(--sys-color-divider-default)]">
-                            <td class="px-siaf-md py-siaf-sm">
-                              <span class="block h-3 w-40 rounded bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse"></span>
-                            </td>
-                            <td class="px-siaf-md py-siaf-sm">
-                              <span class="block h-3 w-28 rounded bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse"></span>
-                            </td>
-                            <td class="px-siaf-md py-siaf-sm">
-                              <span class="block h-3 w-20 rounded bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse mb-1"></span>
-                              <span class="block h-2.5 w-14 rounded bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse"></span>
-                            </td>
-                            <td class="px-siaf-md py-siaf-sm">
-                              <span class="block h-6 w-24 rounded-full bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse"></span>
-                            </td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                } @else if (rows().length === 0) {
-                  <p class="m-0 text-sm text-[var(--sys-color-text-neutral-medium)]">Sin historial disponible.</p>
-                } @else {
-                  <div class="overflow-x-auto">
-                    <table class="w-full min-w-[640px] border-collapse text-left text-sm">
-                      <thead>
-                        <tr class="h-10 bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-text">
-                          <th class="rounded-l-siaf-sm px-siaf-md py-siaf-sm">Usuario</th>
-                          <th class="px-siaf-md py-siaf-sm">Unidad Organizacional</th>
-                          <th class="px-siaf-md py-siaf-sm w-[160px]">Fecha</th>
-                          <th class="rounded-r-siaf-sm px-siaf-md py-siaf-sm w-[130px]">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (row of rows(); track $index) {
-                          <tr class="border-b border-[var(--sys-color-divider-default)]">
-                            <td class="px-siaf-md py-siaf-sm uppercase text-[var(--sys-color-text-neutral-medium)]">{{ row.usuario || '—' }}</td>
-                            <td class="whitespace-pre-wrap px-siaf-md py-siaf-sm uppercase text-[var(--sys-color-text-neutral-medium)]">{{ row.unidad || row.rol || '—' }}</td>
-                            <td class="whitespace-nowrap px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">
-                              <span>{{ row.fecha }}</span>
-                              <span class="ml-siaf-md">{{ row.hora }}</span>
-                            </td>
-                            <td class="px-siaf-md py-siaf-sm">
-                              <siaf-flow-status-tag [status]="flowStatus(row.estado)" size="small" />
-                            </td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                }
-              </section>
-
+        <!-- Summary card: el documento en su fila; N° y tipo de acción debajo (Figma 18911:7221) -->
+        <section class="rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] p-siaf-md">
+          <div class="grid gap-x-siaf-md gap-y-siaf-lg md:grid-cols-3">
+            <div class="flex min-w-0 flex-col gap-siaf-xxs md:col-span-3">
+              <span class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">Documento</span>
+              <span class="text-sm font-medium text-text">{{ summary.document }}</span>
+            </div>
+            <div class="flex min-w-0 flex-col gap-siaf-xxs">
+              <span class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">N° de documento</span>
+              <span class="text-sm font-medium text-text">{{ summary.number || '—' }}</span>
+            </div>
+            <div class="flex min-w-0 flex-col gap-siaf-xxs">
+              <span class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">Tipo de acción</span>
+              <span class="text-sm font-medium text-text">{{ summary.actionType }}</span>
             </div>
           </div>
-        </aside>
-      </section>
-    }
+        </section>
+
+        <!-- Atributos propios del documento (opcional) -->
+        @if (summary.attributes?.length) {
+          <section class="rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] p-siaf-md">
+            <button
+              class="flex w-full items-center gap-siaf-xs text-left"
+              type="button"
+              (click)="attributesExpanded.set(!attributesExpanded())"
+            >
+              <siaf-icon [name]="attributesExpanded() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" [size]="20" />
+              <span class="text-sm font-medium text-text">{{ summary.attributesTitle || 'Atributos del documento' }}</span>
+            </button>
+            @if (attributesExpanded()) {
+              <div class="mt-siaf-md grid gap-siaf-md md:grid-cols-3">
+                @for (attr of summary.attributes; track attr.label) {
+                  <div class="flex min-w-0 flex-col gap-siaf-xxs">
+                    <span class="text-[11px] font-medium uppercase tracking-[0.66px] text-text-muted">{{ attr.label }}</span>
+                    <span class="text-sm font-medium text-text">{{ attr.value }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </section>
+        }
+
+        <!-- History table -->
+        <section aria-label="Historial de estados">
+          @if (loading()) {
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+                <thead>
+                  <tr class="h-10 bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-text">
+                    <th class="rounded-l-siaf-sm px-siaf-md py-siaf-sm">Usuario</th>
+                    <th class="px-siaf-md py-siaf-sm">Unidad Organizacional</th>
+                    <th class="px-siaf-md py-siaf-sm w-[160px]">Fecha</th>
+                    <th class="rounded-r-siaf-sm px-siaf-md py-siaf-sm w-[130px]">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (i of skeletonRows; track $index) {
+                    <tr class="border-b border-[var(--sys-color-divider-default)]">
+                      <td class="px-siaf-md py-siaf-sm">
+                        <span class="block h-3 w-40 rounded bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse"></span>
+                      </td>
+                      <td class="px-siaf-md py-siaf-sm">
+                        <span class="block h-3 w-28 rounded bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse"></span>
+                      </td>
+                      <td class="px-siaf-md py-siaf-sm">
+                        <span class="block h-3 w-20 rounded bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse mb-1"></span>
+                        <span class="block h-2.5 w-14 rounded bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse"></span>
+                      </td>
+                      <td class="px-siaf-md py-siaf-sm">
+                        <span class="block h-6 w-24 rounded-full bg-[var(--sys-color-bg-surfaces-surface-low)] siaf-skeleton-pulse"></span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else if (rows().length === 0) {
+            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-medium)]">Sin historial disponible.</p>
+          } @else {
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+                <thead>
+                  <tr class="h-10 bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-text">
+                    <th class="rounded-l-siaf-sm px-siaf-md py-siaf-sm">Usuario</th>
+                    <th class="px-siaf-md py-siaf-sm">Unidad Organizacional</th>
+                    <th class="px-siaf-md py-siaf-sm w-[160px]">Fecha</th>
+                    <th class="rounded-r-siaf-sm px-siaf-md py-siaf-sm w-[130px]">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows(); track $index) {
+                    <tr class="border-b border-[var(--sys-color-divider-default)]">
+                      <td class="px-siaf-md py-siaf-sm uppercase text-[var(--sys-color-text-neutral-medium)]">{{ row.usuario || '—' }}</td>
+                      <td class="whitespace-pre-wrap px-siaf-md py-siaf-sm uppercase text-[var(--sys-color-text-neutral-medium)]">{{ row.unidad || row.rol || '—' }}</td>
+                      <td class="whitespace-nowrap px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">
+                        <span>{{ row.fecha }}</span>
+                        <span class="ml-siaf-md">{{ row.hora }}</span>
+                      </td>
+                      <td class="px-siaf-md py-siaf-sm">
+                        <siaf-flow-status-tag [status]="flowStatus(row.estado)" size="small" />
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+      </div>
+    </siaf-side-panel>
   `,
   styles: [`
     @keyframes siaf-skeleton-pulse-kf {

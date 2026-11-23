@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
@@ -28,7 +29,7 @@ import { DistribucionInternaPresupuesto } from '../models/distribucion-interna-p
 @Component({
   selector: 'siaf-distribucion-interna-presupuesto',
   standalone: true,
-  imports: [
+  imports: [ConfiguracionTabsComponent, 
     ButtonComponent,
     FormTableSearchComponent,
     ModalComponent,

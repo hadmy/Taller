@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
-import { AfterViewInit, Directive, ElementRef, OnChanges, OnDestroy, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, Directive, ElementRef, EventEmitter, OnChanges, OnDestroy, ViewChild, inject, signal } from '@angular/core';
 import { Chart } from 'chart.js';
-import type { ActiveDataPoint, ChartData, ChartOptions, ChartType, Element, Plugin, Scale, TooltipModel } from 'chart.js';
+import type { ActiveDataPoint, ActiveElement, ChartData, ChartEvent, ChartOptions, ChartType, Element, Plugin, Scale, TooltipModel } from 'chart.js';
 
 import type { ChartLegendItem } from '../chart-legend/chart-legend.component';
 import type { ChartTooltipItem } from '../chart-tooltip/chart-tooltip.component';
@@ -31,6 +31,13 @@ export interface TooltipDelGrafico {
 }
 
 export const tieneValor = (valor: number | null | undefined): valor is number => valor !== null && valor !== undefined && !Number.isNaN(valor);
+
+/** El color con otra opacidad: atenúa las categorías no seleccionadas. Si no es `rgb()`/`rgba()`, lo deja igual. */
+export function conOpacidad(color: string, opacidad: number): string {
+  const partes = /rgba?\(([^)]+)\)/.exec(color)?.[1].split(/[\s,/]+/).filter(Boolean);
+  if (!partes || partes.length < 3) return color;
+  return `rgba(${partes[0]}, ${partes[1]}, ${partes[2]}, ${opacidad})`;
+}
 
 /**
  * `afterFit` de los ejes, para que el gráfico llegue al borde de su relleno como en el Figma. Chart.js reserva la
@@ -99,6 +106,24 @@ export abstract class GraficoBase<TTipo extends ChartType> implements AfterViewI
   protected abstract datos(): ChartData<TTipo>;
   protected abstract opciones(): ChartOptions<TTipo>;
 
+  /**
+   * Selección de una categoría con clic, Enter o Espacio. Los gráficos que la ofrecen (`siaf-bar-chart`, `siaf-donut-chart` y
+   * `siaf-diverging-chart`) la redeclaran como `@Input()`/`@Output()`; en el resto queda apagada.
+   */
+  selectable = false;
+  /** Categoría seleccionada: las demás se atenúan. `null`, ninguna. */
+  selectedIndex: number | null = null;
+  /** Índice de la categoría elegida, o `null` al volver a elegir la que ya estaba seleccionada (la deselecciona). */
+  readonly categorySelected = new EventEmitter<number | null>();
+  /** Serie seleccionada (en barras apiladas, el tramo de un estado): las demás se atenúan. `null`, ninguna. */
+  selectedSeries: number | null = null;
+  /**
+   * Clic en un tramo exacto (serie y categoría), o `null` al volver a elegir el ya seleccionado. Sirve en barras
+   * apiladas para filtrar por los dos. Si alguien lo escucha, el clic en un tramo no emite `categorySelected` (Enter
+   * con el teclado sí, porque elige la categoría entera).
+   */
+  readonly segmentSelected = new EventEmitter<{ category: number; series: number } | null>();
+
   private grafico: Chart<TTipo> | null = null;
   private dejarDeObservarTema: (() => void) | null = null;
   private activo = -1;
@@ -149,6 +174,13 @@ export abstract class GraficoBase<TTipo extends ChartType> implements AfterViewI
       case 'End':
         indice = total - 1;
         break;
+      case 'Enter':
+      case ' ':
+        // Elige la categoría a la que se llegó con las flechas (no en el comparativo, donde cada posición es una serie).
+        if (!this.selectable || this.activo < 0 || total !== this.etiquetas.length) return;
+        evento.preventDefault();
+        this.seleccionar(this.activo);
+        return;
       case 'Escape':
         // Sin preventDefault: el panel que contiene al gráfico también recibe la tecla.
         this.ocultarTooltip();
@@ -192,6 +224,29 @@ export abstract class GraficoBase<TTipo extends ChartType> implements AfterViewI
     return this.etiquetas[indice] ? `${this.etiquetas[indice]}: ${texto}` : texto;
   }
 
+  /** Con una categoría seleccionada, un color por categoría: el de la serie en la elegida y atenuado en las demás. */
+  protected colorSegunSeleccion(color: string, serie?: number): string | string[] {
+    const tenue = conOpacidad(color, 0.3);
+    // Con una serie elegida, las otras series se atenúan enteras.
+    if (this.selectedSeries !== null && serie !== undefined && serie !== this.selectedSeries) return tenue;
+    const elegida = this.selectedIndex;
+    if (elegida === null || elegida < 0 || elegida >= this.etiquetas.length) return color;
+    return this.etiquetas.map((_, i) => (i === elegida ? color : tenue));
+  }
+
+  private seleccionar(indice: number): void {
+    const nueva = indice === this.selectedIndex ? null : indice;
+    this.categorySelected.emit(nueva);
+    this.anuncio.set(nueva === null ? 'Selección quitada' : `${this.etiquetas[nueva] ?? ''} seleccionado`);
+  }
+
+  private seleccionarTramo(categoria: number, serie: number): void {
+    const igual = categoria === this.selectedIndex && serie === this.selectedSeries;
+    this.segmentSelected.emit(igual ? null : { category: categoria, series: serie });
+    const nombre = this.seriesDibujadas[serie]?.name ?? '';
+    this.anuncio.set(igual ? 'Selección quitada' : `${this.etiquetas[categoria] ?? ''}, ${nombre} seleccionado`);
+  }
+
   /** Color calculado de un token en el tema vigente. */
   protected colorDe(token: string): string {
     return colorDeToken(this.host.nativeElement, token);
@@ -218,6 +273,22 @@ export abstract class GraficoBase<TTipo extends ChartType> implements AfterViewI
       // viejas: Chart.js repite el último evento del puntero y lo dejaba en x = 0. Se oculta; el puntero lo vuelve a mostrar.
       onResize: () => this.ocultarTooltip(),
       interaction: { mode: 'index' as const, intersect: false },
+      // Con `selectable`, el clic en una categoría la elige y el puntero cambia a mano sobre ella.
+      onClick: (evento: ChartEvent, elementos: ActiveElement[], grafico: Chart) => {
+        if (!this.selectable || !elementos.length) return;
+        // El tramo bajo el puntero (no toda la categoría), para `segmentSelected`.
+        const tramo = evento.native ? grafico.getElementsAtEventForMode(evento.native, 'nearest', { intersect: true }, false)[0] : undefined;
+        // Si la pantalla escucha `segmentSelected`, el clic en un tramo se informa solo por ahí.
+        if (tramo && this.segmentSelected.observed) {
+          this.seleccionarTramo(tramo.index, tramo.datasetIndex);
+          return;
+        }
+        this.seleccionar(elementos[0].index);
+      },
+      onHover: (evento: ChartEvent, elementos: ActiveElement[]) => {
+        const lienzo = evento.native?.target as HTMLElement | undefined;
+        if (lienzo) lienzo.style.cursor = this.selectable && elementos.length ? 'pointer' : '';
+      },
       plugins: {
         legend: { display: false },
         tooltip: { enabled: false, external: ({ tooltip }: { tooltip: TooltipModel<TTipo> }) => this.alMoverTooltip(tooltip) },

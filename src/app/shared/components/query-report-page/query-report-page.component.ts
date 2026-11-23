@@ -8,10 +8,12 @@ import type {
   QueryReportResult,
   QueryReportRow,
 } from '../../types/query-report.types';
+import type { DocumentsRecordsColumn } from '../../types/documents-records.types';
 import { BarChartComponent } from '../../ui/bar-chart/bar-chart.component';
 import { ButtonComponent } from '../../ui/button/button.component';
 import { ButtonGroupItem, ButtonsGroupComponent } from '../../ui/buttons-group/buttons-group.component';
 import { ChartSectionComponent } from '../../ui/chart-section/chart-section.component';
+import { ColumnVisibilityPanelComponent } from '../../ui/column-visibility-panel/column-visibility-panel.component';
 import type { ChartSeries } from '../../ui/charts/grafico-base';
 import { DivergingChartComponent } from '../../ui/diverging-chart/diverging-chart.component';
 import { DonutChartComponent } from '../../ui/donut-chart/donut-chart.component';
@@ -23,6 +25,7 @@ import { MessageBoxComponent } from '../../ui/message-box/message-box.component'
 import { ReportSummaryCardComponent } from '../../ui/report-summary-card/report-summary-card.component';
 import { ReportTableColumn, ReportTableComponent } from '../../ui/report-table/report-table.component';
 import { TableSkeletonComponent } from '../../ui/table-skeleton/table-skeleton.component';
+import { TagComponent } from '../../ui/tag/tag.component';
 import { TabsComponent } from '../../ui/tabs/tabs.component';
 import { FilterPillComponent } from '../filter-pill/filter-pill.component';
 import { FormTableSearchComponent } from '../form-table-search/form-table-search.component';
@@ -31,7 +34,7 @@ import { PageShellComponent } from '../page-shell/page-shell.component';
 import { PaginationComponent } from '../pagination/pagination.component';
 import { ParametroAplicado, ParametrosAplicadosComponent } from '../parametros-aplicados/parametros-aplicados.component';
 import { QueryParametersPanelComponent, tieneValor } from '../query-parameters-panel/query-parameters-panel.component';
-import { GraficoCalculado, calcularGrafico, calcularKpis } from './query-report-charts';
+import { GraficoCalculado, calcularGrafico, calcularKpis, filaEnCategoria } from './query-report-charts';
 
 /** Lo que recibe la pantalla al elegir un formato en «Exportar»: los parámetros y las filas que quedaron tras buscar y filtrar. */
 export interface QueryReportExportEvent {
@@ -50,6 +53,18 @@ interface GraficoEnVista extends GraficoCalculado {
   ariaLabel: string;
   /** Sin pareja (un `wide` sin `narrow` a su derecha, o al revés), ocupa toda la fila. */
   clase: string;
+  /** Con `interactive`: categoría seleccionada en este gráfico (misma dimensión que la selección), o `null`. */
+  seleccionado: number | null;
+}
+
+/** Categoría elegida con clic en un gráfico: filtra los KPI y los gráficos de otra dimensión. */
+interface SeleccionDeGrafico {
+  groupBy: string;
+  byMonth: boolean;
+  clave: string;
+  etiqueta: string;
+  /** Nombre de la dimensión en el chip («Mes»). */
+  categoryLabel: string;
 }
 
 const FORMATOS_EXPORTACION: readonly QueryReportExportFormat[] = ['excel', 'csv', 'pdf'];
@@ -94,9 +109,16 @@ let siguienteId = 0;
  *   cada gráfico agrupa por una columna (o por mes, con una fecha), en valores, índice respecto de la primera categoría
  *   (`index`) o variación respecto de ella (`change`). `width: 'narrow'` pone un gráfico en la columna de 336 px a la
  *   derecha del anterior, como en el Figma.
+ * - Un elemento con el atributo `reportFilters` (por ejemplo, una fila de combos) para filtros rápidos bajo el título del
+ *   resultado, en las dos vistas: la pantalla filtra las filas y entrega el `result` filtrado.
+ * - `charts.interactive` para un tablero: el clic en una barra filtra los KPI (y los gráficos de otra dimensión) por esa
+ *   categoría, la resalta en los que agrupan igual y muestra un chip para quitarla.
+ * - `initialView="graficas"` y `parameters` para un tablero que abre ya consultado y en la vista de gráficas: la pantalla
+ *   consulta al entrar con esos parámetros.
  * - `exported` para generar el archivo: trae el formato elegido y las filas que quedaron tras buscar y filtrar.
- * - `favoritesRequested`, `advancedFiltersRequested` y `columnsRequested` para lo que la pantalla resuelve por su cuenta
- *   mientras la plantilla no traiga esos paneles.
+ * - «Columnas» del buscador abre `siaf-column-visibility-panel`: la primera columna queda fija y las demás se ocultan o se
+ *   muestran al «Aplicar» (en todas las pestañas). `favoritesRequested`, `advancedFiltersRequested` y `columnsRequested`
+ *   avisan a la pantalla de lo que resuelve por su cuenta.
  * @evitar
  * - Para la bandeja de documentos y registros de un proceso: usar `siaf-documents-records-page`.
  * - Para una vista de solo lectura que no es un reporte: usar `siaf-page-shell` con `siaf-page-header`.
@@ -135,6 +157,7 @@ let siguienteId = 0;
     ButtonComponent,
     ButtonsGroupComponent,
     ChartSectionComponent,
+    ColumnVisibilityPanelComponent,
     DivergingChartComponent,
     DonutChartComponent,
     EmptyStateComponent,
@@ -153,6 +176,7 @@ let siguienteId = 0;
     ReportTableComponent,
     TableSkeletonComponent,
     TabsComponent,
+    TagComponent,
   ],
   template: `
     <siaf-page-shell [breadcrumbs]="configuracion().breadcrumbs">
@@ -208,6 +232,8 @@ let siguienteId = 0;
             </header>
 
             <div class="flex flex-col gap-siaf-lg px-siaf-lg pb-siaf-md pt-siaf-md">
+              <!-- Filtros rápidos de la pantalla (combos), bajo el título del resultado y en las dos vistas. -->
+              <ng-content select="[reportFilters]" />
               @if (configuracion().tabs?.length) {
                 <siaf-tabs
                   [tabs]="configuracion().tabs ?? []"
@@ -234,6 +260,24 @@ let siguienteId = 0;
                     } @else {
                       @if (hayBusquedaOFiltros()) {
                         <message-box [text]="notaGraficas()" data-nota-graficas />
+                      }
+
+                      @if (interactivo()) {
+                        <!-- Tablero interactivo: la categoría elegida en un gráfico, con su × para quitarla. -->
+                        <div class="flex min-h-8 flex-wrap items-center gap-siaf-sm text-sm text-[var(--sys-color-text-neutral-medium)]" data-seleccion-grafico>
+                          @if (seleccion(); as elegida) {
+                            <span>Filtrado por</span>
+                            <siaf-tag
+                              variant="input"
+                              [selected]="true"
+                              [removable]="true"
+                              [removeLabel]="'Quitar filtro ' + elegida.categoryLabel + ': ' + elegida.etiqueta"
+                              (removed)="seleccion.set(null)"
+                            >{{ elegida.categoryLabel }}: {{ elegida.etiqueta }}</siaf-tag>
+                          } @else {
+                            <span>Haz clic en una barra para filtrar los indicadores por esa categoría.</span>
+                          }
+                        </div>
                       }
 
                       @if (kpis().length) {
@@ -287,6 +331,9 @@ let siguienteId = 0;
                                     [valueSuffix]="grafico.valueSuffix"
                                     [ariaLabel]="grafico.ariaLabel"
                                     [categoryLabel]="grafico.categoryLabel"
+                                    [selectable]="interactivo()"
+                                    [selectedIndex]="grafico.seleccionado"
+                                    (categorySelected)="seleccionarCategoria($index, $event)"
                                   />
                                 }
                                 @default {
@@ -296,6 +343,9 @@ let siguienteId = 0;
                                     [valueSuffix]="grafico.valueSuffix"
                                     [ariaLabel]="grafico.ariaLabel"
                                     [categoryLabel]="grafico.categoryLabel"
+                                    [selectable]="interactivo()"
+                                    [selectedIndex]="grafico.seleccionado"
+                                    (categorySelected)="seleccionarCategoria($index, $event)"
                                   />
                                 }
                               }
@@ -325,7 +375,7 @@ let siguienteId = 0;
                   ariaLabel="Buscar en el resultado"
                   (valueChange)="buscar($event)"
                   (filter)="advancedFiltersRequested.emit()"
-                  (columns)="columnsRequested.emit()"
+                  (columns)="abrirColumnas()"
                 />
 
                 @if (configuracion().presetFilters?.length) {
@@ -342,7 +392,7 @@ let siguienteId = 0;
                 }
 
                 <siaf-report-table
-                  [columns]="configuracion().columns"
+                  [columns]="columnasVisibles()"
                   [rows]="filasPagina()"
                   [rowKey]="configuracion().rowKey"
                   [ariaLabel]="configuracion().tableLabel ?? configuracion().title"
@@ -379,6 +429,20 @@ let siguienteId = 0;
       (closed)="panelAbierto.set(false)"
       (applied)="aplicar($event)"
     />
+
+    <!-- «Columnas» del buscador: la primera columna queda fija (Interno); el resto se marca en un borrador y se aplica. -->
+    <siaf-column-visibility-panel
+      [open]="panelColumnas()"
+      [allSelected]="todasEnBorrador()"
+      [dirty]="borradorCambiado()"
+      [defaultColumns]="columnasElegibles()"
+      [internalColumns]="columnaFija()"
+      [isColumnVisible]="visibleEnBorrador"
+      (closed)="panelColumnas.set(false)"
+      (applied)="aplicarColumnas()"
+      (toggleAll)="marcarTodasColumnas($event)"
+      (toggleColumn)="marcarColumna($event.key, $event.event)"
+    />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -391,12 +455,25 @@ export class QueryReportPageComponent {
   @Input() set result(valor: QueryReportResult | null) {
     this.resultado.set(valor);
     this.pagina.set(1);
+    // Otro resultado (consulta o pestaña nuevas): la categoría elegida puede ya no existir.
+    this.seleccion.set(null);
   }
   /** Mientras la pantalla consulta: la tabla o las gráficas pasan a esqueleto y «Exportar» se deshabilita. */
   @Input() loading = false;
   /** Pestaña activa al empezar; por defecto, la primera. */
   @Input() set activeTab(valor: string) {
     if (valor) this.pestana.set(valor);
+  }
+  /** Vista al empezar: `graficas` abre en KPI y gráficos (un tablero); sin `charts` en la configuración, siempre datos. */
+  @Input() set initialView(valor: QueryReportView) {
+    if (valor) this.vista.set(valor);
+  }
+  /**
+   * Parámetros ya aplicados al entrar, sin abrir el panel: la pantalla consulta con ellos por su cuenta y entrega
+   * `result` (no se emite `queried`).
+   */
+  @Input() set parameters(valor: QueryReportParameters | null) {
+    if (valor) this.parametros.set(valor);
   }
 
   /** «Aplicar consulta»: la pantalla consulta con estos parámetros y entrega `result`. */
@@ -407,7 +484,7 @@ export class QueryReportPageComponent {
   @Output() favoritesRequested = new EventEmitter<void>();
   /** «Filtrar» del buscador (Filtros avanzados). */
   @Output() advancedFiltersRequested = new EventEmitter<void>();
-  /** «Columnas» del buscador (Columnas visibles). */
+  /** «Columnas» del buscador: además de abrir el panel «Ocultar o mostrar columnas», avisa a la pantalla. */
   @Output() columnsRequested = new EventEmitter<void>();
   @Output() linkClicked = new EventEmitter<{ row: QueryReportRow; column: ReportTableColumn }>();
 
@@ -415,6 +492,46 @@ export class QueryReportPageComponent {
   readonly resultado = signal<QueryReportResult | null>(null);
   readonly parametros = signal<QueryReportParameters | null>(null);
   readonly panelAbierto = signal(false);
+
+  // ── Ocultar o mostrar columnas ──
+  readonly panelColumnas = signal(false);
+  /** Claves de las columnas ocultas en la tabla; valen para todas las pestañas que tengan esa columna. */
+  readonly columnasOcultas = signal<ReadonlySet<string>>(new Set());
+  /** Lo marcado en el panel, que solo se aplica con «Aplicar». */
+  readonly borradorColumnas = signal<ReadonlySet<string>>(new Set());
+  readonly columnasVisibles = computed(() => this.configuracion().columns.filter((c) => !this.columnasOcultas().has(c.key)));
+  /** La primera columna identifica la fila: va en «Interno», siempre visible, para que la tabla nunca quede vacía. */
+  readonly columnaFija = computed<DocumentsRecordsColumn[]>(() => this.configuracion().columns.slice(0, 1).map((c) => aColumnaDelPanel(c, 'internal')));
+  readonly columnasElegibles = computed<DocumentsRecordsColumn[]>(() => this.configuracion().columns.slice(1).map((c) => aColumnaDelPanel(c, 'default')));
+  readonly todasEnBorrador = computed(() => this.columnasElegibles().every((c) => !this.borradorColumnas().has(c.key)));
+  readonly borradorCambiado = computed(() => this.columnasElegibles().some((c) => this.borradorColumnas().has(c.key) !== this.columnasOcultas().has(c.key)));
+  /** Para el panel (función estable): la columna está marcada en el borrador. */
+  readonly visibleEnBorrador = (clave: string): boolean => !this.borradorColumnas().has(clave);
+
+  abrirColumnas(): void {
+    this.borradorColumnas.set(new Set(this.columnasOcultas()));
+    this.panelColumnas.set(true);
+    this.columnsRequested.emit();
+  }
+
+  marcarColumna(clave: string, evento: Event): void {
+    const visible = (evento.target as HTMLInputElement).checked;
+    const borrador = new Set(this.borradorColumnas());
+    if (visible) borrador.delete(clave);
+    else borrador.add(clave);
+    this.borradorColumnas.set(borrador);
+  }
+
+  marcarTodasColumnas(evento: Event): void {
+    const todas = (evento.target as HTMLInputElement).checked;
+    this.borradorColumnas.set(todas ? new Set() : new Set(this.columnasElegibles().map((c) => c.key)));
+  }
+
+  aplicarColumnas(): void {
+    this.columnasOcultas.set(new Set(this.borradorColumnas()));
+    this.panelColumnas.set(false);
+  }
+
   readonly pestana = signal('');
   readonly vista = signal<QueryReportView>('datos');
   readonly busqueda = signal('');
@@ -486,22 +603,63 @@ export class QueryReportPageComponent {
     return total === 1 ? '1 fila en el resultado' : `${total} filas en el resultado`;
   });
 
-  readonly kpis = computed(() => calcularKpis(this.filasFiltradas(), this.configuracion().charts?.kpis ?? []));
+  /** Con `charts.interactive`: la categoría elegida con clic en un gráfico de barras o divergente. */
+  readonly seleccion = signal<SeleccionDeGrafico | null>(null);
+  readonly interactivo = computed(() => !!this.configuracion().charts?.interactive);
 
+  /** Las filas de la tabla, y con una categoría elegida solo las de esa categoría: alimentan los KPI. */
+  private readonly filasDeSeleccion = computed(() => {
+    const seleccion = this.seleccion();
+    const filas = this.filasFiltradas();
+    return seleccion ? filas.filter((fila) => filaEnCategoria(fila, seleccion, seleccion.clave)) : filas;
+  });
+
+  readonly kpis = computed(() => calcularKpis(this.filasDeSeleccion(), this.configuracion().charts?.kpis ?? []));
+
+  /**
+   * Un gráfico de la misma dimensión que la selección (agrupa igual) se dibuja completo y la resalta; los de otra
+   * dimensión se calculan solo con las filas de la categoría elegida.
+   */
   readonly graficos = computed<GraficoEnVista[]>(() => {
-    const calculados = (this.configuracion().charts?.charts ?? []).map((grafico) => calcularGrafico(this.filasFiltradas(), grafico));
+    const seleccion = this.seleccion();
+    const configurados = this.configuracion().charts?.charts ?? [];
+    const mismaDimension = configurados.map(
+      (grafico) => !!seleccion && grafico.groupBy === seleccion.groupBy && !!grafico.byMonth === seleccion.byMonth,
+    );
+    const calculados = configurados.map((grafico, i) =>
+      calcularGrafico(mismaDimension[i] ? this.filasFiltradas() : this.filasDeSeleccion(), grafico),
+    );
     return calculados.map((grafico, i) => {
       const emparejado =
         grafico.width === 'wide' ? calculados[i + 1]?.width === 'narrow' : calculados[i - 1]?.width === 'wide';
+      const indice = mismaDimension[i] ? grafico.keys.indexOf(seleccion!.clave) : -1;
       return {
         ...grafico,
         dibujo: grafico.categories.length ? grafico.type : 'vacio',
         series: [{ name: grafico.seriesName, values: grafico.values }],
         ariaLabel: grafico.title,
         clase: emparejado ? '' : 'xl:col-span-2',
+        seleccionado: indice >= 0 ? indice : null,
       };
     });
   });
+
+  /** Clic (o Enter) en una categoría del gráfico `posicion`; `null` quita la selección. */
+  seleccionarCategoria(posicion: number, indice: number | null): void {
+    const configurado = this.configuracion().charts?.charts[posicion];
+    const calculado = this.graficos()[posicion];
+    if (indice === null || !configurado || !calculado?.keys[indice]) {
+      this.seleccion.set(null);
+      return;
+    }
+    this.seleccion.set({
+      groupBy: configurado.groupBy,
+      byMonth: !!configurado.byMonth,
+      clave: calculado.keys[indice],
+      etiqueta: calculado.categories[indice],
+      categoryLabel: calculado.categoryLabel,
+    });
+  }
 
   private readonly hayGraficoAngosto = computed(() => this.graficos().some((grafico) => grafico.width === 'narrow'));
 
@@ -562,4 +720,9 @@ export class QueryReportPageComponent {
     if (!format) return;
     this.exported.emit({ format, parameters: this.parametros() ?? {}, rows: this.filasFiltradas() });
   }
+}
+
+/** Columna de la tabla del reporte como la pide `siaf-column-visibility-panel`. */
+function aColumnaDelPanel(columna: ReportTableColumn, grupo: 'default' | 'internal'): DocumentsRecordsColumn {
+  return { key: columna.key, label: columna.label, visibility: grupo === 'internal' ? 'internal' : 'visible', group: grupo };
 }

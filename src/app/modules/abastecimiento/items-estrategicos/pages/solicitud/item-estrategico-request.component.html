@@ -10,6 +10,7 @@
     [showReturn]="true"
     [saveDisabled]="!formValido() || saving()"
     [verifyDisabled]="!puedeVerificar() || cargando()"
+    [hideReject]="true"
     (returned)="regresar()"
     (canceled)="regresar()"
     (saved)="modalGrabar.set(true)"

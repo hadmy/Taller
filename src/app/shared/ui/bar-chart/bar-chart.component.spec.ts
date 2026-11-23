@@ -4,8 +4,9 @@ import { By } from '@angular/platform-browser';
 import { Chart } from 'chart.js';
 import type { ChartDataset } from 'chart.js';
 
+import { tokenDeSerie } from '../charts/chart-tema';
 import { ChartSeries } from '../charts/grafico-base';
-import { BarChartComponent, BarChartOrientation } from './bar-chart.component';
+import { BarChartComponent, BarChartOrientation, partirEtiqueta } from './bar-chart.component';
 
 @Component({
   standalone: true,
@@ -20,6 +21,9 @@ import { BarChartComponent, BarChartOrientation } from './bar-chart.component';
       valueSuffix="%"
       ariaLabel="Variación por mes"
       categoryLabel="Mes"
+      [selectable]="seleccionable()"
+      [selectedIndex]="seleccionada()"
+      (categorySelected)="elegidas.push($event); seleccionada.set($event)"
     />
   `,
 })
@@ -31,6 +35,9 @@ class AnfitrionComponent {
   ]);
   readonly orientacion = signal<BarChartOrientation>('vertical');
   readonly apilado = signal(false);
+  readonly seleccionable = signal(false);
+  readonly seleccionada = signal<number | null>(null);
+  readonly elegidas: (number | null)[] = [];
 }
 
 describe('BarChartComponent', () => {
@@ -212,6 +219,33 @@ describe('BarChartComponent', () => {
     expect(q('siaf-chart-tooltip')).toBeNull();
   });
 
+  it('selectable: Enter elige la categoría a la que se llegó con las flechas, atenúa las demás y otra vez Enter la quita', () => {
+    const anfitrion = fixture.componentInstance;
+    lienzo().focus();
+    tecla('ArrowRight');
+    expect(tecla('Enter').defaultPrevented).withContext('sin selectable, Enter no hace nada').toBeFalse();
+    expect(anfitrion.elegidas).toEqual([]);
+
+    anfitrion.seleccionable.set(true);
+    fixture.detectChanges();
+    tecla('ArrowRight');
+    tecla('ArrowRight');
+    expect(tecla('Enter').defaultPrevented).toBeTrue();
+    expect(anfitrion.elegidas).toEqual([1]);
+    expect(q('[aria-live="polite"]')?.textContent?.trim()).toBe('Feb seleccionado');
+
+    const fondo = grafico().data.datasets[0].backgroundColor as string[];
+    expect(Array.isArray(fondo)).toBeTrue();
+    expect(fondo[1]).toBe(colorDe(tokenDeSerie(0)));
+    expect(fondo[0]).not.toBe(fondo[1]);
+
+    // Al repintar con la selección, el recorrido vuelve a empezar: dos flechas llegan de nuevo a «Feb».
+    tecla('ArrowRight');
+    tecla('ArrowRight');
+    tecla(' ');
+    expect(anfitrion.elegidas).toEqual([1, null]);
+  });
+
   it('al cambiar el tamaño del lienzo oculta el tooltip en vez de dejarlo con posiciones viejas', () => {
     lienzo().focus();
     tecla('ArrowRight');
@@ -234,5 +268,79 @@ describe('BarChartComponent', () => {
     const canvas = lienzo();
     fixture.destroy();
     expect(Chart.getChart(canvas)).toBeUndefined();
+  });
+});
+
+describe('partirEtiqueta', () => {
+  it('parte en dos líneas por la palabra más cercana a la mitad solo los nombres largos', () => {
+    expect(partirEtiqueta('LIMA')).toBe('LIMA');
+    expect(partirEtiqueta('HUANCAVELICA-LARGO-SIN-ESPACIOS')).toBe('HUANCAVELICA-LARGO-SIN-ESPACIOS');
+    expect(partirEtiqueta('2. OBLIGACIONES FINANCIERAS')).toEqual(['2. OBLIGACIONES', 'FINANCIERAS']);
+  });
+});
+
+describe('partirEtiqueta con nombres muy largos', () => {
+  it('reparte en las líneas que hagan falta', () => {
+    expect(partirEtiqueta('0021 OFICINA DE TECNOLOGÍAS DE LA INFORMACIÓN')).toEqual(['0021 OFICINA DE', 'TECNOLOGÍAS DE', 'LA INFORMACIÓN']);
+  });
+});
+
+@Component({
+  standalone: true,
+  imports: [BarChartComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<siaf-bar-chart orientation="horizontal" [categories]="categorias" [series]="series" [alertIndexes]="alertas" />`,
+})
+class AnfitrionAlertaComponent {
+  readonly categorias = ['A', 'B', 'C'];
+  readonly series: ChartSeries[] = [{ name: 'Pendientes', values: [1, 10, 2] }];
+  readonly alertas = [1];
+}
+
+describe('BarChartComponent con alertas', () => {
+  it('pinta en rojo las categorías en alerta y suma «Urgente» a la leyenda', () => {
+    const fixture = TestBed.createComponent(AnfitrionAlertaComponent);
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    const colores = (Chart.getChart(el.querySelector('canvas')!) as Chart<'bar'>).data.datasets[0].backgroundColor as string[];
+    expect(colores.length).toBe(3);
+    expect(colores[1]).not.toBe(colores[0]);
+    expect(colores[0]).toBe(colores[2]);
+    expect(el.querySelector('siaf-chart-legend')!.textContent).toContain('Urgente');
+  });
+});
+
+describe('partirEtiqueta en vertical', () => {
+  it('con líneas de 22 caracteres, un nombre de ATE queda en dos', () => {
+    expect(partirEtiqueta('0034 OFICINA DE RECURSOS HUMANOS', 22)).toEqual(['0034 OFICINA DE', 'RECURSOS HUMANOS']);
+  });
+});
+
+@Component({
+  standalone: true,
+  imports: [BarChartComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<siaf-bar-chart orientation="horizontal" [showValues]="true" [categories]="categorias" [series]="series" />`,
+})
+class AnfitrionValoresComponent {
+  readonly categorias = ['A', 'B'];
+  readonly series: ChartSeries[] = [{ name: 'Monto', values: [1200, 300] }];
+}
+
+describe('BarChartComponent con valores', () => {
+  it('alarga el eje de valores y escribe el valor de cada barra', () => {
+    const fixture = TestBed.createComponent(AnfitrionValoresComponent);
+    fixture.detectChanges();
+    const grafico = Chart.getChart(fixture.nativeElement.querySelector('canvas')!) as Chart<'bar'>;
+    expect((grafico.options.scales?.['x'] as { grace?: string }).grace).toBe('20%');
+    const textos: string[] = [];
+    const original = grafico.ctx.fillText.bind(grafico.ctx);
+    spyOn(grafico.ctx, 'fillText').and.callFake((texto: string, x: number, y: number) => {
+      textos.push(texto);
+      original(texto, x, y);
+    });
+    grafico.draw();
+    expect(textos).toContain('1,200');
+    expect(textos).toContain('300');
   });
 });

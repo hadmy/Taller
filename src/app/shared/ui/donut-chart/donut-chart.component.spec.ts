@@ -153,3 +153,71 @@ describe('DonutChartComponent', () => {
     expect((conjunto().backgroundColor as string[])[0]).toBe(colorDe('--sys-color-bg-brand-primary'));
   });
 });
+
+@Component({
+  standalone: true,
+  imports: [DonutChartComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <siaf-donut-chart
+      [categories]="categorias"
+      [values]="valores"
+      [selectable]="true"
+      [selectedIndex]="elegido()"
+      (categorySelected)="elegido.set($event)"
+    />
+  `,
+})
+class AnfitrionSeleccionComponent {
+  readonly categorias = ['Aprobada', 'Observada', 'Rechazada'];
+  readonly valores = [5, 3, 2];
+  readonly elegido = signal<number | null>(null);
+}
+
+describe('DonutChartComponent con selección', () => {
+  it('Enter elige el tramo activo, atenúa los demás y volver a elegirlo quita la selección', () => {
+    const fixture = TestBed.createComponent(AnfitrionSeleccionComponent);
+    fixture.detectChanges();
+    const lienzo: HTMLCanvasElement = fixture.nativeElement.querySelector('canvas');
+    const tecla = (key: string): void => {
+      lienzo.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      fixture.detectChanges();
+    };
+
+    tecla('ArrowRight');
+    tecla('Enter');
+    expect(fixture.componentInstance.elegido()).toBe(0);
+    const colores = (Chart.getChart(lienzo) as Chart<'doughnut'>).data.datasets[0].backgroundColor as string[];
+    expect(colores[0]).not.toContain('0.3)');
+    expect(colores[1]).toContain('0.3)');
+
+    // Al repintar, el teclado vuelve al inicio: la flecha lleva otra vez al primer tramo.
+    tecla('ArrowRight');
+    tecla('Enter');
+    expect(fixture.componentInstance.elegido()).toBeNull();
+  });
+});
+
+@Component({
+  standalone: true,
+  imports: [DonutChartComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<siaf-donut-chart variant="pie" [categories]="categorias" [values]="valores" />`,
+})
+class AnfitrionTortaComponent {
+  readonly categorias = ['Aprobada: 5', 'Observada: 3'];
+  readonly valores = [5, 3];
+}
+
+describe('DonutChartComponent en torta', () => {
+  it('es una torta llena, con la leyenda en columna y sin el centro del anillo', () => {
+    const fixture = TestBed.createComponent(AnfitrionTortaComponent);
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    const grafico = Chart.getChart(el.querySelector('canvas')!) as Chart<'doughnut'>;
+    expect(grafico.options.cutout).toBe(0);
+    expect(el.querySelector('figure')!.classList).toContain('flex-row-reverse');
+    expect(el.querySelector('siaf-chart-legend ul')!.classList).toContain('flex-col');
+    expect(el.querySelector('[data-centro]')).toBeNull();
+  });
+});

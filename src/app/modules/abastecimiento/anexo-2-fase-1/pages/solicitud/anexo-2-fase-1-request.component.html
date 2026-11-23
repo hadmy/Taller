@@ -1,11 +1,11 @@
 <div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
   <!-- La cabecera (migas, título, estado y botones según rol y estado) la pinta el layout de solicitudes. -->
   <siaf-solicitude-page-layout
-    [breadcrumbs]="breadcrumbs"
+    [breadcrumbs]="breadcrumbs()"
     [role]="headerRole()"
     [state]="headerState()"
     [loading]="cargando()"
-    [heading]="heading"
+    [heading]="heading()"
     [secondaryText]="tipoAccion"
     [showReturn]="true"
     [saveDisabled]="!formValido() || saving()"
@@ -52,11 +52,20 @@
       <!-- ── Resumen del proceso de consolidación ── -->
       <siaf-solicitude-form-card title="Resumen del proceso de consolidación">
         <ul class="m-0 grid list-none gap-siaf-sm p-0 sm:grid-cols-2 lg:grid-cols-5">
+          <!-- Cada tarjeta es un botón: abre el panel con las áreas usuarias que cuenta. Los números salen de las áreas de la solicitud. -->
           @for (tarjeta of tarjetasResumen(); track tarjeta.titulo) {
-            <li class="flex flex-col gap-siaf-xs rounded-siaf-md border border-[var(--sys-color-divider-strong)] bg-surface px-siaf-md py-siaf-sm">
-              <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.titulo }}</span>
-              <strong class="text-lg font-bold leading-6 text-[var(--sys-color-text-neutral-high)]">{{ tarjeta.valor }}</strong>
-              <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.detalle }}</span>
+            <li class="flex">
+              <button
+                type="button"
+                class="flex w-full cursor-pointer flex-col gap-siaf-xs rounded-siaf-md border border-[var(--sys-color-divider-strong)] bg-surface px-siaf-md py-siaf-sm text-left transition-colors hover:bg-[var(--sys-color-bg-states-light-hover)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+                [attr.aria-label]="tarjeta.titulo + ': ' + tarjeta.valor + '. Ver detalle'"
+                [attr.aria-haspopup]="'dialog'"
+                (click)="abrirDetalleResumen(tarjeta.titulo)"
+              >
+                <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.titulo }}</span>
+                <strong class="text-lg font-bold leading-6 text-[var(--sys-color-text-neutral-high)]">{{ tarjeta.valor }}</strong>
+                <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.detalle }}</span>
+              </button>
             </li>
           }
         </ul>
@@ -86,26 +95,60 @@
         </div>
       </siaf-solicitude-form-card>
 
-      <!-- ── Registros (Figma RC-01 y «A.1-RC-031»: botón de búsqueda, modal de selección y detalle de las áreas) ── -->
-      <siaf-solicitude-form-card [title]="areas().length === 0 ? 'Seleccionar registros' : 'Registros'">
-        <div card-actions class="flex items-center gap-siaf-xs">
-          <!-- Hoja aparte con el formato del Anexo N.º 02 (los Anexos 01 ya revisados por la OA). -->
-          @if (puedeVerConsolidado()) {
-            <siaf-button variant="outline" size="md" icon="table_view" (click)="verConsolidado()">Ver consolidado</siaf-button>
-          }
-          @if (!soloLectura()) {
-            <siaf-button
-              variant="accent"
-              size="md"
-              icon="search"
-              [iconOnly]="true"
-              ariaLabel="Seleccionar registros"
-              (click)="abrirPanel()"
-            />
+      <!-- ── Registros (Figma «A.1 Rol Creador · 3. detalle items»): estado y observación de cada Anexo 01, evaluación en bloque ── -->
+      <siaf-solicitude-form-card>
+        <!-- La OA evalúa cada Anexo 01 antes de verificar: el aviso dice cuántos faltan mientras «Verificar» está apagado. -->
+        @if (avisoEvaluarAntesDeVerificar(); as aviso) {
+          <siaf-alert class="mb-siaf-md block" tone="warning" title="Anexos 01 por evaluar" [description]="aviso" />
+        }
+        <!-- Pestañas en lugar del título «Registros»: la evaluación de los Anexos 01 y el consolidado del Anexo 02. -->
+        <div class="flex items-end gap-siaf-md">
+          <siaf-tabs
+            class="min-w-0 flex-1"
+            [tabs]="pestanasRegistros"
+            [activeId]="pestanaRegistros()"
+            [border]="false"
+            ariaLabel="Registros de la solicitud"
+            idBase="registros"
+            (activeIdChange)="cambiarPestanaRegistros($event)"
+          />
+          @if (pestanaRegistros() === 'evaluacion' && !soloLectura()) {
+            <!-- Abre «Seleccionar registros» (Figma «Registro-solicitud»). El contador y el tooltip avisan cuántas áreas
+                 usuarias con Anexo 01 faltan agregar; el número ya va en el nombre accesible, así que el badge es solo visual. -->
+            <span class="relative mb-siaf-xs inline-flex">
+              <siaf-button
+                variant="accent"
+                size="md"
+                icon="search"
+                [iconOnly]="true"
+                [ariaLabel]="'Seleccionar registros. ' + avisoAreasPorAgregar()"
+                [siafTooltip]="avisoAreasPorAgregar()"
+                tooltipMode="always"
+                (click)="abrirPanel()"
+              />
+              @if (areasPorAgregar().length > 0) {
+                <siaf-badge
+                  class="pointer-events-none absolute -right-1.5 -top-1.5 flex"
+                  size="small"
+                  color="primary"
+                  aria-hidden="true"
+                  [label]="areasPorAgregar().length"
+                  [max]="99"
+                />
+              }
+            </span>
           }
         </div>
 
-        @if (areas().length === 0) {
+        @if (pestanaRegistros() === 'consolidado') {
+          <div role="tabpanel" aria-labelledby="registros-consolidado">
+            @if (!tieneSolicitud()) {
+              <message-box text="El consolidado del Anexo N.º 02 estará disponible cuando grabe la solicitud." />
+            } @else {
+              <siaf-consolidado-anexo-2-tabla [consolidado]="consolidado()" [cargando]="cargandoConsolidado()" />
+            }
+          </div>
+        } @else if (areas().length === 0) {
           <message-box text="No se ha seleccionado ningún tipo. Haga clic en el botón para realizar una selección." />
         } @else {
           <siaf-form-table-search
@@ -116,35 +159,67 @@
             (valueChange)="buscarAreas($event)"
           />
 
+          <!-- Con filas marcadas: Completo e Incompleto (si se puede evaluar) y quitar (al registrar o editar). -->
           <siaf-table-controls
             [showSelection]="puedeMarcarAreas()"
             [checked]="paginaAreasCompleta()"
             [indeterminate]="paginaAreasParcial()"
             [selectedCount]="areasMarcadas().size"
-            [showDeleteAction]="puedeMarcarAreas()"
+            [showDeleteAction]="!soloLectura()"
             selectAllLabel="Seleccionar las áreas usuarias de la página"
             deleteLabel="Quitar las áreas usuarias seleccionadas"
             [page]="paginaAreas()"
             [pageSize]="filasPorPaginaAreas()"
             [totalItems]="areasFiltradas().length"
             [totalPages]="totalPaginasAreas()"
+            [showTopPagination]="false"
             (selectionChange)="marcarPaginaAreas($event)"
             (delete)="quitarMarcadas()"
             (previous)="paginaAreasAnterior()"
             (next)="paginaAreasSiguiente()"
-          />
+          >
+            @if (puedeEvaluar()) {
+              <span tableAction class="flex items-center gap-siaf-xs">
+                <siaf-button
+                  variant="text"
+                  icon="assignment_turned_in"
+                  [iconOnly]="true"
+                  ariaLabel="Marcar como completos los Anexos 01 seleccionados"
+                  siafTooltip="Completo"
+                  tooltipMode="always"
+                  [disabled]="pendientesMarcadas().length === 0 || evaluando()"
+                  (click)="modalConformes.set(true)"
+                />
+                <siaf-button
+                  variant="text"
+                  icon="assignment_late"
+                  [iconOnly]="true"
+                  ariaLabel="Marcar como incompletos los Anexos 01 seleccionados"
+                  siafTooltip="Incompleto"
+                  tooltipMode="always"
+                  [disabled]="pendientesMarcadas().length === 0 || evaluando()"
+                  (click)="abrirObservarRegistros()"
+                />
+              </span>
+            }
+          </siaf-table-controls>
 
           <div class="overflow-auto">
-            <table class="w-full min-w-[760px] border-collapse text-sm">
+            <table class="w-full min-w-[960px] border-collapse text-sm">
               <thead>
                 <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
                   @if (puedeMarcarAreas()) {
                     <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Selección</span></th>
                   }
                   <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Áreas usuarias</th>
-                  <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Ítems</th>
-                  <th class="w-60 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Monto programado A01</th>
-                  <th class="w-60 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Estado evaluación Anexo 01</th>
+                  <th class="w-28 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Necesidades</th>
+                  <th class="w-52 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Monto programado A01</th>
+                  <th class="w-36 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Estado</th>
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Observación</th>
+                  <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Anexo 01</span></th>
+                  @if (!soloLectura()) {
+                    <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Quitar</span></th>
+                  }
                 </tr>
               </thead>
               <tbody>
@@ -164,33 +239,46 @@
                         />
                       </td>
                     }
-                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">
-                      @if (areaConDetalle(area.id)) {
-                        <!-- Abre «Detalle del Anexo 1» (Figma «3. Detalle items»). -->
-                        <button
-                          type="button"
-                          class="cursor-pointer rounded-siaf-xs text-left text-[var(--sys-color-text-neutral-medium)] underline-offset-2 hover:text-[var(--sys-color-text-neutral-high)] hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
-                          [attr.aria-label]="'Ver el detalle del Anexo 1 de ' + area.nombre"
-                          (click)="verDetalleAnexo1(area.id)"
-                        >{{ area.nombre }}</button>
-                      } @else {
-                        {{ area.nombre }}
-                      }
-                    </td>
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.nombre }}</td>
                     <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.items }}</td>
                     <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ formatearSoles(area.montoProgramado) }}</td>
                     <td class="px-siaf-md py-siaf-sm">
-                      <siaf-status-tag
-                        appearance="outline"
-                        size="small"
-                        [tone]="estiloEvaluacion[area.estadoEvaluacion].tone"
-                        [icon]="estiloEvaluacion[area.estadoEvaluacion].icon"
-                      >{{ estiloEvaluacion[area.estadoEvaluacion].texto }}</siaf-status-tag>
+                      <siaf-status-tag appearance="soft" size="small" [tone]="estiloEvaluacion[area.estadoEvaluacion].tone">
+                        {{ estiloEvaluacion[area.estadoEvaluacion].texto }}
+                      </siaf-status-tag>
                     </td>
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.comentarioEvaluacion || '-' }}</td>
+                    <td class="p-siaf-xs text-center">
+                      @if (areaConDetalle(area.id)) {
+                        <!-- Abre el panel «Anexo N° 01» (Figma «Content · Evaluación»). -->
+                        <siaf-button
+                          variant="text"
+                          size="sm"
+                          icon="description"
+                          [iconOnly]="true"
+                          [ariaLabel]="'Ver el Anexo 01 de ' + area.nombre"
+                          siafTooltip="Ver necesidades"
+                          tooltipMode="always"
+                          (click)="verAnexo1(area.id)"
+                        />
+                      }
+                    </td>
+                    @if (!soloLectura()) {
+                      <td class="p-siaf-xs text-center">
+                        <siaf-button
+                          variant="text"
+                          size="sm"
+                          icon="delete"
+                          [iconOnly]="true"
+                          [ariaLabel]="'Quitar ' + area.nombre"
+                          (click)="quitarArea(area.id)"
+                        />
+                      </td>
+                    }
                   </tr>
                 } @empty {
                   <tr>
-                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-low)]" [attr.colspan]="puedeMarcarAreas() ? 5 : 4">
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-low)]" [attr.colspan]="8">
                       No hay áreas usuarias que coincidan con la búsqueda.
                     </td>
                   </tr>
@@ -215,6 +303,50 @@
           />
         }
       </siaf-solicitude-form-card>
+
+      <!-- «Anexo N° 01» de la fila (panel lateral de solo lectura). -->
+      <siaf-anexo-1-panel [anexo]="anexoAbierto()" (closed)="anexoAbierto.set(null)" />
+
+      <!-- Detalle de la tarjeta del resumen que se pulsó. -->
+      <siaf-resumen-detalle-panel [detalle]="detalleResumen()" (closed)="cerrarDetalleResumen()" />
+
+      <!-- «¿Está seguro de que desea marcar los registros como completos?» (Figma «A.2-RA-009-Aprobar-Solicitud»). -->
+      <siaf-modal
+        [open]="modalConformes()"
+        variant="custom"
+        title="¿Está seguro de que desea marcar los registros como completos?"
+        description="Los registros serán marcados como completos"
+        confirmLabel="Aceptar"
+        (canceled)="modalConformes.set(false)"
+        (closed)="modalConformes.set(false)"
+        (confirmed)="confirmarConformes()"
+      />
+
+      <!-- «Observar registro» (Figma «C.1-RVC-002-Observar registro»): el comentario es obligatorio. -->
+      <siaf-side-nav
+        [open]="panelObservar()"
+        title="Marcar como incompleto"
+        confirmLabel="Aceptar"
+        [confirmDisabled]="!comentarioValido()"
+        (closed)="panelObservar.set(false)"
+        (canceled)="panelObservar.set(false)"
+        (confirmed)="confirmarObservacion()"
+      >
+        <div class="flex flex-col gap-siaf-md">
+          @for (area of pendientesMarcadas(); track area.id) {
+            <div class="flex flex-col gap-siaf-md rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] p-siaf-sm">
+              <readonly-field caption="Área usuaria" [value]="area.nombre" />
+              <readonly-field caption="Ítems" [value]="'' + area.items" />
+            </div>
+          }
+          <text-area-control
+            placeholder="Comentario de observación"
+            [value]="comentarioRegistros()"
+            [maxlength]="maxComentario"
+            (valueChange)="comentarioRegistros.set($event)"
+          />
+        </div>
+      </siaf-side-nav>
 
       <!-- ── Comentarios del aprobador y trazabilidad ── -->
       @if (historial().length > 0 || comentarioActual()) {

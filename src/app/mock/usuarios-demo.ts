@@ -4,7 +4,7 @@ import type { PerfilItem } from '../core/api/auth-api.service';
  * Usuarios de demostración del taller. Entran con su DNI o su correo y la contraseña común.
  *
  * - Ana (creador) registra y verifica solicitudes.
- * - Luis (aprobador) aprueba, observa o rechaza lo verificado.
+ * - Luis (aprobador) aprueba u observa lo validado.
  * - Carla tiene los dos perfiles: sirve para mostrar el cambio de perfil desde el menú del usuario.
  * - La Especialista OA (Ministerio de Educación) registra las solicitudes del CMN (Figma «A.2-OA-EV-001-Login»).
  * - El Aprobador OA y el Evaluador OA (Ministerio de Educación) responden las solicitudes de esa entidad.
@@ -13,6 +13,13 @@ import type { PerfilItem } from '../core/api/auth-api.service';
  * Son datos de ejemplo: no hay contraseñas reales ni se validan contra un servidor.
  */
 export const CONTRASENA_DEMO = 'Taller2026*';
+
+/**
+ * Usuarios que ofrece el login, en el orden del flujo del CMN: la Especialista OA registra y verifica, el Evaluador OA
+ * valida y el Aprobador OA aprueba. Los demás siguen existiendo (entran con su DNI o correo), pero no se listan para no
+ * confundir en la clase.
+ */
+export const USUARIOS_LOGIN = ['usr-especialista-oa', 'usr-evaluador-oa', 'usr-aprobador-oa'] as const;
 
 export interface UsuarioDemo {
   id: string;
@@ -78,7 +85,7 @@ export const USUARIOS_DEMO: UsuarioDemo[] = [
     nombres: 'Luis',
     apellidoPaterno: 'Ramírez',
     apellidoMaterno: 'Soto',
-    descripcion: 'Aprobador: aprueba, observa o rechaza',
+    descripcion: 'Aprobador: aprueba u observa',
     perfiles: [perfil('perfil-luis-aprobador', 'APROBADOR', 'Aprobador', 'Aprobador del Cuadro Multianual de Necesidades')],
   },
   {
@@ -113,7 +120,7 @@ export const USUARIOS_DEMO: UsuarioDemo[] = [
     nombres: 'Usuario',
     apellidoPaterno: 'Aprobador',
     apellidoMaterno: 'OA',
-    descripcion: 'Aprobador OA (Ministerio de Educación): aprueba, observa o rechaza las solicitudes del CMN',
+    descripcion: 'Aprobador OA (Ministerio de Educación): aprueba u observa las solicitudes del CMN',
     perfiles: [
       { id: 'perfil-aprobador-oa', ...ENTIDAD_MINEDU, rol: 'Aprobador OA', rolCodigo: 'APROBADOR', perfilFuncional: 'Aprobador de la Oficina de Abastecimiento' },
     ],
@@ -125,7 +132,7 @@ export const USUARIOS_DEMO: UsuarioDemo[] = [
     nombres: 'Marta',
     apellidoPaterno: 'Quispe',
     apellidoMaterno: 'Vega',
-    descripcion: 'Evaluador: valida, observa o rechaza lo verificado',
+    descripcion: 'Evaluador: valida u observa lo verificado',
     perfiles: [perfil('perfil-marta-evaluador', 'EVALUADOR', 'Evaluador', 'Evaluador del Cuadro Multianual de Necesidades')],
   },
   {

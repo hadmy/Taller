@@ -5,11 +5,13 @@ import { Observable } from 'rxjs';
 
 import type { LoginResponse } from '../core/api/auth-api.service';
 import type { SolicitudResponse } from '../core/api/solicitudes-api.service';
-import type { ConsolidadoAnexo2, ContextoAnexo2, DetalleAnexo1 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
+import type { ConsolidadoAnexo2, ContextoAnexo2, DetalleAnexo1, RegistroAnexo2 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import type { ItemEstrategicoCatalogo, ItemEstrategicoRegistro } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
+import type { FilaDashboardCmn } from '../modules/reportes/dashboard/models/dashboard-cmn.model';
+import type { SeguimientoNacional } from '../modules/reportes/seguimiento-nacional/models/seguimiento-nacional.model';
 import type { EntidadServicioBasico, ServicioBasico } from '../modules/configuracion/servicios-basicos-excluidos/models/servicio-basico.model';
 import { mockBackendInterceptor } from './mock-backend.interceptor';
-import { reiniciarDatosDemo } from './mock-db';
+import { CONTEXTO_ANEXO_2_FASE_1, reiniciarDatosDemo } from './mock-db';
 import { CONTRASENA_DEMO } from './usuarios-demo';
 
 /**
@@ -195,14 +197,28 @@ describe('mockBackendInterceptor', () => {
 
     esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1`, { areas: contexto.areas.slice(0, 2) }, { headers: ana }));
     const elaborada = esperar(http.patch<{ numero: string }>(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
-    // Los dos Anexos 02 sembrados (Figma EV-009) son el 0001 y el 0002.
+    // Los Anexos 02 sembrados son el 0001 (MINEDU, elaborado) y el 0002 (MEF, aprobado).
     expect(elaborada.valor?.numero).toBe('0003');
 
     const detalle = esperar(http.get<SolicitudResponse>(`${API}/solicitudes/${id}`, { headers: ana })).valor!;
     expect(detalle.detalleAnexo2Fase1?.areas.map((a) => a.id)).toEqual(contexto.areas.slice(0, 2).map((a) => a.id));
+    // Sin fase en el cuerpo, la solicitud es de la Fase 1.
+    expect(detalle.detalleAnexo2Fase1?.fase).toBe(1);
   }));
 
-  it('anexo 02, fase 1: la OA evalúa cada Anexo 01 una sola vez; «No conforme» pide comentario y la evaluación se conserva al regrabar', fakeAsync(() => {
+  it('anexo 02: la fase del CMN (2 o 3) se guarda con las áreas y se conserva al volver a grabar sin fase', fakeAsync(() => {
+    const ana = entrar('11111111');
+    const contexto = esperar(http.get<ContextoAnexo2>(`${API}/cmn/anexo-2-fase-1/contexto`, { headers: ana })).valor!;
+    const id = esperar(http.post<SolicitudResponse>(`${API}/solicitudes`, { tipoDocumentoId: 'td-sa2f1', tipoAccion: 'creacion', organoLinea: 'OGA', justificacion: '' }, { headers: ana })).valor!.id;
+    const fase = () => esperar(http.get<SolicitudResponse>(`${API}/solicitudes/${id}`, { headers: ana })).valor!.detalleAnexo2Fase1?.fase;
+
+    esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1`, { areas: contexto.areas.slice(0, 1), fase: 3 }, { headers: ana }));
+    expect(fase()).toBe(3);
+    esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1`, { areas: contexto.areas.slice(0, 2) }, { headers: ana }));
+    expect(fase()).toBe(3);
+  }));
+
+  it('anexo 02, fase 1: la OA evalúa cada Anexo 01 una sola vez; «Incompleto» pide comentario y la evaluación se conserva al regrabar', fakeAsync(() => {
     const oa = entrar('44444444');
     const contexto = esperar(http.get<ContextoAnexo2>(`${API}/cmn/anexo-2-fase-1/contexto`, { headers: oa })).valor!;
     const id = esperar(http.post<SolicitudResponse>(`${API}/solicitudes`, { tipoDocumentoId: 'td-sa2f1', tipoAccion: 'creacion', organoLinea: 'OLA', justificacion: '' }, { headers: oa })).valor!.id;
@@ -217,29 +233,43 @@ describe('mockBackendInterceptor', () => {
     expect(detalle.items.length).toBe(contabilidad.items);
     expect(detalle.items.reduce((s, i) => s + i.montoProgramado, 0)).toBeCloseTo(contabilidad.montoProgramado, 2);
 
-    // «No conforme» sin comentario no pasa; con comentario queda observado y ya no se puede volver a evaluar.
-    expect(esperar(http.post(`${urlArea(contabilidad.id)}/evaluacion`, { estado: 'No conforme' }, { headers: oa })).error?.status).toBe(400);
-    esperar(http.post(`${urlArea(contabilidad.id)}/evaluacion`, { estado: 'No conforme', comentario: 'Reevaluar si corresponde' }, { headers: oa }));
+    // «Incompleto» sin comentario no pasa; con comentario queda observado y ya no se puede volver a evaluar.
+    expect(esperar(http.post(`${urlArea(contabilidad.id)}/evaluacion`, { estado: 'Incompleto' }, { headers: oa })).error?.status).toBe(400);
+    esperar(http.post(`${urlArea(contabilidad.id)}/evaluacion`, { estado: 'Incompleto', comentario: 'Reevaluar si corresponde' }, { headers: oa }));
     const observado = esperar(http.get<DetalleAnexo1>(urlArea(contabilidad.id), { headers: oa })).valor!;
-    expect(observado.area.estadoEvaluacion).toBe('No conforme');
+    expect(observado.area.estadoEvaluacion).toBe('Incompleto');
     expect(observado.area.comentarioEvaluacion).toBe('Reevaluar si corresponde');
     expect(observado.evaluable).toBeFalse();
-    expect(esperar(http.post(`${urlArea(contabilidad.id)}/evaluacion`, { estado: 'Conforme' }, { headers: oa })).error?.status).toBe(409);
+    expect(esperar(http.post(`${urlArea(contabilidad.id)}/evaluacion`, { estado: 'Completo' }, { headers: oa })).error?.status).toBe(409);
 
     // Volver a grabar las áreas no borra la evaluación.
-    esperar(http.post(`${urlArea('a1-oa')}/evaluacion`, { estado: 'Conforme' }, { headers: oa }));
+    esperar(http.post(`${urlArea('a1-oa')}/evaluacion`, { estado: 'Completo' }, { headers: oa }));
     esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1`, { areas: contexto.areas }, { headers: oa }));
     const grabada = esperar(http.get<SolicitudResponse>(`${API}/solicitudes/${id}`, { headers: oa })).valor!;
     const estados = Object.fromEntries((grabada.detalleAnexo2Fase1?.areas ?? []).map((a) => [a.id, a.estadoEvaluacion]));
-    expect(estados).toEqual({ 'a1-rrhh': 'Pendiente', 'a1-oti': 'Pendiente', 'a1-oa': 'Conforme', 'a1-oc': 'No conforme' });
+    const esperados = Object.fromEntries(
+      contexto.areas.map((a) => [a.id, a.id === 'a1-oa' ? 'Completo' : a.id === 'a1-oc' ? 'Incompleto' : 'Pendiente'] as const),
+    );
+    expect(estados).toEqual(esperados);
 
     // Verificada, la solicitud ya no admite evaluaciones.
-    esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VERIFICADO' }, { headers: oa }));
-    expect(esperar(http.post(`${urlArea('a1-rrhh')}/evaluacion`, { estado: 'Conforme' }, { headers: oa })).error?.status).toBe(409);
+    // La OA evalúa todos los Anexos 01 antes de verificar: con alguno pendiente, no se puede.
+    const verificar = () => esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VERIFICADO' }, { headers: oa }));
+    expect(verificar().error?.status).toBe(400);
+    for (const area of contexto.areas.filter((a) => a.id !== 'a1-oa' && a.id !== 'a1-oc')) {
+      esperar(http.post(`${urlArea(area.id)}/evaluacion`, { estado: 'Completo' }, { headers: oa }));
+    }
+    expect(verificar().error).toBeUndefined();
+    // Verificar no cambia las evaluaciones: el observado sigue observado con su comentario.
+    const verificada = esperar(http.get<SolicitudResponse>(`${API}/solicitudes/${id}`, { headers: oa })).valor!;
+    const contabilidadVerificada = verificada.detalleAnexo2Fase1?.areas.find((a) => a.id === 'a1-oc');
+    expect(contabilidadVerificada?.estadoEvaluacion).toBe('Incompleto');
+    expect(contabilidadVerificada?.comentarioEvaluacion).toBe('Reevaluar si corresponde');
+    expect(esperar(http.post(`${urlArea('a1-rrhh')}/evaluacion`, { estado: 'Completo' }, { headers: oa })).error?.status).toBe(409);
     expect(esperar(http.get<DetalleAnexo1>(urlArea('a1-rrhh'), { headers: oa })).valor?.evaluable).toBeFalse();
   }));
 
-  it('anexo 02, fase 1: el consolidado integra solo los Anexos 01 revisados, agrupados y con los no conformes marcados', fakeAsync(() => {
+  it('anexo 02, fase 1: el consolidado integra solo los Anexos 01 revisados, agrupados y con los observados marcados', fakeAsync(() => {
     const oa = entrar('44444444');
     const contexto = esperar(http.get<ContextoAnexo2>(`${API}/cmn/anexo-2-fase-1/contexto`, { headers: oa })).valor!;
     const id = esperar(http.post<SolicitudResponse>(`${API}/solicitudes`, { tipoDocumentoId: 'td-sa2f1', tipoAccion: 'creacion', organoLinea: 'OLA', justificacion: '' }, { headers: oa })).valor!.id;
@@ -255,16 +285,17 @@ describe('mockBackendInterceptor', () => {
 
     const evaluar = (areaId: string, cuerpo: object) =>
       esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1/areas/${areaId}/evaluacion`, cuerpo, { headers: oa }));
-    evaluar('a1-oa', { estado: 'Conforme' });
-    evaluar('a1-oc', { estado: 'No conforme', comentario: 'Sustentar cantidades' });
+    evaluar('a1-oa', { estado: 'Completo' });
+    evaluar('a1-oc', { estado: 'Incompleto', comentario: 'Sustentar cantidades' });
 
     const c = esperar(http.get<ConsolidadoAnexo2>(url, { headers: oa })).valor!;
     const filas = c.grupos.flatMap((g) => g.filas);
-    // Oficina de Abastecimiento (7 ítems) y Oficina de Contabilidad (3); las pendientes no entran.
-    expect(filas.length).toBe(10);
+    // Los ítems de la Oficina de Abastecimiento y la Oficina de Contabilidad; las pendientes no entran.
+    const revisadas = CONTEXTO_ANEXO_2_FASE_1.areas.filter((a) => a.id === 'a1-oa' || a.id === 'a1-oc');
+    expect(filas.length).toBe(revisadas.reduce((suma, a) => suma + a.items, 0));
     expect(new Set(filas.map((f) => f.area))).toEqual(new Set(['Oficina de Abastecimiento', 'Oficina de Contabilidad']));
     const contabilidad = filas.filter((f) => f.area === 'Oficina de Contabilidad');
-    expect(contabilidad.every((f) => f.estadoEvaluacion === 'No conforme' && f.comentario === 'Sustentar cantidades')).toBeTrue();
+    expect(contabilidad.every((f) => f.estadoEvaluacion === 'Incompleto' && f.comentario === 'Sustentar cantidades')).toBeTrue();
     // Cada grupo es una sola combinación de fuente, clasificador, actividad y meta.
     const claves = c.grupos.map((g) => [g.fuente, g.clasificador, g.actividadOperativa, g.meta].join('|'));
     expect(new Set(claves).size).toBe(claves.length);
@@ -280,10 +311,13 @@ describe('mockBackendInterceptor', () => {
     const headers = entrar('11111111');
     const URL = `${API}/configuracion/servicios-basicos-excluidos`;
     const entidades = esperar(http.get<EntidadServicioBasico[]>(`${URL}/entidades`, { headers })).valor!;
-    expect(entidades.map((e) => e.nombre)).toEqual(['Municipalidad Provincial de Tumbes', 'Municipalidad Provincial de Zarumilla']);
+    // Las 13 municipalidades del departamento de Tumbes, de la provincial de Tumbes a la distrital de Papayal.
+    expect(entidades.length).toBe(13);
+    expect(entidades[0].nombre).toBe('Municipalidad Provincial de Tumbes');
+    expect(entidades.map((e) => e.nombre)).toContain('Municipalidad Provincial de Zarumilla');
 
     const [agua, luz] = esperar(http.get<ServicioBasico[]>(`${URL}/catalogo`, { headers })).valor!;
-    const ids = entidades.map((e) => e.id);
+    const ids = entidades.slice(0, 2).map((e) => e.id);
     esperar(http.put(URL, { items: [{ ...agua, entidades: [...ids, ids[0]] }, luz] }, { headers }));
 
     // Sin entidades se lee como lista vacía, y las repetidas se graban una vez.
@@ -302,6 +336,10 @@ describe('mockBackendInterceptor', () => {
     const contexto = esperar(http.get<ContextoAnexo2>(`${API}/cmn/anexo-2-fase-1/contexto`, { headers: especialista })).valor!;
     esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1`, { areas: contexto.areas.slice(0, 2) }, { headers: especialista }));
     esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: especialista }));
+    // Los Anexos 01 se evalúan antes de verificar.
+    for (const area of contexto.areas.slice(0, 2)) {
+      esperar(http.post(`${API}/solicitudes/${id}/anexo-2-fase-1/areas/${area.id}/evaluacion`, { estado: 'Completo' }, { headers: especialista }));
+    }
     esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VERIFICADO' }, { headers: especialista }));
 
     type Aviso = { documento: { id: string } };
@@ -312,14 +350,68 @@ describe('mockBackendInterceptor', () => {
 
     const evaluador = entrar('77777777');
     expect(esperar(http.get<Aviso[]>(`${API}/notificaciones`, { headers: evaluador })).valor?.some((n) => n.documento.id === id)).toBeTrue();
+    // El Evaluador del CMN no puede rechazar.
+    expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'RECHAZADO', comentario: 'No procede.' }, { headers: evaluador })).error?.status).toBe(409);
     esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'VALIDADO', comentario: 'Conforme.' }, { headers: evaluador }));
 
     const aprobador = entrar('55555555');
     const bandeja = esperar(http.get<SolicitudResponse[]>(`${API}/solicitudes/bandeja-aprobador?tipos=SA2F1`, { headers: aprobador }));
     expect(bandeja.valor?.some((s) => s.id === id)).toBeTrue();
     expect(esperar(http.get<Aviso[]>(`${API}/notificaciones`, { headers: aprobador })).valor?.some((n) => n.documento.id === id)).toBeTrue();
+    // El Aprobador del CMN tampoco puede rechazar.
+    expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'RECHAZADO', comentario: 'No procede.' }, { headers: aprobador })).error?.status).toBe(409);
     esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: aprobador }));
     expect(esperar(http.get<SolicitudResponse>(`${API}/solicitudes/${id}`, { headers: especialista })).valor?.estado).toBe('APROBADO');
+  }));
+
+  it('anexo 02, fase 1: cada entidad ve sus registros y su contexto (MINEDU aún sin aprobados, MEF el 0002)', fakeAsync(() => {
+    const especialista = entrar('44444444');
+    const carla = entrar('33333333');
+
+    const deMinedu = esperar(http.get<RegistroAnexo2[]>(`${API}/cmn/anexo-2-fase-1/registros`, { headers: especialista })).valor ?? [];
+    const delMef = esperar(http.get<RegistroAnexo2[]>(`${API}/cmn/anexo-2-fase-1/registros`, { headers: carla })).valor ?? [];
+    // MINEDU solo tiene su Anexo 02 elaborado; el MEF, un registro por área usuaria de su solicitud aprobada.
+    const cantidadAreas = CONTEXTO_ANEXO_2_FASE_1.areas.length;
+    expect(deMinedu).toEqual([]);
+    expect(delMef.map((r) => r.numeroDocumento)).toEqual(Array(cantidadAreas).fill('0002'));
+    expect(delMef.map((r) => r.area)).toContain('Oficina de Contabilidad');
+
+    const contextoMef = esperar(http.get<ContextoAnexo2>(`${API}/cmn/anexo-2-fase-1/contexto`, { headers: carla })).valor;
+    expect(contextoMef?.datos.entidad).toBe('0001 - Ministerio de Economía y Finanzas');
+    const contextoMinedu = esperar(http.get<ContextoAnexo2>(`${API}/cmn/anexo-2-fase-1/contexto`, { headers: especialista })).valor;
+    expect(contextoMinedu?.datos.entidad).toBe('011 - Ministerio de Educación');
+  }));
+
+  it('el seguimiento nacional trae las 2,486 Entidades en la fase pedida (por defecto la vigente) y siempre iguales', fakeAsync(() => {
+    const url = `${API}/reportes/seguimiento-nacional-cmn`;
+    const vigente = esperar(http.get<SeguimientoNacional>(url)).valor!;
+    expect(vigente.periodo).toBe('2026');
+    expect(vigente.fase).toBe(2);
+    expect(vigente.entidades.length).toBe(2486);
+    expect(new Set(vigente.entidades.map((e) => e.codigo)).size).toBe(2486);
+
+    const otraVez = esperar(http.get<SeguimientoNacional>(url, { params: { periodo: '2026', fase: '2' } })).valor!;
+    expect(otraVez.entidades.map((e) => e.estado)).toEqual(vigente.entidades.map((e) => e.estado));
+    // La fase 3 de 2026 todavía no empieza: nadie la inició.
+    const fase3 = esperar(http.get<SeguimientoNacional>(url, { params: { periodo: '2026', fase: '3' } })).valor!;
+    expect(fase3.entidades.every((e) => e.estado === 0)).toBeTrue();
+
+    expect(esperar(http.get(url, { params: { periodo: '1999' } })).error?.status).toBe(404);
+  }));
+
+  it('el dashboard del CMN suma lo mismo que los Anexos 01 de las áreas y filtra por años, áreas y tipo', fakeAsync(() => {
+    const url = `${API}/reportes/dashboard-cmn`;
+    const monto = (filas: FilaDashboardCmn[]): number => Math.round(filas.reduce((s, f) => s + Number(f.monto.replace(/,/g, '')), 0) * 100) / 100;
+    const todas = esperar(http.get<FilaDashboardCmn[]>(url)).valor ?? [];
+    const programado = CONTEXTO_ANEXO_2_FASE_1.areas.reduce((s, a) => s + a.montoProgramado, 0);
+    expect(monto(todas)).toBe(programado);
+    expect(new Set(todas.map((f) => f.anio))).toEqual(new Set(['2027', '2028', '2029']));
+    expect(new Set(todas.map((f) => f.areaSigla)).size).toBe(CONTEXTO_ANEXO_2_FASE_1.areas.length);
+
+    const filtradas =
+      esperar(http.get<FilaDashboardCmn[]>(url, { params: { anios: '2027', areas: 'OTI,OA', tipo: 'Servicio' } })).valor ?? [];
+    expect(filtradas.length).toBeGreaterThan(0);
+    expect(filtradas.every((f) => f.anio === '2027' && ['OTI', 'OA'].includes(f.areaSigla) && f.tipo === 'Servicio')).toBeTrue();
   }));
 
   it('deja pasar lo que no es de la API (los assets)', () => {

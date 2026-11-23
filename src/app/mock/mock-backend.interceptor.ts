@@ -10,9 +10,11 @@ import {
   ANIOS_CMN,
   type AreaUsuariaAnexo1,
   type ConsolidadoAnexo2,
+  type ContextoAnexo2,
   type DetalleAnexo1,
   type EvaluacionAnexo1Request,
   type RegistroAnexo2,
+  type SolicitudEscritorioCmn,
 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import { armarConsolidado } from '../modules/abastecimiento/anexo-2-fase-1/utils/consolidado-anexo-2.util';
 import type { ItemEstrategico } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
@@ -35,6 +37,9 @@ import {
   numeroDocumentoItemsEstrategicos,
   tipoDocumentoDe,
 } from './mock-db';
+import { filtrarFilasDashboard } from './dashboard-cmn';
+import { seguimientoEntidad } from './seguimiento-entidad-cmn';
+import { seguimientoNacional } from './seguimiento-nacional-cmn';
 import { CONTRASENA_DEMO, USUARIOS_DEMO, UsuarioDemo, buscarUsuarioPorPerfil } from './usuarios-demo';
 
 /**
@@ -347,7 +352,10 @@ const guardarAnexo2Fase1: Manejador = ({ req, datos, params, sesion }) => {
   if (!s) return error(404, 'La solicitud no existe.');
   if (!esAnexo2Fase1(s)) return error(400, 'La solicitud no es del Anexo N.º 02.');
   if (!['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'La solicitud ya no admite cambios.');
-  const areas = ((req.body ?? {}) as { areas?: AreaUsuariaAnexo1[] }).areas ?? [];
+  const cuerpo = (req.body ?? {}) as { areas?: AreaUsuariaAnexo1[]; fase?: unknown };
+  const areas = cuerpo.areas ?? [];
+  // Fase del CMN: la que mande el cliente (1, 2 o 3); si no manda, la que ya tenía la solicitud (o la 1).
+  const fase = cuerpo.fase === 2 || cuerpo.fase === 3 || cuerpo.fase === 1 ? cuerpo.fase : (s.detalleAnexo2Fase1?.fase ?? 1);
   if (!areas.length) return error(400, 'Seleccione al menos un área usuaria.');
   if (new Set(areas.map((a) => a.id)).size !== areas.length) return error(400, 'Hay áreas usuarias repetidas en la solicitud.');
   const recibidas = CONTEXTO_ANEXO_2_FASE_1.areas;
@@ -356,6 +364,7 @@ const guardarAnexo2Fase1: Manejador = ({ req, datos, params, sesion }) => {
   const previas = s.detalleAnexo2Fase1?.areas ?? [];
   s.detalleAnexo2Fase1 = {
     documentoId: s.id,
+    fase,
     areas: recibidas
       .filter((r) => areas.some((a) => a.id === r.id))
       .map((r) => {
@@ -371,7 +380,7 @@ const guardarAnexo2Fase1: Manejador = ({ req, datos, params, sesion }) => {
 /** La OA evalúa los Anexos 01 mientras la solicitud está en sus manos (ELABORADO u OBSERVADO). */
 const ESTADOS_EVALUACION_ANEXO_1 = ['ELABORADO', 'OBSERVADO'];
 
-/** «Detalle del Anexo 1» (Figma «3. Detalle items»): el área de la solicitud, sus ítems y si se puede evaluar. */
+/** «Anexo N° 01» (panel lateral de la tabla «Registros»): el área de la solicitud, sus ítems y si se puede evaluar. */
 const detalleAnexo1: Manejador = ({ datos, params, sesion }) => {
   const s = buscarSolicitud(datos, params[0], sesion);
   if (!s || !esAnexo2Fase1(s)) return error(404, 'La solicitud no existe.');
@@ -394,14 +403,14 @@ const consolidadoAnexo2: Manejador = ({ datos, params, sesion }) => {
   const consolidado: ConsolidadoAnexo2 = {
     solicitudId: s.id,
     numeroDocumento: s.numero ?? '',
-    entidad: CONTEXTO_ANEXO_2_FASE_1.datos.entidad,
+    entidad: s.entidadCreadora ? `${s.entidadCreadora.codMef} - ${s.entidadCreadora.nombre}` : CONTEXTO_ANEXO_2_FASE_1.datos.entidad,
     fase: CONTEXTO_ANEXO_2_FASE_1.datos.fase,
     ...armarConsolidado(areas.map((area) => ({ area, items: itemsAnexo1(area) })), ANIOS_CMN),
   };
   return ok(consolidado);
 };
 
-/** «Conforme» / «No conforme» de un Anexo 01: solo el creador, una vez por área y con comentario si no es conforme. */
+/** «Completo» / «Incompleto» de un Anexo 01: solo el creador, una vez por área y con comentario si está incompleto. */
 const evaluarAnexo1: Manejador = ({ req, datos, params, sesion }) => {
   if (!sesion) return error(401, 'Sesión expirada.');
   const s = buscarSolicitud(datos, params[0], sesion);
@@ -412,15 +421,15 @@ const evaluarAnexo1: Manejador = ({ req, datos, params, sesion }) => {
   if (!area) return error(404, 'El área usuaria no está en la solicitud.');
   if (area.estadoEvaluacion !== 'Pendiente') return error(409, 'El Anexo 01 ya fue evaluado.');
   const dto = (req.body ?? {}) as Partial<EvaluacionAnexo1Request>;
-  if (dto.estado !== 'Conforme' && dto.estado !== 'No conforme') return error(400, 'Indique si el Anexo 01 es conforme.');
+  if (dto.estado !== 'Completo' && dto.estado !== 'Incompleto') return error(400, 'Indique si el Anexo 01 está completo o incompleto.');
   const comentario = dto.comentario?.trim() ?? '';
-  if (dto.estado === 'No conforme' && !comentario) return error(400, 'Escriba el comentario de observación.');
+  if (dto.estado === 'Incompleto' && !comentario) return error(400, 'Escriba el comentario de observación.');
   if (comentario.length > 200) return error(400, 'El comentario admite hasta 200 caracteres.');
   area.estadoEvaluacion = dto.estado;
-  area.comentarioEvaluacion = dto.estado === 'No conforme' ? comentario : undefined;
+  area.comentarioEvaluacion = dto.estado === 'Incompleto' ? comentario : undefined;
   s.updatedAt = new Date().toISOString();
   guardarDatos(datos);
-  return ok({ message: dto.estado === 'Conforme' ? 'Se dio conformidad al Anexo 01' : 'Anexo 01 observado' });
+  return ok({ message: dto.estado === 'Completo' ? 'Se dio conformidad al Anexo 01' : 'Anexo 01 observado' });
 };
 
 const subirSustento: Manejador = ({ req, datos, params, sesion }) => {
@@ -465,11 +474,12 @@ const TRANSICIONES: Record<'CREADOR' | 'EVALUADOR' | 'APROBADOR', Partial<Record
     ELABORADO: ['ELABORADO', 'VERIFICADO', 'ELIMINADO'],
     OBSERVADO: ['ELABORADO', 'VERIFICADO'],
   },
+  // El Evaluador y el Aprobador del CMN no rechazan: solo validan o aprueban, u observan.
   EVALUADOR: {
-    VERIFICADO: ['VALIDADO', 'OBSERVADO', 'RECHAZADO'],
+    VERIFICADO: ['VALIDADO', 'OBSERVADO'],
   },
   APROBADOR: {
-    VALIDADO: ['APROBADO', 'OBSERVADO', 'RECHAZADO'],
+    VALIDADO: ['APROBADO', 'OBSERVADO'],
   },
 };
 
@@ -494,6 +504,11 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
   if (nuevo === 'ELABORADO') {
     if (items && !s.detalleItemsEstrategicos?.items.length) return error(400, 'Seleccione al menos una necesidad estratégica.');
     if (anexo2 && !s.detalleAnexo2Fase1?.areas.length) return error(400, 'Seleccione al menos un área usuaria.');
+  }
+  // Anexo N.º 02: la OA evalúa cada Anexo 01 (Completo o Incompleto) antes de verificar; ninguno puede quedar pendiente.
+  if (nuevo === 'VERIFICADO' && anexo2) {
+    const pendientes = (s.detalleAnexo2Fase1?.areas ?? []).filter((a) => a.estadoEvaluacion === 'Pendiente').length;
+    if (pendientes) return error(400, `Evalúe los Anexos 01 antes de verificar: ${pendientes} ${pendientes === 1 ? 'sigue pendiente' : 'siguen pendientes'}.`);
   }
 
   const ahora = new Date().toISOString();
@@ -551,7 +566,21 @@ const catalogoItemsEstrategicos: Manejador = () => ok(CATALOGO_ITEMS_ESTRATEGICO
 
 // ─── Anexo N.º 02, Fase 1 del CMN ──────────────────────────────────
 
-const contextoAnexo2Fase1: Manejador = () => ok(CONTEXTO_ANEXO_2_FASE_1);
+/** Contexto del Anexo N.º 02 con la entidad, la oficina y el rol de quien lo abre (MINEDU en el Figma, MEF para Ana). */
+const contextoAnexo2Fase1: Manejador = ({ sesion }) => {
+  const perfil = sesion?.perfil;
+  if (!perfil?.entidad) return ok(CONTEXTO_ANEXO_2_FASE_1);
+  const contexto: ContextoAnexo2 = {
+    ...CONTEXTO_ANEXO_2_FASE_1,
+    datos: {
+      ...CONTEXTO_ANEXO_2_FASE_1.datos,
+      entidad: `${perfil.entidadCodigo ?? ''} - ${perfil.entidad}`,
+      oficinaAbastecimiento: perfil.unidad ?? CONTEXTO_ANEXO_2_FASE_1.datos.oficinaAbastecimiento,
+      elaboradoPor: perfil.rol ?? CONTEXTO_ANEXO_2_FASE_1.datos.elaboradoPor,
+    },
+  };
+  return ok(contexto);
+};
 
 /** Registros de CMN Programación: las áreas usuarias de los Anexos 02 aprobados de la entidad. */
 const registrosAnexo2Fase1: Manejador = ({ datos, sesion }) => {
@@ -567,6 +596,42 @@ const registrosAnexo2Fase1: Manejador = ({ datos, sesion }) => {
       fechaAprobacion: s.fechaAprobacion ?? s.updatedAt ?? s.createdAt,
     })));
   return ok(registros);
+};
+
+/**
+ * «Bandeja de solicitudes» del escritorio de CMN Programación: las Solicitudes de CMN - Anexo N.º 02 de la entidad de la
+ * sesión (sin las eliminadas), las más recientes primero, con su fase, sus áreas y necesidades y quién la tiene ahora:
+ * el creador mientras está nueva, elaborada u observada; el evaluador de la entidad si está verificada; el aprobador si
+ * está validada; nadie cuando ya fue aprobada o rechazada.
+ */
+const escritorioCmn: Manejador = ({ datos, sesion }) => {
+  const rolResponsable: Partial<Record<string, 'EVALUADOR' | 'APROBADOR'>> = { VERIFICADO: 'EVALUADOR', VALIDADO: 'APROBADOR' };
+  const nombreDe = (u: Pick<UsuarioDemo, 'nombres' | 'apellidoPaterno'>) => `${u.nombres} ${u.apellidoPaterno}`.trim();
+  const filas: SolicitudEscritorioCmn[] = datos.solicitudes
+    .filter((s) => esAnexo2Fase1(s) && s.estado !== 'ELIMINADO' && (!sesion || s.entidadCreadora?.id === sesion.perfil.entidadId))
+    .map((s) => {
+      const areas = s.detalleAnexo2Fase1?.areas ?? [];
+      let responsable: SolicitudEscritorioCmn['responsable'] = null;
+      if (['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) {
+        responsable = { nombre: s.creador ? `${s.creador.nombres} ${s.creador.apellidoPaterno}`.trim() : '—', rol: 'Creador' };
+      } else if (rolResponsable[s.estado]) {
+        const rol = rolResponsable[s.estado]!;
+        const encargado = USUARIOS_DEMO.find((u) => u.perfiles.some((p) => p.rolCodigo === rol && p.entidadId === s.entidadCreadora?.id));
+        responsable = { nombre: encargado ? nombreDe(encargado) : '—', rol: rol === 'EVALUADOR' ? 'Evaluador' : 'Aprobador' };
+      }
+      return {
+        id: s.id,
+        numero: s.numero ?? '',
+        fase: s.detalleAnexo2Fase1?.fase ?? 1,
+        fecha: s.createdAt,
+        areas: areas.length,
+        necesidades: areas.reduce((suma, a) => suma + a.items, 0),
+        estado: s.estado,
+        responsable,
+      };
+    })
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return ok(filas);
 };
 
 // ─── Configuración: áreas usuarias del CMN ─────────────────────────
@@ -632,10 +697,24 @@ const CATALOGO_SERVICIOS_BASICOS = (
 
 const catalogoServiciosBasicos: Manejador = () => ok(CATALOGO_SERVICIOS_BASICOS);
 
-/** Entidades asignables a un servicio básico: municipalidades del Gobierno Regional de Tumbes (código de ubigeo). */
+/**
+ * Entidades asignables a un servicio básico: las municipalidades provinciales y distritales del departamento de
+ * Tumbes (código de ubigeo), por provincia.
+ */
 const ENTIDADES_SERVICIOS_BASICOS = [
   { id: 'ent-mun-tumbes', codigo: '240101', nombre: 'Municipalidad Provincial de Tumbes' },
+  { id: 'ent-mun-corrales', codigo: '240102', nombre: 'Municipalidad Distrital de Corrales' },
+  { id: 'ent-mun-la-cruz', codigo: '240103', nombre: 'Municipalidad Distrital de La Cruz' },
+  { id: 'ent-mun-pampas-hospital', codigo: '240104', nombre: 'Municipalidad Distrital de Pampas de Hospital' },
+  { id: 'ent-mun-san-jacinto', codigo: '240105', nombre: 'Municipalidad Distrital de San Jacinto' },
+  { id: 'ent-mun-san-juan-virgen', codigo: '240106', nombre: 'Municipalidad Distrital de San Juan de la Virgen' },
+  { id: 'ent-mun-contralmirante-villar', codigo: '240201', nombre: 'Municipalidad Provincial de Contralmirante Villar' },
+  { id: 'ent-mun-casitas', codigo: '240202', nombre: 'Municipalidad Distrital de Casitas' },
+  { id: 'ent-mun-canoas-punta-sal', codigo: '240203', nombre: 'Municipalidad Distrital de Canoas de Punta Sal' },
   { id: 'ent-mun-zarumilla', codigo: '240301', nombre: 'Municipalidad Provincial de Zarumilla' },
+  { id: 'ent-mun-aguas-verdes', codigo: '240302', nombre: 'Municipalidad Distrital de Aguas Verdes' },
+  { id: 'ent-mun-matapalo', codigo: '240303', nombre: 'Municipalidad Distrital de Matapalo' },
+  { id: 'ent-mun-papayal', codigo: '240304', nombre: 'Municipalidad Distrital de Papayal' },
 ];
 
 const entidadesServiciosBasicos: Manejador = () => ok(ENTIDADES_SERVICIOS_BASICOS);
@@ -665,6 +744,12 @@ const sincronizarAreasUsuarias: Manejador = ({ datos }) => {
   guardarDatos(datos);
   return ok({ area });
 };
+
+/**
+ * Panel «Sincronizar»: unidades organizacionales del clasificador que todavía no están en la lista de la entidad.
+ * No cambia nada: las elegidas se incorporan en pantalla y quedan registradas recién al grabar.
+ */
+const disponiblesAreasUsuarias: Manejador = ({ datos }) => ok(datos.areasUsuarias.filter((a) => a.pendiente));
 
 const detalleAreaUsuaria: Manejador = ({ datos, params }) => {
   const area = datos.areasUsuarias.find((a) => a.id === params[0]);
@@ -862,6 +947,25 @@ const eliminarDistribucionInternaPresupuesto: Manejador = ({ datos, params }) =>
 
 // ─── Configuración: precios diferenciados ───────────────────────────
 
+/**
+ * Filas del «Dashboard» de Reportes (Anexo 01 de las áreas usuarias, por ítem y año): `anios` y `areas` separados
+ * por coma y `tipo`, si vienen. Solo lectura.
+ */
+/** «Seguimiento nacional del CMN» (DPLAIP): `periodo` (por defecto 2026) y `fase` (por defecto, la vigente). */
+const seguimientoNacionalCmn: Manejador = ({ query }) => {
+  const fase = query.get('fase');
+  const respuesta = seguimientoNacional(query.get('periodo') ?? undefined, fase ? Number(fase) : undefined);
+  return respuesta ? ok(respuesta) : error(404, 'El periodo o la fase no existen.');
+};
+
+/** «Resumen de la Entidad» del seguimiento del CMN: áreas usuarias, Anexos N.º 01 y necesidades de las tres fases. */
+const seguimientoEntidadCmn: Manejador = () => ok(seguimientoEntidad());
+
+const filasDashboard: Manejador = ({ query }) => {
+  const lista = (clave: string): string[] => (query.get(clave) ?? '').split(',').filter(Boolean);
+  return ok(filtrarFilasDashboard({ anios: lista('anios'), areas: lista('areas'), tipo: query.get('tipo') ?? undefined }));
+};
+
 const listarPreciosDiferenciados: Manejador = ({ datos }) => ok(datos.preciosDiferenciados);
 
 /** Catálogo CUBSO del que se elige en «Seleccionar ítems» (Figma, nodo 4683:867558). */
@@ -956,7 +1060,8 @@ const guardarAreasUsuarias: Manejador = ({ req, datos }) => {
     if (!area) continue;
     if (cambio.esMaa && !area.esMaa) nuevaMaa = area.id;
     if (cambio.esOa && !area.esOa) nuevaOa = area.id;
-    Object.assign(area, cambio, { nuevo: false, configurada: true });
+    // Una unidad incorporada desde «Sincronizar» deja de estar pendiente al grabarse.
+    Object.assign(area, cambio, { nuevo: false, configurada: true, pendiente: false });
   }
   for (const area of datos.areasUsuarias) {
     if (nuevaMaa && area.id !== nuevaMaa) area.esMaa = false;
@@ -1001,9 +1106,11 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1\/consolidado$/, consolidadoAnexo2],
   ['GET', /^\/cmn\/anexo-2-fase-1\/contexto$/, contextoAnexo2Fase1],
   ['GET', /^\/cmn\/anexo-2-fase-1\/registros$/, registrosAnexo2Fase1],
+  ['GET', /^\/cmn\/anexo-2\/escritorio$/, escritorioCmn],
   ['GET', /^\/configuracion\/areas-usuarias$/, listarAreasUsuarias],
   ['PUT', /^\/configuracion\/areas-usuarias$/, guardarAreasUsuarias],
   ['POST', /^\/configuracion\/areas-usuarias\/sincronizar$/, sincronizarAreasUsuarias],
+  ['GET', /^\/configuracion\/areas-usuarias\/disponibles$/, disponiblesAreasUsuarias],
   ['GET', /^\/configuracion\/servicios-basicos-excluidos$/, listarServiciosBasicosExcluidos],
   ['GET', /^\/configuracion\/servicios-basicos-excluidos\/catalogo$/, catalogoServiciosBasicos],
   ['GET', /^\/configuracion\/servicios-basicos-excluidos\/entidades$/, entidadesServiciosBasicos],
@@ -1027,6 +1134,9 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/configuracion\/precios-diferenciados\/([^/]+)$/, obtenerPrecioDiferenciado],
   ['PUT', /^\/configuracion\/precios-diferenciados\/([^/]+)\/precios$/, guardarPreciosArea],
   ['DELETE', /^\/configuracion\/precios-diferenciados\/([^/]+)$/, eliminarPrecioDiferenciado],
+  ['GET', /^\/reportes\/dashboard-cmn$/, filasDashboard],
+  ['GET', /^\/reportes\/seguimiento-nacional-cmn$/, seguimientoNacionalCmn],
+  ['GET', /^\/reportes\/seguimiento-entidad-cmn$/, seguimientoEntidadCmn],
 ];
 
 export const mockBackendInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEvent<unknown>> => {

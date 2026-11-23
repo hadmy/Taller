@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { BarController, BarElement, CategoryScale, Chart, LinearScale, Tooltip } from 'chart.js';
 import type { ActiveDataPoint, ChartData, ChartOptions, Plugin } from 'chart.js';
 
-import { ChartLegendComponent } from '../chart-legend/chart-legend.component';
+import { ChartLegendComponent, ChartLegendItem } from '../chart-legend/chart-legend.component';
 import { ChartTooltipComponent } from '../chart-tooltip/chart-tooltip.component';
 import { colorDeTextoSobre, formatearPorcentaje, formatearValor, tokenDeSerie } from '../charts/chart-tema';
-import { ChartSeries, GraficoBase, SerieDibujada, ajustarEje, tieneValor } from '../charts/grafico-base';
+import { ChartSeries, GraficoBase, SerieDibujada, ajustarEje, conOpacidad, tieneValor } from '../charts/grafico-base';
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
 
@@ -17,12 +17,37 @@ export type BarChartOrientation = 'vertical' | 'horizontal';
  */
 const AIRE_BAJO_LA_BARRA = 47;
 
+/** Color de las barras en alerta (`alertIndexes`). */
+const TOKEN_ALERTA = '--sys-color-bg-feedback-dark-danger';
+
+/** Largo de línea de las etiquetas de categoría en horizontal: más largas se parten en líneas por palabras. */
+const LARGO_LINEA_HORIZONTAL = 16;
+/** En vertical, las etiquetas largas también se parten (en vez de inclinarse), en líneas de hasta 22 caracteres. */
+const LARGO_LINEA_VERTICAL = 22;
+
+/**
+ * Parte una etiqueta larga en líneas de hasta `largo` caracteres, por palabras (una palabra más larga queda sola en su
+ * línea). Chart.js limita el ancho del eje de categorías y, en una sola línea, el texto se cortaba por la izquierda.
+ */
+export function partirEtiqueta(texto: string, largo = LARGO_LINEA_HORIZONTAL): string | string[] {
+  if (texto.length <= largo || !texto.includes(' ')) return texto;
+  const lineas: string[] = [];
+  for (const palabra of texto.split(' ')) {
+    const ultima = lineas.at(-1);
+    if (ultima !== undefined && ultima.length + 1 + palabra.length <= largo) lineas[lineas.length - 1] = `${ultima} ${palabra}`;
+    else lineas.push(palabra);
+  }
+  return lineas;
+}
+
 /**
  * Gráfico de barras del kit (Figma UI KIT, página «Graphics»: «Bar», «Bar grouped», «Comparative bars» y «Stacked
  * bar»), dibujado con Chart.js. Con una serie son barras simples; con dos o más, agrupadas por categoría; y con una sola
  * categoría (o ninguna), el comparativo: las series lado a lado, sin etiqueta de categoría y con un tooltip por barra.
  * `orientation="horizontal"`
- * pone las categorías a la izquierda. Con `stacked` las series se apilan en cada categoría, con 2 px de aire entre
+ * pone las categorías a la izquierda y muestra el nombre de todas (sin saltear; los de más de 16 caracteres, en varias
+ * líneas): el `height` debe dar al menos 14 px por categoría, o 28 px si los nombres son largos. En vertical, los nombres
+ * de más de 22 caracteres también se parten en líneas, en vez de inclinarse. Con `stacked` las series se apilan en cada categoría, con 2 px de aire entre
  * tramos y el porcentaje de cada tramo adentro cuando entra; con una sola categoría es la barra 100 % del Figma: una
  * barra horizontal que llena el ancho, sin ejes, con el nombre de cada tramo debajo. Los colores salen de la paleta del
  * kit (`TOKENS_SERIES`) y se vuelven a leer al cambiar de tema; la leyenda y el tooltip son `siaf-chart-legend` y
@@ -33,9 +58,17 @@ const AIRE_BAJO_LA_BARRA = 47;
  * @figma 22743:622 Comparative bars
  * @figma 22743:356 Stacked bar
  * @usar
+ * - `selectable` con `[selectedIndex]` y `(categorySelected)` para un tablero interactivo: el clic (o Enter / Espacio
+ *   tras recorrer con las flechas) elige una categoría, que conserva su color mientras las demás se atenúan; la pantalla
+ *   filtra con ella. Volver a elegirla emite `null`.
+ * - Apilado y `selectable`: `(segmentSelected)` trae la categoría y la serie del tramo pulsado (por ejemplo, nivel de
+ *   gobierno y estado) y `[selectedSeries]` atenúa las demás series.
  * - Para comparar cantidades entre categorías o meses (recaudación, documentos por estado), con pocas series.
  * - Dentro de `siaf-chart-section`, que le pone título y descripción.
  * - `valueSuffix="%"` cuando los valores son porcentajes, y `ariaLabel` con lo que muestra el gráfico.
+ * - `showValues` para escribir el valor de cada barra en su extremo, cuando la cifra exacta importa (montos, cantidades).
+ * - `alertIndexes` para marcar en rojo las categorías urgentes (la leyenda suma «Urgente» o `alertLabel`), por ejemplo
+ *   el pendiente que vence antes. El rojo no basta solo: la leyenda lo nombra.
  * - `stacked` para las partes de un total en cada categoría y, con una sola categoría, para la composición de un total
  *   en una barra (activos y patrimonio).
  * @evitar
@@ -145,13 +178,45 @@ export class BarChartComponent extends GraficoBase<'bar'> {
   @Input() categoryLabel = 'Categoría';
   /** Alto del área del gráfico en px (sin la leyenda). */
   @Input() height = 252;
+  /** Con clic, Enter o Espacio se elige una categoría: la elegida mantiene su color y las demás se atenúan. */
+  @Input() override selectable = false;
+  /** Categoría seleccionada (índice en `categories`); `null`, ninguna. */
+  @Input() override selectedIndex: number | null = null;
+  /** Índice elegido, o `null` al volver a elegir el que ya estaba seleccionado. */
+  @Output() override readonly categorySelected = new EventEmitter<number | null>();
+  /** En barras apiladas: serie (tramo) seleccionada; las demás series se atenúan. */
+  @Input() override selectedSeries: number | null = null;
+  /** Con `selectable`, el clic en un tramo emite su categoría y su serie (o `null` si ya estaba elegido). */
+  @Output() override readonly segmentSelected = new EventEmitter<{ category: number; series: number } | null>();
   /**
    * Apila las series de cada categoría. Con una sola categoría es la barra 100 % del Figma («Stacked bar»): horizontal,
    * sin ejes, con el porcentaje de cada tramo adentro y su nombre debajo.
    */
   @Input() stacked = false;
+  /**
+   * Categorías en alerta (índices en `categories`): sus barras van en rojo (`bg-feedback-dark-danger`) y la leyenda suma
+   * `alertLabel` con ese color. Solo sin `stacked`.
+   */
+  @Input() alertIndexes: readonly number[] = [];
+  /** Nombre del rojo en la leyenda cuando hay categorías en alerta. */
+  @Input() alertLabel = 'Urgente';
+  /**
+   * Escribe el valor de cada barra en su extremo (a la derecha en horizontal, encima en vertical), con `valueSuffix`.
+   * Sin efecto en barras apiladas, que ya muestran el porcentaje de cada tramo.
+   */
+  @Input() showValues = false;
 
   protected readonly tipo = 'bar';
+
+  /** La leyenda de las series y, si hay categorías en alerta, el rojo con su nombre. */
+  override get leyenda(): ChartLegendItem[] {
+    const series = super.leyenda;
+    return this.hayAlerta ? [...series, { label: this.alertLabel, token: TOKEN_ALERTA }] : series;
+  }
+
+  private get hayAlerta(): boolean {
+    return !this.stacked && this.alertIndexes.length > 0;
+  }
   /** Color del porcentaje sobre cada serie apilada (el de más contraste), leído junto con la paleta. */
   private textoSobreSerie: string[] = [];
 
@@ -204,8 +269,49 @@ export class BarChartComponent extends GraficoBase<'bar'> {
     return this.barraUnica || this.orientation === 'horizontal';
   }
 
+  /** Pinta de rojo las barras en alerta; con una categoría seleccionada, las no elegidas quedan atenuadas. */
+  private conAlerta(relleno: string | string[]): string | string[] {
+    if (!this.hayAlerta) return relleno;
+    const rojo = this.colorDe(TOKEN_ALERTA);
+    const elegida = this.selectedIndex;
+    return this.etiquetas.map((_, k) => {
+      if (!this.alertIndexes.includes(k)) return Array.isArray(relleno) ? relleno[k] : relleno;
+      return elegida !== null && elegida >= 0 && k !== elegida ? conOpacidad(rojo, 0.3) : rojo;
+    });
+  }
+
   protected override complementos(): Plugin<'bar'>[] {
-    return [{ id: 'siafTramosApilados', afterDatasetsDraw: (grafico) => this.rotularTramos(grafico) }];
+    return [
+      { id: 'siafTramosApilados', afterDatasetsDraw: (grafico) => this.rotularTramos(grafico) },
+      { id: 'siafValoresBarras', afterDatasetsDraw: (grafico) => this.rotularValores(grafico) },
+    ];
+  }
+
+  private get conValores(): boolean {
+    return this.showValues && !this.stacked && !this.barraUnica;
+  }
+
+  /** Con `showValues`, el valor de cada barra en su extremo, en `text-neutral-medium` de 11 px. */
+  private rotularValores(grafico: Chart<'bar'>): void {
+    if (!this.conValores) return;
+    const ctx = grafico.ctx;
+    const horizontal = this.horizontal;
+    ctx.save();
+    ctx.font = `600 11px ${getComputedStyle(this.host.nativeElement).fontFamily}`;
+    ctx.fillStyle = this.colorDe('--sys-color-text-neutral-medium');
+    ctx.textAlign = horizontal ? 'left' : 'center';
+    ctx.textBaseline = horizontal ? 'middle' : 'bottom';
+    this.series.forEach((serie, datasetIndex) => {
+      const meta = grafico.getDatasetMeta(datasetIndex);
+      if (meta.hidden) return;
+      meta.data.forEach((elemento, indice) => {
+        const valor = Number(serie.values[indice]);
+        if (!tieneValor(serie.values[indice]) || !Number.isFinite(valor)) return;
+        const { x, y } = elemento.getProps(['x', 'y'], true);
+        ctx.fillText(formatearValor(valor, this.valueSuffix), horizontal ? x + 4 : x, horizontal ? y : y - 3);
+      });
+    });
+    ctx.restore();
   }
 
   protected datos(): ChartData<'bar'> {
@@ -216,7 +322,8 @@ export class BarChartComponent extends GraficoBase<'bar'> {
     return {
       labels: [...this.etiquetas],
       datasets: this.series.map((serie, i) => {
-        const comun = { label: serie.name, data: [...serie.values], backgroundColor: colores[i], hoverBackgroundColor: colores[i], maxBarThickness: 62 };
+        const relleno = this.conAlerta(this.colorSegunSeleccion(colores[i], i));
+        const comun = { label: serie.name, data: [...serie.values], backgroundColor: relleno, hoverBackgroundColor: relleno, maxBarThickness: 62 };
         if (this.stacked) {
           // Tramos rectos con 2 px de aire hacia el siguiente (un borde transparente de ese lado), como en el Figma.
           const aire = i < ultima ? 2 : 0;
@@ -262,6 +369,9 @@ export class BarChartComponent extends GraficoBase<'bar'> {
       stacked: this.stacked,
       beginAtZero: true,
       max: this.max ?? undefined,
+      // Con `showValues`, el eje sigue un 20 % más allá de la barra más larga para que entre su valor (sin quitar
+      // ancho a los nombres de las categorías).
+      grace: this.conValores ? '20%' : 0,
       border: { display: false },
       grid: { color: colorGrilla, drawTicks: false },
       ticks: {
@@ -279,10 +389,16 @@ export class BarChartComponent extends GraficoBase<'bar'> {
       grid: { display: false, drawTicks: false },
       ticks: {
         display: !this.comparativo,
+        // En horizontal cada barra lleva su nombre: no se saltean etiquetas (el alto lo elige la pantalla).
+        autoSkip: !this.horizontal,
         color: colorTexto,
         font: fuente,
         padding: 12,
-        callback: (_valor: string | number, indice: number) => (this.etiquetas[indice] ?? '').toUpperCase(),
+        callback: (_valor: string | number, indice: number) => {
+          const texto = (this.etiquetas[indice] ?? '').toUpperCase();
+          // En vertical, las líneas pueden ser algo más largas: cada categoría tiene más ancho que alto.
+          return partirEtiqueta(texto, this.horizontal ? LARGO_LINEA_HORIZONTAL : LARGO_LINEA_VERTICAL);
+        },
       },
     };
     const horizontal = this.horizontal;

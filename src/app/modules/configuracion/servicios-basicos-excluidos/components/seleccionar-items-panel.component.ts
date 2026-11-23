@@ -7,6 +7,7 @@ import { TagComponent } from '../../../../shared/ui/tag/tag.component';
 import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
 import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
+import { TableControlsComponent } from '../../../../shared/components/table-controls/table-controls.component';
 import { ServicioBasico } from '../models/servicio-basico.model';
 
 /** Sin modo elegido (estado inicial del Figma) no hay radio marcado y los cinco selects están activos. */
@@ -50,6 +51,7 @@ const ETIQUETA_CAMPO: Record<CampoFiltro, string> = {
     RadioComponent,
     SideNavComponent,
     SidePanelComponent,
+    TableControlsComponent,
     TagComponent,
     TextFieldComponent,
   ],
@@ -83,6 +85,21 @@ const ETIQUETA_CAMPO: Record<CampoFiltro, string> = {
             No se ha seleccionado ningún tipo. Realice una búsqueda para realizar una selección.
           </div>
         } @else {
+          <!-- Selección masiva de la página (siaf-table-controls), debajo del buscador. -->
+          <siaf-table-controls
+            selectAllLabel="Seleccionar los ítems de la página"
+            [checked]="paginaCompleta()"
+            [indeterminate]="paginaParcial()"
+            [disabled]="filasPaginadas().length === 0"
+            [page]="page()"
+            [pageSize]="rowsPerPage()"
+            [totalItems]="filasFiltradas().length"
+            [totalPages]="totalPages()"
+            (selectionChange)="marcarPagina($event)"
+            (previous)="page.set(Math.max(1, page() - 1))"
+            (next)="page.set(Math.min(totalPages(), page() + 1))"
+          />
+
           <!-- Tabla del Figma «A.2-RC-011/012»: sin borde exterior, filas de 48 px y anchos fijos salvo Descripción. -->
           <div class="overflow-auto">
             <table class="w-full min-w-[960px] table-fixed border-collapse text-sm">
@@ -340,6 +357,27 @@ export class SeleccionarItemsPanelComponent {
       const next = new Set(set);
       if (marcado) next.add(id);
       else next.delete(id);
+      return next;
+    });
+  }
+
+  /** Todas las filas de la página están marcadas. */
+  readonly paginaCompleta = computed(() => {
+    const filas = this.filasPaginadas();
+    return filas.length > 0 && filas.every((f) => this.seleccionados().has(f.id));
+  });
+  readonly paginaParcial = computed(
+    () => this.filasPaginadas().some((f) => this.seleccionados().has(f.id)) && !this.paginaCompleta(),
+  );
+
+  /** Casilla de la barra de controles: marca o desmarca todas las filas de la página. */
+  marcarPagina(marcado: boolean): void {
+    this.seleccionados.update((set) => {
+      const next = new Set(set);
+      for (const fila of this.filasPaginadas()) {
+        if (marcado) next.add(fila.id);
+        else next.delete(fila.id);
+      }
       return next;
     });
   }

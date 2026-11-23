@@ -1,10 +1,10 @@
 import { Routes } from '@angular/router';
 
 import {
-  ANEXO_1_SEGMENT,
-  CONSOLIDADO_SEGMENT,
+  ESCRITORIO_ROUTE as CMN_ESCRITORIO_ROUTE,
   PROCESS_ROUTE as CMN_PROGRAMACION_ROUTE,
   REQUEST_ROUTE as ANEXO_2_REQUEST_ROUTE,
+  REQUEST_ROUTE_POR_FASE as ANEXO_2_REQUEST_ROUTE_POR_FASE,
 } from './anexo-2-fase-1/config/anexo-2-fase-1.rutas';
 import { PROCESS_ROUTE, REQUEST_ROUTE } from './items-estrategicos/config/items-estrategicos.rutas';
 
@@ -35,6 +35,11 @@ export const ABASTECIMIENTO_ROUTES: Routes = [
       ),
   },
   {
+    path: CMN_ESCRITORIO_ROUTE.slice(1),
+    loadComponent: () =>
+      import('./anexo-2-fase-1/pages/escritorio/cmn-escritorio.component').then((m) => m.CmnEscritorioComponent),
+  },
+  {
     path: CMN_PROGRAMACION_ROUTE.slice(1),
     loadComponent: () =>
       import('./anexo-2-fase-1/pages/documents/cmn-programacion-documents.component').then((m) => m.CmnProgramacionDocumentsComponent),
@@ -49,14 +54,11 @@ export const ABASTECIMIENTO_ROUTES: Routes = [
     loadComponent: () =>
       import('./anexo-2-fase-1/pages/solicitud/anexo-2-fase-1-request.component').then((m) => m.Anexo2Fase1RequestComponent),
   },
-  {
-    path: `${ANEXO_2_REQUEST_ROUTE.slice(1)}/:id/${ANEXO_1_SEGMENT}/:areaId`,
+  // Fases 2 y 3 del CMN: la misma solicitud del Anexo N.º 02, creada con su fase.
+  ...([2, 3] as const).map((fase) => ({
+    path: ANEXO_2_REQUEST_ROUTE_POR_FASE[fase].slice(1),
+    data: { fase },
     loadComponent: () =>
-      import('./anexo-2-fase-1/pages/detalle-anexo-1/detalle-anexo-1.component').then((m) => m.DetalleAnexo1Component),
-  },
-  {
-    path: `${ANEXO_2_REQUEST_ROUTE.slice(1)}/:id/${CONSOLIDADO_SEGMENT}`,
-    loadComponent: () =>
-      import('./anexo-2-fase-1/pages/consolidado-anexo-2/consolidado-anexo-2.component').then((m) => m.ConsolidadoAnexo2Component),
-  },
+      import('./anexo-2-fase-1/pages/solicitud/anexo-2-fase-1-request.component').then((m) => m.Anexo2Fase1RequestComponent),
+  })),
 ];

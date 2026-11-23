@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
@@ -24,7 +25,7 @@ import { FechaFaseCmnEntidad } from '../models/fecha-fase-cmn.model';
 @Component({
   selector: 'siaf-fechas-fase-cmn-entidad',
   standalone: true,
-  imports: [
+  imports: [ConfiguracionTabsComponent, 
     ButtonComponent,
     FormTableSearchComponent,
     ModalComponent,

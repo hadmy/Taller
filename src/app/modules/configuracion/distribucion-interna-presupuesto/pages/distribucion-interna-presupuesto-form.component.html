@@ -60,6 +60,7 @@
           <p class="m-0 mb-siaf-xs text-xs font-bold uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-high)]">Año</p>
           <siaf-input
             [label]="anioSeleccionado() ? 'Año' : ''"
+            [hideLabel]="true"
             placeholder="Selecciona"
             type="select"
             [disabled]="editando()"
@@ -72,6 +73,7 @@
           <p class="m-0 mb-siaf-xs text-xs font-bold uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-high)]">Presupuesto de fase</p>
           <siaf-input
             [label]="presupuestoFaseSeleccionado() ? 'Presupuesto de fase' : ''"
+            [hideLabel]="true"
             placeholder="Selecciona"
             type="select"
             [disabled]="editando() || cargando() || !anioSeleccionado()"
@@ -87,7 +89,7 @@
       }
 
       <!-- Figma: pestañas con los tres años siguientes al elegido («-» mientras no hay año). -->
-      <siaf-tabs [tabs]="tabsAnios()" [activeId]="tabAnioActiva()" (activeIdChange)="tabAnioElegida.set($event)" ariaLabel="Años de la distribución" />
+      <siaf-tabs [tabs]="tabsAnios()" [activeId]="tabAnioActiva()" (activeIdChange)="tabAnioElegida.set($event)" [fullWidth]="true" ariaLabel="Años de la distribución" />
 
       @if (presupuestoFaseSeleccionado() && areaUsuariaTitular()) {
         <div class="flex flex-wrap gap-siaf-md">

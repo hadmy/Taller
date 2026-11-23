@@ -44,8 +44,7 @@
       <div class="flex flex-col gap-siaf-md">
         <siaf-tabs [tabs]="tabs()" [activeId]="tabActiva()" (activeIdChange)="seleccionarTab($event)" ariaLabel="Contenido del área usuaria" />
 
-        <div class="flex items-center justify-between">
-          <h3 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Comodities</h3>
+        <div class="flex items-center justify-end">
           <siaf-button variant="filled" icon="search" [iconOnly]="true" ariaLabel="Buscar commodities u ítems" (click)="abrirPanel()" />
         </div>
 
@@ -62,6 +61,9 @@
                 <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción commodity</th>
                 <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Item</th>
                 <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción ítem</th>
+                @if (esPuedePedir()) {
+                  <th class="w-48 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Especialidad</th>
+                }
                 <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigente</th>
               </tr>
             </thead>
@@ -72,6 +74,18 @@
                   <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionCommodity }}</td>
                   <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.item }}</td>
                   <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionItem }}</td>
+                  @if (esPuedePedir()) {
+                    <td class="px-siaf-md py-siaf-xs">
+                      <siaf-input
+                        type="select"
+                        [hideLabel]="true"
+                        [label]="'Especialidad: ' + item.descripcionItem"
+                        [options]="opcionesEspecialidad"
+                        [value]="item.especialidad ?? 'General'"
+                        (valueChange)="cambiarEspecialidad(item.id, $any($event))"
+                      />
+                    </td>
+                  }
                   <td class="px-siaf-md py-siaf-xs text-center">
                     <siaf-switch
                       [checked]="item.vigente"
@@ -82,7 +96,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td class="p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-low)]" colspan="5">No se encontraron ítems.</td>
+                  <td class="p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-low)]" [attr.colspan]="esPuedePedir() ? 6 : 5">No se encontraron ítems.</td>
                 </tr>
               }
             </tbody>

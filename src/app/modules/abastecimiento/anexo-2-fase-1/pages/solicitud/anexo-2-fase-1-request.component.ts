@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, forkJoin } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 
 import { CatalogosApiService, TipoDocumentoResponse } from '../../../../../core/api/catalogos-api.service';
@@ -22,6 +22,8 @@ import { SolicitudeInfoCardComponent, SolicitudeInfoField } from '../../../../..
 import { SolicitudePageLayoutComponent } from '../../../../../shared/components/solicitude-page-layout/solicitude-page-layout.component';
 import { TableControlsComponent } from '../../../../../shared/components/table-controls/table-controls.component';
 import { ActionTrackerComponent, ActionTrackerSummary } from '../../../../../shared/ui/action-tracker/action-tracker.component';
+import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
+import { BadgeComponent } from '../../../../../shared/ui/badge/badge.component';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { DocumentSummaryCardComponent } from '../../../../../shared/ui/document-summary-card/document-summary-card.component';
 import { FlowStatus } from '../../../../../shared/ui/flow-status-tag/flow-status-tag.component';
@@ -30,20 +32,37 @@ import { MessageBoxComponent } from '../../../../../shared/ui/message-box/messag
 import { ReadonlyFieldComponent } from '../../../../../shared/ui/readonly-field/readonly-field.component';
 import { SnackbarVariant } from '../../../../../shared/ui/snackbar/snackbar.component';
 import { StatusTagComponent } from '../../../../../shared/ui/status-tag/status-tag.component';
+import { TabItem, TabsComponent } from '../../../../../shared/ui/tabs/tabs.component';
+import { ModalComponent } from '../../../../../shared/ui/modal/modal.component';
+import { SideNavComponent } from '../../../../../shared/ui/side-nav/side-nav.component';
+import { TextAreaControlComponent } from '../../../../../shared/ui/text-area-control/text-area-control.component';
+import { TooltipDirective } from '../../../../../shared/ui/tooltip/tooltip.directive';
 import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../../shared/utils/form-snapshot.util';
 import { Anexo2Fase1ApiService } from '../../api/anexo-2-fase-1-api.service';
-import { ANEXO_1_SEGMENT, CONSOLIDADO_SEGMENT, PROCESS_ID, PROCESS_ROUTE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
+import { Anexo1PanelComponent } from '../../components/anexo-1-panel.component';
+import { ConsolidadoAnexo2TablaComponent } from '../../components/consolidado-anexo-2-tabla.component';
+import { DetalleResumen, ResumenDetallePanelComponent } from '../../components/resumen-detalle-panel.component';
+import { DESDE_ESCRITORIO, ESCRITORIO_ROUTE, PROCESS_ID, PROCESS_ROUTE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
 import {
   AreaUsuariaAnexo1,
   CODIGO_DOCUMENTO,
   ContextoAnexo2,
+  ConsolidadoAnexo2,
   ETIQUETA_TIPO_ACCION,
+  FASES_CMN,
+  FaseCmn,
   TIPO_ACCION,
-  TITULO_SOLICITUD,
+  faseCmn,
 } from '../../models/anexo-2-fase-1.model';
 import { ESTILO_EVALUACION_ANEXO_1 } from '../../utils/evaluacion-anexo-1.util';
 import { fechaHora, formatearSoles } from '../../utils/formato.util';
+
+/** Largo máximo del comentario de observación (Figma «Observar registro»: 0/200). */
+const MAX_COMENTARIO = 200;
+
+/** Estados en que la OA todavía evalúa los Anexos 01 (la solicitud sigue en manos del creador). */
+const ESTADOS_EVALUACION = ['ELABORADO', 'OBSERVADO'];
 
 /**
  * Solicitud de CMN - Anexo N.º 02 | Fase 1: Identificación (SA2F1), armada sobre el Figma «A.1 Rol Creador ·
@@ -55,29 +74,41 @@ import { fechaHora, formatearSoles } from '../../utils/formato.util';
  * áreas → pasar a ELABORADO (genera el número). El creador edita, verifica o elimina; el aprobador aprueba, observa o
  * rechaza un documento VERIFICADO.
  *
- * Con la solicitud grabada, el nombre de cada área de «Registros» abre «Detalle del Anexo 1»
- * (`DetalleAnexo1Component`, Figma «3. Detalle items»), donde la OA le da conformidad o la observa.
+ * La tabla «Registros» (Figma «A.1 Rol Creador · 3. detalle items») muestra el estado de la evaluación de cada Anexo 01
+ * y su observación. Con la solicitud grabada en ELABORADO u OBSERVADO, la OA marca filas y las evalúa en bloque:
+ * «Completo» (con confirmación, `siaf-modal`) u «Observar» (`siaf-side-nav` con comentario obligatorio); solo cuentan
+ * los Anexos 01 pendientes. El ícono de documento de cada fila abre el panel «Anexo N° 01» con sus ítems.
  */
 @Component({
   selector: 'siaf-anexo-2-fase-1-request',
   standalone: true,
   imports: [
     ActionTrackerComponent,
+    Anexo1PanelComponent,
+    ResumenDetallePanelComponent,
+    ConsolidadoAnexo2TablaComponent,
+    AlertComponent,
+    BadgeComponent,
     ButtonComponent,
     DetailHistoryTabsComponent,
     DocumentSummaryCardComponent,
     FormTableSearchComponent,
     LoadingProgressComponent,
     MessageBoxComponent,
+    ModalComponent,
     PaginationComponent,
     ReadonlyFieldComponent,
     RequestApprovalModalsComponent,
     SelectionSideNavComponent,
+    SideNavComponent,
     SolicitudeFormCardComponent,
     SolicitudeInfoCardComponent,
     SolicitudePageLayoutComponent,
     StatusTagComponent,
     TableControlsComponent,
+    TabsComponent,
+    TextAreaControlComponent,
+    TooltipDirective,
   ],
   templateUrl: './anexo-2-fase-1-request.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -92,13 +123,35 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   private readonly solicitudesFacade = inject(SolicitudesFacadeService);
   private readonly anexoApi = inject(Anexo2Fase1ApiService);
 
-  readonly heading = TITULO_SOLICITUD;
+  /**
+   * Fase del CMN de la solicitud: al crear, la de la ruta (`data.fase`: Fase 2 y Fase 3 tienen la suya); una solicitud
+   * grabada, la que guardó. Cambia el título, las migas de pan y el campo «Fase»; el resto de la pantalla es igual.
+   */
+  readonly fase = signal<FaseCmn>(1);
+  readonly heading = computed(() => FASES_CMN[this.fase()].titulo);
   readonly tipoAccion = ETIQUETA_TIPO_ACCION;
-  readonly breadcrumbs: BreadcrumbItem[] = buildProcessBreadcrumbs(PROCESS_ID, PROCESS_ROUTE, TITULO_SOLICITUD);
+  readonly breadcrumbs = computed<BreadcrumbItem[]>(() => buildProcessBreadcrumbs(PROCESS_ID, PROCESS_ROUTE, this.heading()));
   readonly formatearSoles = formatearSoles;
 
   private solicitudId: string | null = null;
+  /** Se entró desde el escritorio de CMN Programación (`?desde=escritorio`): la flecha de regreso vuelve ahí. */
+  private desdeEscritorio = false;
+  /** Query params que conservan el origen al pasar de la solicitud nueva a la grabada. */
+  private paramsOrigen(): Record<string, string> | undefined {
+    return this.desdeEscritorio ? { ...DESDE_ESCRITORIO } : undefined;
+  }
   private tiposDocumento: TipoDocumentoResponse[] = [];
+
+  // ── Pestañas de la tarjeta de registros ───────────────────────────
+  readonly pestanasRegistros: TabItem[] = [
+    { id: 'evaluacion', label: 'Evaluación de Anexos 01' },
+    { id: 'consolidado', label: 'Consolidado Anexo 02' },
+  ];
+  readonly pestanaRegistros = signal<'evaluacion' | 'consolidado'>('evaluacion');
+  readonly consolidado = signal<ConsolidadoAnexo2 | null>(null);
+  readonly cargandoConsolidado = signal(false);
+  /** El consolidado sale del backend: solo hay uno cuando la solicitud ya está grabada. */
+  readonly tieneSolicitud = computed(() => !!this.solicitud()?.id);
 
   // ── Estado del documento ──────────────────────────────────────────
   /** Última respuesta del backend: de ella salen el estado, las áreas, el historial y la trazabilidad. */
@@ -115,7 +168,22 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   readonly elaborado = computed(() => this.estado() !== 'NUEVO');
   readonly soloLectura = computed(() => this.elaborado() && !this.editando());
   /** En edición, solo sin cambios por grabar: verificar los descartaría. */
-  readonly puedeVerificar = computed(() => ['ELABORADO', 'OBSERVADO'].includes(this.estado()) && !(this.editando() && this.hayCambios()));
+  readonly puedeVerificar = computed(
+    () => ['ELABORADO', 'OBSERVADO'].includes(this.estado()) && !(this.editando() && this.hayCambios()) && this.anexosPendientes() === 0,
+  );
+  /**
+   * Anexos 01 de la solicitud aún sin evaluar. La OA los evalúa (Completo o Incompleto) antes de verificar: mientras
+   * quede alguno, «Verificar» está deshabilitado y un aviso dice cuántos faltan.
+   */
+  readonly anexosPendientes = computed(() => this.areas().filter((a) => a.estadoEvaluacion === 'Pendiente').length);
+  readonly avisoEvaluarAntesDeVerificar = computed(() => {
+    const n = this.anexosPendientes();
+    // Solo para quien evalúa (el creador, con la solicitud en ELABORADO u OBSERVADO).
+    if (!this.puedeEvaluar() || n === 0) return '';
+    return n === 1
+      ? 'Falta evaluar 1 Anexo 01. Márquelo como Completo o Incompleto para poder verificar la solicitud.'
+      : `Faltan evaluar ${n} Anexos 01. Márquelos como Completo o Incompleto para poder verificar la solicitud.`;
+  });
   readonly numeroDocumento = computed(() => this.solicitud()?.numero ?? '');
 
   readonly headerState = computed<SolicitudeHeaderState>(() => {
@@ -159,23 +227,48 @@ export class Anexo2Fase1RequestComponent implements OnInit {
     return [
       { caption: 'Entidad', value: datos.entidad },
       { caption: 'Oficina de Abastecimiento', value: datos.oficinaAbastecimiento },
-      { caption: 'Referencia presupuestaria', value: datos.referenciaPresupuestaria },
-      { caption: 'Fase', value: datos.fase },
+      // Cada fase tiene su referencia: APM 2025 (Fase 1), APM 2026 (Fase 2) y PIA 2026 (Fase 3).
+      { caption: 'Referencia presupuestaria', value: FASES_CMN[this.fase()].referenciaPresupuestaria },
+      { caption: 'Fase', value: FASES_CMN[this.fase()].etiqueta },
       { caption: 'Elaborado por', value: datos.elaboradoPor },
     ];
   });
 
+  /**
+   * «Resumen del proceso de consolidación»: se calcula de las áreas usuarias de la solicitud (no de un dato fijo),
+   * así que se actualiza al agregar o quitar áreas y al marcar Anexos 01 como Completo o Incompleto. Cada tarjeta
+   * guarda las áreas que cuenta, que se ven en su panel de detalle al pulsarla.
+   */
   readonly tarjetasResumen = computed(() => {
-    const r = this.contexto()?.resumen;
-    if (!r) return [];
+    const areas = this.areas();
+    const conformes = areas.filter((a) => a.estadoEvaluacion === 'Completo');
+    const observados = areas.filter((a) => a.estadoEvaluacion === 'Incompleto');
+    const evaluados = areas.filter((a) => a.estadoEvaluacion !== 'Pendiente');
+    const necesidades = areas.reduce((suma, a) => suma + a.items, 0);
     return [
-      { titulo: 'Anexos 01 recibidos', valor: String(r.anexosRecibidos), detalle: 'Aprobados/remitidos por las unidades responsables' },
-      { titulo: 'Conformes por OA', valor: String(r.conformes), detalle: 'Incluidos en consolidación' },
-      { titulo: 'Observados por OA', valor: String(r.observados), detalle: 'Pendientes de subsanación' },
-      { titulo: 'Necesidades', valor: String(r.necesidades), detalle: 'Ítems provenientes de los Anexos 01' },
-      { titulo: 'Anexos evaluados por OA', valor: `${r.anexosEvaluados}/${r.anexosRecibidos}`, detalle: 'Conformes u observados' },
+      { titulo: 'Anexos 01 recibidos', valor: String(areas.length), detalle: 'Aprobados/remitidos por las unidades responsables', areas },
+      { titulo: 'Completos por la OA', valor: String(conformes.length), detalle: 'Incluidos en consolidación', areas: conformes },
+      { titulo: 'Incompletos por la OA', valor: String(observados.length), detalle: 'Pendientes de subsanación', areas: observados },
+      { titulo: 'Total de necesidades', valor: String(necesidades), detalle: 'Necesidades provenientes de los Anexos 01', areas },
+      { titulo: 'Anexos evaluados por OA', valor: `${evaluados.length}/${areas.length}`, detalle: 'Completos o incompletos', areas: evaluados },
     ];
   });
+
+  /** Tarjeta del resumen abierta en su panel de detalle (por título; `null` con el panel cerrado). */
+  private readonly tarjetaAbierta = signal<string | null>(null);
+  /** Detalle de la tarjeta abierta, recalculado con las áreas actuales mientras el panel sigue abierto. */
+  readonly detalleResumen = computed<DetalleResumen | null>(() => {
+    const tarjeta = this.tarjetasResumen().find((t) => t.titulo === this.tarjetaAbierta());
+    return tarjeta ? { titulo: tarjeta.titulo, descripcion: tarjeta.detalle, areas: tarjeta.areas } : null;
+  });
+
+  abrirDetalleResumen(titulo: string): void {
+    this.tarjetaAbierta.set(titulo);
+  }
+
+  cerrarDetalleResumen(): void {
+    this.tarjetaAbierta.set(null);
+  }
 
   readonly marcoPresupuestario = computed(() =>
     (this.contexto()?.marcoPresupuestario ?? []).map((m) => ({
@@ -187,24 +280,53 @@ export class Anexo2Fase1RequestComponent implements OnInit {
 
   // ── Áreas usuarias de la solicitud ────────────────────────────────
   readonly areas = signal<AreaUsuariaAnexo1[]>([]);
-  /** Áreas marcadas en la tabla (por id) para quitarlas en bloque. */
+  /**
+   * Áreas usuarias con Anexo 01 recibido que aún no están en la solicitud: su número va en el contador de la lupa
+   * «Seleccionar registros» y su aviso en el tooltip, así se nota cuando llegan áreas nuevas por agregar.
+   */
+  readonly areasPorAgregar = computed(() => {
+    const enSolicitud = new Set(this.areas().map((a) => a.id));
+    return (this.contexto()?.areas ?? []).filter((a) => !enSolicitud.has(a.id));
+  });
+  readonly avisoAreasPorAgregar = computed(() => {
+    const n = this.areasPorAgregar().length;
+    if (n === 0) return 'Todas las áreas usuarias ya están agregadas';
+    return n === 1 ? 'Tienes 1 área usuaria pendiente por agregar' : `Tienes ${n} áreas usuarias pendientes por agregar`;
+  });
+  /** Áreas marcadas en la tabla (por id) para quitarlas o evaluarlas en bloque. */
   readonly areasMarcadas = signal<Set<string>>(new Set());
   readonly paginaAreas = signal(1);
   readonly filasPorPaginaAreas = signal(25);
   readonly busquedaAreas = signal('');
-  /** Marcar y quitar en bloque solo al registrar: en edición las áreas se cambian desde «Seleccionar registros». */
-  readonly puedeMarcarAreas = computed(() => !this.elaborado());
-  /** Etiqueta de la evaluación del Anexo 01 (Figma «status items tags»). */
+  /** Etiqueta de la evaluación del Anexo 01 (Figma «3. detalle items»). */
   readonly estiloEvaluacion = ESTILO_EVALUACION_ANEXO_1;
-  /**
-   * El área abre «Detalle del Anexo 1» (Figma «3. Detalle items») cuando ya está grabada en la solicitud y no hay
-   * cambios sin grabar que se perderían al salir.
-   */
+  /** El Anexo 01 de un área se ve (modal) y se evalúa cuando ya está grabada en la solicitud y no hay cambios sin grabar. */
   readonly puedeVerDetalle = computed(() => !!this.solicitud()?.id && !(this.editando() && this.hayCambios()));
   private readonly areasGrabadas = computed(() => new Set((this.solicitud()?.detalleAnexo2Fase1?.areas ?? []).map((a) => a.id)));
   readonly areaConDetalle = (areaId: string): boolean => this.puedeVerDetalle() && this.areasGrabadas().has(areaId);
-  /** «Ver consolidado»: con la solicitud grabada, sin cambios por grabar y con al menos un área usuaria. */
-  readonly puedeVerConsolidado = computed(() => this.puedeVerDetalle() && this.areasGrabadas().size > 0);
+
+  /** Completo / Incompleto en bloque: el creador, con la solicitud en ELABORADO u OBSERVADO y sin cambios por grabar. */
+  readonly puedeEvaluar = computed(
+    () => this.headerRole() === 'creator' && ESTADOS_EVALUACION.includes(this.estado()) && this.puedeVerDetalle(),
+  );
+  /** Marcar filas: para quitarlas (al registrar o editar) o para evaluarlas. */
+  readonly puedeMarcarAreas = computed(() => !this.soloLectura() || this.puedeEvaluar());
+  /** Las áreas marcadas que todavía se pueden evaluar (Anexo 01 pendiente y ya grabado). */
+  readonly pendientesMarcadas = computed(() =>
+    this.areas().filter((a) => this.areasMarcadas().has(a.id) && a.estadoEvaluacion === 'Pendiente' && this.areasGrabadas().has(a.id)),
+  );
+
+  // ── Panel «Anexo N° 01», «Completo» y «Observar registro» ────────
+  readonly anexoAbierto = signal<{ solicitudId: string; areaId: string } | null>(null);
+  readonly modalConformes = signal(false);
+  readonly panelObservar = signal(false);
+  readonly evaluando = signal(false);
+  readonly maxComentario = MAX_COMENTARIO;
+  readonly comentarioRegistros = signal('');
+  readonly comentarioValido = computed(() => {
+    const texto = this.comentarioRegistros().trim();
+    return texto.length > 0 && texto.length <= MAX_COMENTARIO;
+  });
 
   readonly areasFiltradas = computed(() => {
     const texto = this.busquedaAreas().trim().toLowerCase();
@@ -234,7 +356,7 @@ export class Anexo2Fase1RequestComponent implements OnInit {
 
   readonly columnasPanel: SelectionColumn<AreaUsuariaAnexo1>[] = [
     { key: 'nombre', label: 'Áreas usuarias' },
-    { key: 'items', label: 'Ítems', widthClass: 'w-[140px]' },
+    { key: 'items', label: 'Necesidades', widthClass: 'w-[140px]' },
     { key: 'montoProgramado', label: 'Monto programado A01', widthClass: 'w-[240px]', render: (a) => formatearSoles(a.montoProgramado) },
   ];
 
@@ -309,6 +431,8 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   ngOnInit(): void {
     this.catalogosApi.listarTiposDocumento().subscribe((tipos) => (this.tiposDocumento = tipos));
     this.anexoApi.obtenerContexto().subscribe((contexto) => this.contexto.set(contexto));
+    this.fase.set(faseCmn(this.route.snapshot.data['fase']));
+    this.desdeEscritorio = this.route.snapshot.queryParamMap.get('desde') === DESDE_ESCRITORIO.desde;
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.cargar(id);
 
@@ -362,22 +486,63 @@ export class Anexo2Fase1RequestComponent implements OnInit {
     this.paginaAreas.update((p) => Math.min(p, this.totalPaginasAreas()));
   }
 
-  /** Abre «Detalle del Anexo 1» del área usuaria. */
-  verDetalleAnexo1(areaId: string): void {
+  /** Abre el panel «Anexo N° 01» del área usuaria. */
+  verAnexo1(areaId: string): void {
     const id = this.solicitudId;
     if (!id || !this.areaConDetalle(areaId)) return;
-    void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id, ANEXO_1_SEGMENT, areaId]);
+    this.anexoAbierto.set({ solicitudId: id, areaId });
   }
 
-  /** Abre la hoja «Consolidado del Anexo N.º 02» de la solicitud. */
-  verConsolidado(): void {
+  abrirObservarRegistros(): void {
+    this.comentarioRegistros.set('');
+    this.panelObservar.set(true);
+  }
+
+  confirmarConformes(): void {
+    this.modalConformes.set(false);
+    this.evaluarMarcadas({ estado: 'Completo' }, 'record-complete');
+  }
+
+  confirmarObservacion(): void {
+    if (!this.comentarioValido()) return;
+    this.panelObservar.set(false);
+    this.evaluarMarcadas({ estado: 'Incompleto', comentario: this.comentarioRegistros().trim() }, 'record-incomplete');
+  }
+
+  /** Evalúa los Anexos 01 pendientes marcados con la misma respuesta, recarga la solicitud y muestra el aviso. */
+  private evaluarMarcadas(evaluacion: { estado: 'Completo' | 'Incompleto'; comentario?: string }, aviso: SnackbarVariant): void {
     const id = this.solicitudId;
-    if (!id || !this.puedeVerConsolidado()) return;
-    void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id, CONSOLIDADO_SEGMENT]);
+    const areas = this.pendientesMarcadas();
+    if (!id || areas.length === 0) return;
+    this.evaluando.set(true);
+    forkJoin(areas.map((a) => this.anexoApi.evaluarAnexo1(id, a.id, evaluacion))).subscribe({
+      next: () => { this.evaluando.set(false); this.mostrarAviso(aviso); this.cargar(id); },
+      error: () => { this.evaluando.set(false); this.cargar(id); },
+    });
+  }
+
+  /** Quita un área usuaria desde el ícono de su fila. */
+  quitarArea(id: string): void {
+    this.areas.update((lista) => lista.filter((a) => a.id !== id));
+    this.marcarArea(id, false);
+    this.ajustarPaginaAreas();
   }
 
   // ── Panel de selección ────────────────────────────────────────────
   /** Abre «Seleccionar registros» con las áreas que ya están en la solicitud marcadas. */
+  /** Cambia de pestaña; al abrir «Consolidado Anexo 02» lo pide de nuevo, así refleja la última evaluación. */
+  cambiarPestanaRegistros(id: string): void {
+    const pestana = id === 'consolidado' ? 'consolidado' : 'evaluacion';
+    this.pestanaRegistros.set(pestana);
+    const solicitudId = this.solicitud()?.id;
+    if (pestana !== 'consolidado' || !solicitudId) return;
+    this.cargandoConsolidado.set(true);
+    this.anexoApi.obtenerConsolidado(solicitudId).subscribe({
+      next: (c) => { this.consolidado.set(c); this.cargandoConsolidado.set(false); },
+      error: () => { this.consolidado.set(null); this.cargandoConsolidado.set(false); },
+    });
+  }
+
   abrirPanel(): void {
     this.busquedaPanel.set('');
     this.seleccionPanel.set(this.areas().map((a) => a.id));
@@ -415,7 +580,8 @@ export class Anexo2Fase1RequestComponent implements OnInit {
       this.restaurarFormulario(this.solicitud());
       return;
     }
-    void this.router.navigate([PROCESS_ROUTE]);
+    // Vuelve a donde se entró: el escritorio de CMN Programación o «Documentos y registros».
+    void this.router.navigate([this.desdeEscritorio ? ESCRITORIO_ROUTE : PROCESS_ROUTE]);
   }
 
   editar(): void {
@@ -429,7 +595,7 @@ export class Anexo2Fase1RequestComponent implements OnInit {
     this.modalGrabar.set(false);
     const areas = this.areas();
     const guardarYElaborar = (id: string): Observable<unknown> =>
-      this.anexoApi.guardarAreas(id, areas).pipe(
+      this.anexoApi.guardarAreas(id, areas, this.fase()).pipe(
         switchMap(() => this.solicitudesApi.cambiarEstado(id, { estadoNuevo: 'ELABORADO' })),
       );
 
@@ -458,10 +624,13 @@ export class Anexo2Fase1RequestComponent implements OnInit {
     }).pipe(
       switchMap((creada) => { this.solicitudId = creada.id; return guardarYElaborar(creada.id).pipe(map(() => creada.id)); }),
     ).subscribe({
-      next: (id) => { this.saving.set(false); void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id], { state: { fromSave: true } }); },
+      next: (id) => {
+        this.saving.set(false);
+        void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id], { state: { fromSave: true }, queryParams: this.paramsOrigen() });
+      },
       error: () => {
         this.saving.set(false);
-        if (this.solicitudId) void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, this.solicitudId]);
+        if (this.solicitudId) void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, this.solicitudId], { queryParams: this.paramsOrigen() });
       },
     });
   }
@@ -550,6 +719,7 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   }
 
   private restaurarFormulario(s: SolicitudResponse | null): void {
+    if (s) this.fase.set(faseCmn(s.detalleAnexo2Fase1?.fase));
     this.areas.set([...(s?.detalleAnexo2Fase1?.areas ?? [])]);
     this.areasMarcadas.set(new Set());
     this.busquedaAreas.set('');

@@ -27,13 +27,17 @@
 <siaf-seleccionar-cubso-panel [open]="panelAbierto()" [catalogo]="catalogoDisponible()" (canceled)="panelAbierto.set(false)" (confirmed)="agregarPendientes($event)" />
 
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración de precios diferenciados" />
+  <siaf-page-header pageHeader title="Configuración del Cuadro Multianual de Necesidades" />
+
+  <siaf-configuracion-tabs activa="precios-diferenciados" />
 
   <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
     <header class="flex min-h-10 items-center justify-between gap-siaf-md">
-      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-        {{ vacio() || hayPendientes() || sinPrecios() ? 'Ítems de precios diferenciados' : 'Gestión de precios diferenciados por áreas' }}
-      </h2>
+      @if (!(vacio() || hayPendientes() || sinPrecios())) {
+        <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+          Gestión de precios diferenciados por áreas
+        </h2>
+      }
       <div class="ml-auto">
         @if (hayPendientes()) {
           <siaf-button variant="filled" [disabled]="guardando()" (click)="modalGrabarAbierto.set(true)">Grabar</siaf-button>

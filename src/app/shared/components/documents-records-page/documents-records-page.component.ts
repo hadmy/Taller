@@ -50,8 +50,9 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
  * Pantalla «Documentos y registros» de un proceso, armada desde un `DocumentsRecordsConfig`: breadcrumb, título,
  * «Crear documento», pestañas Documentos / Registros, buscador con menús y filtros, grilla estándar con paginación y
  * los paneles de historial y de columnas.
- * Aplica las reglas de rol (el creador crea, el aprobador aprueba validados y el resto solo consulta; `modoConsulta`
- * quita crear y las acciones) y ejecuta aprobar en lote contra el backend.
+ * Aplica las reglas de rol (el creador crea, marca documentos y los abre con Editar o elimina los Elaborados; el
+ * aprobador aprueba validados; el resto solo consulta; `modoConsulta` quita crear y las acciones) y ejecuta aprobar y
+ * eliminar en lote contra el backend.
  * Con `serverQuery` / `serverRecordsQuery` la búsqueda y la paginación las resuelve el padre en el servidor, y la
  * selección sobrevive al refresco por polling.
  *
@@ -139,6 +140,18 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
         (canceled)="closeApproveModal()"
         (closed)="closeApproveModal()"
         (confirmed)="confirmApproveModal()"
+      />
+
+      <!-- Eliminar (modo creador): solo los documentos en Elaborado; el resto queda igual. -->
+      <siaf-modal
+        [open]="deleteModalOpen"
+        variant="custom"
+        [title]="deletableDocumentRows.length ? '¿Eliminar documentos?' : 'No se pueden eliminar'"
+        [description]="deleteModalDescription"
+        [confirmLabel]="deletableDocumentRows.length ? 'Eliminar' : 'Aceptar'"
+        (canceled)="deleteModalOpen = false"
+        (closed)="deleteModalOpen = false"
+        (confirmed)="confirmDeleteModal()"
       />
 
       <div class="fixed bottom-siaf-lg left-1/2 z-50 w-[min(430px,calc(100vw-32px))] -translate-x-1/2">
@@ -291,6 +304,14 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
                   [checked]="allVisibleElaboradoDocumentsSelected"
                   [indeterminate]="someVisibleElaboradoDocumentsSelected"
                   [disabled]="visibleSelectableElaboradoDocuments.length === 0"
+                  [selectedCount]="modoCreador ? selectedDocumentRows.length : 0"
+                  [showEditAction]="modoCreador"
+                  [editDisabled]="!editableDocumentRow"
+                  editLabel="Abrir el documento seleccionado"
+                  [showDeleteAction]="modoCreador"
+                  deleteLabel="Eliminar los documentos seleccionados"
+                  (edit)="editSelectedDocument()"
+                  (delete)="openDeleteModal()"
                   [page]="page"
                   [pageSize]="rowsPerPage"
                   [totalItems]="totalItemsPaginador"
@@ -479,6 +500,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   accountHistoryOpen = false;
   documentHistoryOpen = false;
   approveModalOpen = false;
+  deleteModalOpen = false;
   approvalSnackbarOpen = false;
   approvalSnackbarNumbers = '';
   /** Verbo de la acción masiva ejecutada ('aprobado'). */
@@ -616,7 +638,8 @@ export class DocumentsRecordsPageComponent implements OnChanges {
       return [];
     }
 
-    // Solo el APROBADOR selecciona: los Validados
+    // El APROBADOR selecciona los Validados (para aprobar); el CREADOR, cualquiera (para editar o eliminar).
+    if (this.modoCreador) return this.paginatedRows;
     const selectableStatus = this.selectableDocumentStatus;
     if (!selectableStatus) {
       return [];
@@ -787,6 +810,10 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   }
 
   toggleVisibleElaboradoDocuments(selected: boolean): void {
+    if (this.modoCreador) {
+      this.paginatedRows.forEach((row) => (row.selected = selected));
+      return;
+    }
     const selectableStatus = this.selectableDocumentStatus;
 
     this.paginatedRows.forEach((row) => {
@@ -801,6 +828,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
 
   selectionDisabled = (row: DocumentsRecordsRow): boolean => {
     if (this.activeTab !== 'documents') return false;
+    if (this.modoCreador) return false;
     const selectableStatus = this.selectableDocumentStatus;
     if (!selectableStatus) return true;
 
@@ -816,6 +844,54 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     const documentOption = this.effectiveConfig.createDocumentOptions[0]?.documentOptions?.find((document) => document.label === row['document']);
     return documentOption?.route || this.config.defaultRequestRoute;
   };
+
+  // ── Modo creador: Editar y Eliminar con la selección ──────────────
+  /** El creador marca documentos para abrirlos o eliminarlos (sin acción principal ni modo consulta). */
+  get modoCreador(): boolean {
+    return this.activeTab === 'documents'
+      && !this.effectiveConfig.accionPrincipal
+      && !this.effectiveConfig.modoConsulta
+      && this.permissionService.currentRole() === 'creator';
+  }
+
+  get selectedDocumentRows(): DocumentsRecordsRow[] {
+    return this.documentRows.filter((row) => row.selected);
+  }
+
+  /** Editar abre la solicitud: con un solo documento marcado. */
+  get editableDocumentRow(): DocumentsRecordsRow | null {
+    const rows = this.selectedDocumentRows;
+    return rows.length === 1 ? rows[0] : null;
+  }
+
+  /** Se eliminan solo los documentos en Elaborado (las reglas del flujo); el backend rechaza los demás. */
+  get deletableDocumentRows(): DocumentsRecordsRow[] {
+    return this.selectedDocumentRows.filter((row) => row['status'] === ESTADO.ELABORADO);
+  }
+
+  get deleteModalDescription(): string {
+    const n = this.deletableDocumentRows.length;
+    if (n === 0) return 'Solo se eliminan documentos en estado Elaborado.';
+    const omitidos = this.selectedDocumentRows.length - n;
+    const base = n === 1 ? 'Se eliminará 1 documento en estado Elaborado.' : `Se eliminarán ${n} documentos en estado Elaborado.`;
+    return omitidos ? `${base} Los otros ${omitidos} no se pueden eliminar y quedan igual.` : base;
+  }
+
+  editSelectedDocument(): void {
+    const row = this.editableDocumentRow;
+    if (row) void this.router.navigateByUrl(this.documentRoute(row));
+  }
+
+  openDeleteModal(): void {
+    this.closeToolbarMenus();
+    this.deleteModalOpen = true;
+  }
+
+  confirmDeleteModal(): void {
+    const rows = this.deletableDocumentRows;
+    this.deleteModalOpen = false;
+    this.ejecutarCambioMasivo(rows, 'ELIMINADO', ESTADO.ELIMINADO, 'eliminado');
+  }
 
   openApproveModal(): void {
     if (!this.canApproveSelectedDocuments) return;
@@ -841,7 +917,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
    */
   private ejecutarCambioMasivo(
     selectedRows: DocumentsRecordsRow[],
-    estadoNuevo: 'APROBADO',
+    estadoNuevo: 'APROBADO' | 'ELIMINADO',
     statusVisual: string,
     verbo: string,
   ): void {

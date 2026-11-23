@@ -26,6 +26,8 @@ export interface GraficoCalculado {
   description: string;
   type: QueryReportChartType;
   categories: string[];
+  /** Clave de cada categoría (el valor agrupado o, por mes, «aaaa-mm»), en el mismo orden: identifica la seleccionada. */
+  keys: string[];
   values: number[];
   seriesName: string;
   categoryLabel: string;
@@ -46,8 +48,8 @@ export function numeroDe(texto: string | undefined): number {
 }
 
 /** Monto con separador de miles y dos decimales, con punto como el resto del kit: 1031200 → «1,031,200.00». */
-export function formatearMonto(valor: number): string {
-  return valor.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export function formatearMonto(valor: number, decimales = 2): string {
+  return valor.toLocaleString('en-US', { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
 }
 
 const cumple = (fila: QueryReportRow, filtro?: QueryReportRowFilter): boolean => !filtro || fila[filtro.column] === filtro.value;
@@ -63,7 +65,8 @@ export function calcularKpis(filas: readonly QueryReportRow[], kpis: readonly Qu
     const valor = agregar(filas.filter((f) => cumple(f, kpi.where)), kpi.column, agregado);
     const total = agregar(filas, kpi.column, agregado);
     const progreso = total > 0 ? Math.round((valor / total) * 100) : 0;
-    const monto = agregado === 'count' ? String(valor) : formatearMonto(valor);
+    // Los conteos van sin decimales y con separador de miles («2,486»); las sumas, con `decimals` (2 por defecto).
+    const monto = agregado === 'count' ? formatearMonto(valor, 0) : formatearMonto(valor, kpi.decimals ?? 2);
     return {
       title: kpi.title,
       icon: kpi.icon ?? 'arrow_outward',
@@ -84,6 +87,11 @@ function categoriaDe(fila: QueryReportRow, grafico: QueryReportChart): { clave: 
   return { clave: `${anio}-${mes}`, etiqueta: MESES[Number(mes) - 1] ?? mes, anio };
 }
 
+/** La fila cae en la categoría `clave` de un gráfico que agrupa por `groupBy` (por mes, si `byMonth`). */
+export function filaEnCategoria(fila: QueryReportRow, grafico: Pick<QueryReportChart, 'groupBy' | 'byMonth'>, clave: string): boolean {
+  return categoriaDe(fila, grafico as QueryReportChart)?.clave === clave;
+}
+
 const redondear = (valor: number): number => Math.round(valor * 10) / 10;
 
 export function calcularGrafico(filas: readonly QueryReportRow[], grafico: QueryReportChart): GraficoCalculado {
@@ -101,6 +109,7 @@ export function calcularGrafico(filas: readonly QueryReportRow[], grafico: Query
   if (grafico.byMonth) claves = claves.sort();
   const variosAnios = grafico.byMonth && new Set(claves.map((c) => grupos.get(c)!.anio)).size > 1;
   let categorias = claves.map((c) => (variosAnios ? `${grupos.get(c)!.etiqueta} ${grupos.get(c)!.anio}` : grupos.get(c)!.etiqueta));
+  let claveDeCategoria = claves;
   let valores = claves.map((c) => agregar(grupos.get(c)!.filas, grafico.column, grafico.aggregate ?? 'sum'));
 
   const base = valores[0] ?? 0;
@@ -108,6 +117,7 @@ export function calcularGrafico(filas: readonly QueryReportRow[], grafico: Query
     valores = valores.map((v) => (base ? redondear((v / base) * 100) : 0));
   } else if (grafico.transform === 'change') {
     categorias = categorias.slice(1);
+    claveDeCategoria = claveDeCategoria.slice(1);
     valores = valores.slice(1).map((v) => (base ? redondear(((v - base) / base) * 100) : 0));
   }
 
@@ -116,6 +126,7 @@ export function calcularGrafico(filas: readonly QueryReportRow[], grafico: Query
     description: grafico.description ?? '',
     type: grafico.type,
     categories: categorias,
+    keys: claveDeCategoria,
     values: valores,
     seriesName: grafico.seriesName ?? grafico.title,
     categoryLabel: grafico.categoryLabel ?? (grafico.byMonth ? 'Mes' : 'Categoría'),

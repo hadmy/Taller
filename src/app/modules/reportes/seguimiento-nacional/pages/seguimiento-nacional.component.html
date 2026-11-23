@@ -1,0 +1,225 @@
+<siaf-page-shell [breadcrumbs]="breadcrumbs">
+  <siaf-page-header pageHeader title="Seguimiento del CMN Programación" [subtitle]="pestana() === 'nacional' ? subtitulo() : 'Consulta de la Entidad'">
+    <div actions class="flex flex-wrap items-center justify-end gap-siaf-sm">
+      @if (pestana() === 'nacional') {
+      <siaf-button variant="outline" icon="file_download" [disabled]="cargando() || !filasDetalle().length" (click)="exportar()">Exportar datos</siaf-button>
+      }
+    </div>
+  </siaf-page-header>
+
+  <!-- Dos tableros: el nacional (DPLAIP) y el de la Entidad. -->
+  <siaf-tabs class="block rounded-siaf-md bg-surface px-siaf-lg" [tabs]="pestanas" [activeId]="pestana()" (activeIdChange)="pestana.set($event)" ariaLabel="Tableros de seguimiento" />
+
+  @if (pestana() === 'entidad') {
+    <siaf-seguimiento-entidad />
+  } @else {
+  <div class="flex flex-col gap-siaf-md">
+    <!-- Filtros del informe: periodo y fase traen otros datos; el resto filtra al instante. -->
+    <section class="flex flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg" aria-label="Filtros del informe" data-filtros>
+      <div class="grid grid-cols-1 gap-siaf-sm sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.6fr)_minmax(0,1.3fr)_repeat(4,minmax(0,1fr))_auto]">
+        <siaf-input type="select" label="Periodo" [options]="opcionesPeriodo" [value]="periodo()" [disabled]="cargando()" (valueChange)="cambiarPeriodo($any($event).toString())" />
+        <siaf-input type="select" label="Fase" [options]="opcionesFase" [value]="'' + fase()" [disabled]="cargando()" (valueChange)="cambiarFase($any($event).toString())" />
+        <siaf-input type="select" label="Nivel de gobierno" [options]="opcionesNivel" [value]="valorCombo('nivel')" (valueChange)="cambiarCombo('nivel', $any($event).toString())" />
+        <siaf-input type="select" label="Subgrupo" [options]="opcionesSubgrupo()" [value]="valorCombo('subgrupo')" (valueChange)="cambiarCombo('subgrupo', $any($event).toString())" />
+        <siaf-input type="select" label="Área" [options]="opcionesArea()" [value]="valorCombo('area')" (valueChange)="cambiarCombo('area', $any($event).toString())" />
+        <siaf-input type="select" label="Departamento" [options]="opcionesDepartamento" [value]="valorCombo('departamento')" (valueChange)="cambiarCombo('departamento', $any($event).toString())" />
+        <siaf-input type="select" label="Estado Anexo 02" [options]="opcionesEstado" [value]="valorCombo('estado')" (valueChange)="cambiarCombo('estado', $any($event).toString())" />
+        <div class="flex items-center">
+          <siaf-button variant="text" icon="filter_alt_off" (click)="borrarFiltros()">Borrar filtros</siaf-button>
+        </div>
+      </div>
+
+      @if (chips().length) {
+        <div class="flex flex-wrap items-center gap-siaf-sm text-sm text-[var(--sys-color-text-neutral-medium)]" data-chips>
+          <span>Filtros por selección:</span>
+          @for (chip of chips(); track chip.clave) {
+            <siaf-tag variant="input" [selected]="true" [removable]="true" [removeLabel]="'Quitar ' + chip.texto" (removed)="cambiarSeleccion(chip.clave, undefined)">{{ chip.texto }}</siaf-tag>
+          }
+        </div>
+      }
+    </section>
+
+    @if (!datos()) {
+      <section class="rounded-siaf-md bg-surface p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-medium)]">Cargando el seguimiento nacional…</section>
+    } @else {
+      <div class="grid grid-cols-1 gap-siaf-md sm:grid-cols-2 xl:grid-cols-5" data-kpis>
+        @for (kpi of kpis(); track kpi.title) {
+          <siaf-kpi-card [compact]="true" [title]="kpi.title" [amount]="kpi.amount" [progress]="kpi.progress" [description]="kpi.description" [tone]="kpi.tone" [icon]="kpi.icon" />
+        }
+      </div>
+
+      <div class="grid grid-cols-1 gap-siaf-md lg:grid-cols-2 xl:grid-cols-3">
+        <siaf-chart-section class="min-w-0" title="Estado del Anexo N.º 02 por nivel de gobierno">
+          <siaf-bar-chart
+            [showValues]="true"
+            [categories]="nivelCategorias()"
+            [series]="nivelSeries()"
+            orientation="horizontal"
+            [stacked]="true"
+            ariaLabel="Estado del Anexo N.º 02 por nivel de gobierno"
+            categoryLabel="Nivel de gobierno"
+            [height]="150"
+            [selectable]="true"
+            [selectedIndex]="nivelSeleccionado()"
+            [selectedSeries]="seleccion().estado ?? null"
+            (segmentSelected)="elegirTramoNivel($event)"
+            (categorySelected)="elegirFilaNivel($event)"
+          />
+        </siaf-chart-section>
+
+        <siaf-chart-section class="min-w-0" title="Avance acumulado de Anexos N.º 02 aprobados">
+          @if (avance().length > 1) {
+            <siaf-line-chart
+              [categories]="avanceCategorias()"
+              [series]="avanceSeries()"
+              valueSuffix="%"
+              [min]="0"
+              [max]="100"
+              ariaLabel="Avance acumulado de Anexos N.º 02 aprobados"
+              categoryLabel="Día"
+              [height]="150"
+            />
+          } @else {
+            <div class="p-siaf-lg"><message-box text="La fase aún no inicia." /></div>
+          }
+        </siaf-chart-section>
+
+        <siaf-chart-section class="min-w-0" title="Monto programado por orden de prelación">
+          <div class="flex flex-wrap gap-siaf-xs px-siaf-lg pt-siaf-sm" role="group" aria-label="Año del monto" data-anio-prelacion>
+            @for (op of opcionesAnioPrelacion(); track op.value) {
+              <siaf-tag variant="choice" size="small" [selected]="'' + anioPrelacion() === op.value" (clicked)="anioPrelacion.set(+op.value)">{{ op.label }}</siaf-tag>
+            }
+          </div>
+          <siaf-bar-chart
+            [showValues]="true"
+            [categories]="ordenesPrelacion"
+            [series]="prelacionSeries()"
+            orientation="horizontal"
+            ariaLabel="Monto programado por orden de prelación"
+            categoryLabel="Orden de prelación"
+            [height]="190"
+          />
+        </siaf-chart-section>
+      </div>
+
+      <div class="grid grid-cols-1 gap-siaf-md lg:grid-cols-2 xl:grid-cols-3">
+        <siaf-chart-section class="min-w-0" title="Solicitudes de ampliación de plazo de fase">
+          <siaf-donut-chart
+            [categories]="ampliacionEtiquetas()"
+            [values]="ampliacionValores()"
+            [height]="209"
+            ariaLabel="Solicitudes de ampliación de plazo de fase por estado"
+            categoryLabel="Estado de la solicitud"
+            valueLabel="Solicitudes"
+            [selectable]="true"
+            [selectedIndex]="ampliacionSeleccionada()"
+            (categorySelected)="elegirTramoAmpliacion($event)"
+            data-ampliaciones
+          />
+          <p class="m-0 px-siaf-lg pb-siaf-md text-xs text-[var(--sys-color-text-neutral-medium)]" data-total-ampliaciones>
+            Total: <span class="font-bold text-[var(--sys-color-text-neutral-high)]">{{ formatoEntero(totalAmpliaciones()) }}</span> solicitudes
+          </p>
+        </siaf-chart-section>
+
+        <siaf-chart-section class="min-w-0 xl:col-span-2" title="% de Entidades con Anexo N.º 02 aprobado por departamento">
+          <!-- Alto fijo con scroll: la tarjeta mide lo mismo que el anillo y los 25 departamentos se recorren dentro. -->
+          <div class="max-h-[297px] overflow-y-auto" tabindex="0" role="region" aria-label="% aprobado por departamento (desplazable)" data-departamentos-scroll>
+            <siaf-bar-chart
+              [showValues]="true"
+              [categories]="departamentoCategorias()"
+              [series]="departamentoSeries()"
+              orientation="horizontal"
+              valueSuffix="%"
+              [max]="100"
+              [height]="520"
+              ariaLabel="% de Entidades con Anexo N.º 02 aprobado por departamento"
+              categoryLabel="Departamento"
+              [selectable]="true"
+              [selectedIndex]="departamentoSeleccionado()"
+              (categorySelected)="elegirDepartamento($event)"
+            />
+          </div>
+        </siaf-chart-section>
+      </div>
+
+      <section class="flex flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg" aria-labelledby="titulo-detalle-entidad" data-detalle>
+        <div class="flex flex-wrap items-center justify-between gap-siaf-md">
+          <div>
+            <h2 id="titulo-detalle-entidad" class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Detalle por Entidad</h2>
+          </div>
+          <div class="w-full max-w-[360px]">
+            <siaf-form-table-search [value]="busqueda()" placeholder="Buscar por código o nombre de Entidad" ariaLabel="Buscar Entidad" [showActions]="false" (typing)="buscar($event)" (valueChange)="buscar($event)" />
+          </div>
+        </div>
+
+        <div class="max-h-[360px] overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]" tabindex="0" role="region" aria-label="Tabla del detalle por Entidad" data-detalle-scroll>
+          <table class="w-full min-w-[1100px] border-collapse text-sm">
+            <thead>
+              <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                @for (col of columnas; track col.clave) {
+                  <th class="sticky top-0 z-[1] bg-surface bg-[image:linear-gradient(var(--sys-color-bg-surfaces-surface-high),var(--sys-color-bg-surfaces-surface-high))] p-0 shadow-[inset_0_-1px_0_var(--sys-color-divider-strong)]" [class.text-right]="col.numero" [attr.aria-sort]="ariaOrden(col.clave)">
+                    <button
+                      type="button"
+                      class="flex w-full cursor-pointer items-center gap-siaf-xxs bg-transparent px-siaf-md py-siaf-sm text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+                      [class.justify-end]="col.numero"
+                      (click)="ordenarPor(col.clave)"
+                    >
+                      {{ col.titulo }}
+                      @if (orden().clave === col.clave) {
+                        <siaf-icon [name]="orden().dir === 1 ? 'arrow_upward' : 'arrow_downward'" [size]="14" />
+                      }
+                    </button>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (fila of filasPagina(); track fila.codigo) {
+                <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.codigo }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-high)]">{{ fila.nombre }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.nivel }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.departamento }}</td>
+                  <td class="px-siaf-md py-siaf-sm">
+                    <siaf-status-tag [tone]="tonoEstado[fila.estado]" size="small">{{ estados[fila.estado] }}</siaf-status-tag>
+                  </td>
+                  <td class="px-siaf-md py-siaf-sm text-right text-[var(--sys-color-text-neutral-medium)]">{{ fila.anexos01 }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-right text-[var(--sys-color-text-neutral-medium)]">{{ formatoMonto(fila.monto) }}</td>
+                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fechaVisible(fila.fechaFin) }}{{ fila.ampliada ? ' (ampliada)' : '' }}</td>
+                  <td
+                    class="px-siaf-md py-siaf-sm text-right"
+                    [class.font-bold]="fila.estado !== 3 && fila.dias <= 20"
+                    [class.text-[var(--sys-color-text-feedback-danger)]]="fila.estado !== 3 && fila.dias <= 20"
+                    [class.text-[var(--sys-color-text-neutral-medium)]]="fila.estado === 3 || fila.dias > 20"
+                  >
+                    {{ fila.estado === 3 ? '–' : (fila.dias < 0 ? 0 : fila.dias) }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="columnas.length">No hay Entidades con estos filtros.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <siaf-pagination
+          navigation="Activate"
+          position="Bottom"
+          [rowPage]="true"
+          [page]="pagina()"
+          [pageSize]="tamanoPagina()"
+          [totalItems]="filasDetalle().length"
+          [totalPages]="totalPaginas()"
+          [rowsPerPage]="tamanoPagina()"
+          [rowsPerPageOptions]="opcionesTamano"
+          (previous)="pagina.set(pagina() > 1 ? pagina() - 1 : 1)"
+          (next)="pagina.set(pagina() < totalPaginas() ? pagina() + 1 : pagina())"
+          (rowsPerPageChange)="cambiarTamano($event)"
+        />
+      </section>
+    }
+  </div>
+  }
+</siaf-page-shell>

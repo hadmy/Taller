@@ -119,6 +119,38 @@ describe('QueryReportPageComponent', () => {
     expect(filasTabla()).toEqual(['000011', '000012']);
   });
 
+  it('«Columnas» abre «Ocultar o mostrar columnas»: la primera queda fija y lo marcado se aplica solo con «Aplicar»', () => {
+    consultar();
+    const avisos: void[] = [];
+    pagina.columnsRequested.subscribe(() => avisos.push(undefined));
+    const encabezados = (): string[] => Array.from(el().querySelectorAll('siaf-report-table thead th')).map((th) => th.textContent!.trim());
+
+    pagina.abrirColumnas();
+    fixture.detectChanges();
+    expect(avisos.length).toBe(1);
+    expect(el().querySelector('siaf-column-visibility-panel [role="dialog"]')).not.toBeNull();
+    expect(pagina.columnaFija().map((c) => c.key)).toEqual(['secuencia']);
+    expect(pagina.columnasElegibles().map((c) => c.key)).toEqual(['beneficiario', 'operacion', 'saldo']);
+
+    const casilla = (checked: boolean): Event => ({ target: { checked } }) as unknown as Event;
+    pagina.marcarColumna('operacion', casilla(false));
+    expect(pagina.borradorCambiado()).toBeTrue();
+    expect(pagina.columnasVisibles().map((c) => c.key)).withContext('aún sin aplicar').toContain('operacion');
+
+    pagina.aplicarColumnas();
+    fixture.detectChanges();
+    expect(pagina.panelColumnas()).toBeFalse();
+    expect(pagina.columnasVisibles().map((c) => c.key)).toEqual(['secuencia', 'beneficiario', 'saldo']);
+    expect(encabezados().join(' ')).not.toContain('Tipo de operación');
+
+    pagina.abrirColumnas();
+    pagina.marcarTodasColumnas(casilla(false));
+    expect(pagina.todasEnBorrador()).toBeFalse();
+    pagina.marcarTodasColumnas(casilla(true));
+    pagina.aplicarColumnas();
+    expect(pagina.columnasVisibles().length).toBe(4);
+  });
+
   it('buscar no distingue mayúsculas ni tildes, vuelve a la primera página y se combina con los filtros predeterminados', () => {
     consultar();
     pagina.cambiarTamano(10);
@@ -186,6 +218,24 @@ describe('QueryReportPageComponent', () => {
     expect(el().querySelector('siaf-report-table')).not.toBeNull();
   });
 
+  it('con `parameters` e `initialView="graficas"` abre ya consultado y en la vista de gráficas, sin emitir queried', async () => {
+    const emitidos: QueryReportParameters[] = [];
+    pagina.queried.subscribe((p) => emitidos.push(p));
+    fixture.componentRef.setInput('config', CONFIG_CON_GRAFICAS);
+    fixture.componentRef.setInput('initialView', 'graficas');
+    fixture.componentRef.setInput('parameters', { entidades: ['ipd'] });
+    fixture.componentRef.setInput('result', RESULTADO);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-consulta-vacia]')).toBeNull();
+    expect(el().querySelector('siaf-parametros-aplicados')?.textContent).toContain('IPD');
+    expect(el().querySelector('[data-vista-graficas]')).not.toBeNull();
+    expect(el().querySelectorAll('siaf-kpi-card').length).toBe(4);
+    expect(emitidos).toEqual([]);
+  });
+
   describe('vista de gráficas', () => {
     const botonVista = (nombre: string): HTMLButtonElement => el().querySelector<HTMLButtonElement>(`[data-selector-vista] button[aria-label="${nombre}"]`)!;
 
@@ -248,6 +298,36 @@ describe('QueryReportPageComponent', () => {
       expect(divergente.categories).toEqual(['FEB', 'MAR']);
       expect(divergente.values).toEqual([18.2, 36.4]);
       expect(dona.categories).toEqual(beneficiarios);
+    });
+
+    it('con `interactive`, elegir una barra filtra los KPI y la dona, resalta el mes en los gráficos por mes y el chip la quita', async () => {
+      fixture.componentRef.setInput('config', { ...CONFIG_CON_GRAFICAS, charts: { ...CONFIG_CON_GRAFICAS.charts!, interactive: true } });
+      fixture.detectChanges();
+      await abrirGraficas();
+      expect(el().querySelector('[data-seleccion-grafico]')?.textContent).toContain('Haz clic en una barra');
+
+      // FEB en el gráfico de barras: las filas 2, 5, 8 y 11.
+      pagina.seleccionarCategoria(0, 1);
+      fixture.detectChanges();
+      expect(pagina.kpis().map((k) => k.amount)).toEqual(['S/ 26,000.00', 'S/ 8,000.00', '4', 'S/ 26,000.00']);
+      const [barras, divergente, dona] = pagina.graficos();
+      expect(barras.categories).withContext('el gráfico por mes sigue completo').toEqual(['ENE', 'FEB', 'MAR']);
+      expect(barras.seleccionado).toBe(1);
+      expect(divergente.seleccionado).withContext('en el divergente FEB es la primera categoría').toBe(0);
+      expect(dona.categories).withContext('la dona agrupa por otra columna: solo con las filas de FEB').toEqual(['IPD']);
+      expect(dona.seleccionado).toBeNull();
+      expect(el().querySelector('[data-seleccion-grafico] siaf-tag')?.textContent).toContain('Mes: FEB');
+
+      el().querySelector<HTMLButtonElement>('[data-seleccion-grafico] siaf-tag button')!.click();
+      fixture.detectChanges();
+      expect(pagina.seleccion()).toBeNull();
+      expect(pagina.kpis()[0].amount).toBe('S/ 78,000.00');
+
+      // Un resultado nuevo (otra consulta o pestaña) quita la selección.
+      pagina.seleccionarCategoria(1, 1);
+      expect(pagina.seleccion()?.etiqueta).toBe('MAR');
+      fixture.componentRef.setInput('result', { ...RESULTADO });
+      expect(pagina.seleccion()).toBeNull();
     });
 
     it('en escritorio el gráfico angosto va a la derecha del ancho (336 px) y el resto ocupa toda la fila; la última tarjeta KPI se alinea con él', async () => {

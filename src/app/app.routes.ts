@@ -53,6 +53,20 @@ export const routes: Routes = [
           import('./modules/configuracion/configuracion.routes').then((m) => m.CONFIGURACION_ROUTES),
         data: { permissions: ['document.read'] }
       },
+      // ── Reportes: Dashboard ──
+      {
+        path: '',
+        loadChildren: () =>
+          import('./modules/reportes/reportes.routes').then((m) => m.REPORTES_ROUTES),
+        data: { permissions: ['document.read'] }
+      },
+      // ── Consultas y reportes: Seguimiento del CMN – DPLAIP ──
+      {
+        path: '',
+        loadChildren: () =>
+          import('./modules/consultas/consultas.routes').then((m) => m.CONSULTAS_ROUTES),
+        data: { permissions: ['document.read'] }
+      },
     ]
   },
   // Sin sesión, el guard del armazón lleva al login.

@@ -65,4 +65,10 @@ export interface AreaUsuariaItem {
   item: string;
   descripcionItem: string;
   vigente: boolean;
+  /** Solo en «puede pedir»: especialidad del commodity/ítem (columna «Especialidad»). Sin valor cuenta como «General». */
+  especialidad?: EspecialidadItem;
 }
+
+/** Especialidades que se eligen en el combo de «puede pedir». */
+export const ESPECIALIDADES_ITEM = ['General', 'Capacitación', 'Tecnología', 'Mobiliario'] as const;
+export type EspecialidadItem = (typeof ESPECIALIDADES_ITEM)[number];

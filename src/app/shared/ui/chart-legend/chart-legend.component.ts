@@ -7,8 +7,9 @@ export interface ChartLegendItem {
 }
 
 /**
- * Leyenda de los gráficos del kit (Figma UI KIT, página «Graphics», «Leyenda»): un punto de 15 px con el color de
- * cada serie y su nombre, alineados a la derecha sobre el gráfico.
+ * Leyenda de los gráficos del kit (Figma UI KIT, página «Graphics», «Leyenda»): un punto de 10 px con el color de
+ * cada serie y su nombre en texto chico, en una fila alineada a la izquierda sobre el gráfico (si no entra, sigue en
+ * la línea de abajo; cada nombre nunca se corta). Con `vertical`, en columna: un nombre por línea.
  *
  * @figma 22743:508 Leyenda
  * @usar
@@ -36,11 +37,11 @@ export interface ChartLegendItem {
   standalone: true,
   host: { class: 'block' },
   template: `
-    <ul class="m-0 flex list-none flex-wrap items-center justify-end gap-x-siaf-lg gap-y-siaf-xs p-0">
+    <ul class="m-0 flex list-none gap-x-siaf-md gap-y-siaf-xxs p-0" [class]="vertical ? 'flex-col items-start' : 'flex-wrap items-center justify-start'">
       @for (item of items; track item.label) {
-        <li class="flex items-center gap-siaf-xs">
-          <span class="size-[15px] shrink-0 rounded-full" [style.background-color]="'var(' + item.token + ')'" aria-hidden="true"></span>
-          <span class="text-base leading-[normal] tracking-[0.025px] text-[var(--sys-color-text-neutral-medium)]">{{ item.label }}</span>
+        <li class="flex items-center gap-siaf-xxs whitespace-nowrap">
+          <span class="size-[10px] shrink-0 rounded-full" [style.background-color]="'var(' + item.token + ')'" aria-hidden="true"></span>
+          <span class="text-xs leading-[normal] tracking-[0.025px] text-[var(--sys-color-text-neutral-medium)]">{{ item.label }}</span>
         </li>
       }
     </ul>
@@ -49,4 +50,6 @@ export interface ChartLegendItem {
 })
 export class ChartLegendComponent {
   @Input() items: readonly ChartLegendItem[] = [];
+  /** En columna, un nombre por línea (la torta la pone a la derecha del gráfico). */
+  @Input() vertical = false;
 }

@@ -1,11 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { SideNavComponent } from '../../../../shared/ui/side-nav/side-nav.component';
 import { TooltipDirective } from '../../../../shared/ui/tooltip/tooltip.directive';
-import {
-  SelectionColumn,
-  SelectionSideNavComponent,
-} from '../../../../shared/components/selection-side-nav/selection-side-nav.component';
 import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
@@ -13,36 +11,36 @@ import { PaginationComponent } from '../../../../shared/components/pagination/pa
 import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../shared/utils/form-snapshot.util';
 import { ServiciosBasicosExcluidosApiService } from '../api/servicios-basicos-excluidos-api.service';
+import { EditarServicioBasicoPanelComponent } from '../components/editar-servicio-basico-panel.component';
 import { SeleccionarItemsPanelComponent } from '../components/seleccionar-items-panel.component';
 import {
   SERVICIOS_BASICOS_EXCLUIDOS_PROCESS_ID,
   SERVICIOS_BASICOS_EXCLUIDOS_ROUTE,
 } from '../config/servicios-basicos-excluidos.rutas';
-import {
-  EntidadServicioBasico,
-  ServicioBasico,
-  codigoServicioBasico,
-  resumenEntidades,
-} from '../models/servicio-basico.model';
+import { EntidadServicioBasico, ServicioBasico, codigoServicioBasico } from '../models/servicio-basico.model';
 
 /**
  * Configuración de servicios básicos excluidos de la ley (Figma «CMN Programación · Configuración», nodos
- * 4683:1046555 a 4683:1047819): tarjeta «Vincular servicios básicos» con la lupa roja, que abre el panel lateral
- * «Seleccionar ítems»; lo elegido se lista (ÍTEM · DESCRIPCIÓN · VIGENCIA con papelera · ENTIDADES) y «Grabar» lo guarda.
- * En la columna «Entidades», el ícono abre «Asignar entidades» (municipalidades del Gobierno Regional de Tumbes en el
- * taller); lo asignado viaja con cada ítem al grabar.
+ * 4683:1046555 a 4683:1047819). Tres vistas:
+ * - **Inicial** (nada grabado): tarjeta «Ítems de servicios basicos» con la lupa roja y el aviso para seleccionar.
+ * - **Edición** (tras la lupa, que abre «Seleccionar ítems»): «Grabar» y la tabla ÍTEM · DESCRIPCIÓN · VIGENCIA, con
+ *   la papelera para quitar cada ítem.
+ * - **Grabada** (Figma 5433:351887): «Vincular servicios basicos» con la tabla ÍTEM · DESCRIPCIÓN · ENTIDADES. En cada
+ *   fila, la lupa de documento abre «Entidades asignadas» (solo lectura) y el lápiz abre «Editar servicio básico», donde
+ *   se agregan o quitan sus entidades (municipalidades). Aceptar ahí deja cambios y aparece «Grabar».
  */
 @Component({
   selector: 'siaf-servicios-basicos-excluidos',
   standalone: true,
-  imports: [
+  imports: [ConfiguracionTabsComponent, 
     ButtonComponent,
+    EditarServicioBasicoPanelComponent,
     FormTableSearchComponent,
     PageHeaderComponent,
     PageShellComponent,
     PaginationComponent,
     SeleccionarItemsPanelComponent,
-    SelectionSideNavComponent,
+    SideNavComponent,
     TooltipDirective,
   ],
   templateUrl: './servicios-basicos-excluidos.component.html',
@@ -56,18 +54,30 @@ export class ServiciosBasicosExcluidosComponent implements OnInit {
     SERVICIOS_BASICOS_EXCLUIDOS_ROUTE,
   );
   readonly codigo = codigoServicioBasico;
-  readonly resumenEntidades = resumenEntidades;
 
   readonly items = signal<ServicioBasico[]>([]);
   readonly guardando = signal(false);
   readonly panelAbierto = signal(false);
   /**
-   * Vista de edición: aparecen «Grabar» y la papelera de la columna Vigencia. Se entra con la lupa; al grabar se vuelve
-   * a la vista de solo lectura (Figma 5433:351887), con solo ÍTEM y DESCRIPCIÓN.
+   * Vista de edición (se entra con la lupa): «Grabar» y la columna Vigencia con la papelera. Al grabar se vuelve a la
+   * vista grabada.
    */
   readonly editando = signal(false);
   private readonly catalogo = signal<ServicioBasico[]>([]);
   private readonly snapshotInicial = signal<string | null>(null);
+
+  /** Municipalidades asignables (se cargan al abrir la pantalla). */
+  readonly entidades = signal<EntidadServicioBasico[]>([]);
+  /** Servicio cuyo detalle «Entidades asignadas» (solo lectura) está abierto. */
+  readonly detalle = signal<ServicioBasico | null>(null);
+  /** Servicio abierto en «Editar servicio básico». */
+  readonly enEdicion = signal<ServicioBasico | null>(null);
+
+  /** Entidades asignadas del servicio en detalle, con su nombre. */
+  readonly entidadesDelDetalle = computed(() => {
+    const ids = new Set(this.detalle()?.entidades ?? []);
+    return this.entidades().filter((e) => ids.has(e.id));
+  });
 
   readonly busqueda = signal('');
   readonly page = signal(1);
@@ -92,25 +102,6 @@ export class ServiciosBasicosExcluidosComponent implements OnInit {
     const inicio = (this.page() - 1) * this.rowsPerPage();
     return this.itemsFiltrados().slice(inicio, inicio + this.rowsPerPage());
   });
-
-  // ─── Asignar entidades ───────────────────────────────────────────
-  readonly entidades = signal<EntidadServicioBasico[]>([]);
-  /** Ítem al que se le asignan entidades; `null` con el panel cerrado. */
-  readonly itemEntidades = signal<ServicioBasico | null>(null);
-  readonly seleccionEntidades = signal<string[]>([]);
-  readonly busquedaEntidades = signal('');
-  readonly columnasEntidades: SelectionColumn<EntidadServicioBasico>[] = [
-    { key: 'codigo', label: 'Código', widthClass: 'w-40' },
-    { key: 'nombre', label: 'Entidad' },
-  ];
-
-  readonly entidadesFiltradas = computed(() => {
-    const texto = this.busquedaEntidades().trim().toLowerCase();
-    if (!texto) return this.entidades();
-    return this.entidades().filter((e) => `${e.codigo} ${e.nombre}`.toLowerCase().includes(texto));
-  });
-
-  private readonly nombrePorEntidad = computed(() => new Map(this.entidades().map((e) => [e.id, e.nombre])));
 
   readonly huboCambios = computed(() =>
     hayCambiosRespectoAlSnapshot(this.snapshotInicial(), crearSnapshotFormulario({ items: this.items() })),
@@ -154,28 +145,18 @@ export class ServiciosBasicosExcluidosComponent implements OnInit {
     this.page.update((p) => Math.min(p, this.totalPages()));
   }
 
-  /** Nombres de las entidades asignadas, para el tooltip de la columna. */
-  nombresEntidades(item: ServicioBasico): string {
-    return (item.entidades ?? []).map((id) => this.nombrePorEntidad().get(id) ?? id).join(', ');
+  /** Texto de la columna ENTIDADES: «-» sin asignar; si no, la cantidad. */
+  textoEntidades(item: ServicioBasico): string {
+    const n = item.entidades?.length ?? 0;
+    if (n === 0) return '-';
+    return n === 1 ? '1 entidad' : `${n} entidades`;
   }
 
-  abrirEntidades(item: ServicioBasico): void {
-    this.itemEntidades.set(item);
-    this.seleccionEntidades.set([...(item.entidades ?? [])]);
-    this.busquedaEntidades.set('');
-  }
-
-  cerrarEntidades(): void {
-    this.itemEntidades.set(null);
-  }
-
-  /** «Aceptar» reemplaza las entidades del ítem (vacío deja «Sin asignar»); se guardan con «Grabar». */
-  asignarEntidades(ids: string[]): void {
-    const item = this.itemEntidades();
-    if (!item) return;
-    const orden = this.entidades().map((e) => e.id).filter((id) => ids.includes(id));
-    this.items.update((lista) => lista.map((i) => (i.id === item.id ? { ...i, entidades: orden } : i)));
-    this.itemEntidades.set(null);
+  /** «Aceptar» de «Editar servicio básico»: deja al servicio las entidades elegidas; queda por grabar. */
+  aplicarEdicion(ids: string[]): void {
+    const id = this.enEdicion()?.id;
+    this.items.update((lista) => lista.map((i) => (i.id === id ? { ...i, entidades: [...ids] } : i)));
+    this.enEdicion.set(null);
   }
 
   grabar(): void {

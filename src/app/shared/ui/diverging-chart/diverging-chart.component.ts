@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { BarController, BarElement, CategoryScale, Chart, LinearScale, Tooltip } from 'chart.js';
 import type { ChartData, ChartOptions } from 'chart.js';
 
@@ -27,6 +27,9 @@ function pasoRedondo(valor: number): number {
  *
  * @figma 22743:260 Divergente
  * @usar
+ * - `selectable` con `[selectedIndex]` y `(categorySelected)` para un tablero interactivo: el clic (o Enter / Espacio
+ *   tras recorrer con las flechas) elige una categoría, que conserva su color mientras las demás se atenúan; la pantalla
+ *   filtra con ella. Volver a elegirla emite `null`.
  * - Para variaciones respecto de cero por mes o categoría: variación de existencias, superávit y déficit.
  * - `negativeLabel` y `positiveLabel` con lo que significa cada lado, como «Disminución» y «Aumento».
  * - Dentro de `siaf-chart-section`, que le pone título y descripción.
@@ -134,6 +137,12 @@ export class DivergingChartComponent extends GraficoBase<'bar'> {
   @Input() categoryLabel = 'Categoría';
   /** Alto del área del gráfico en px (sin la leyenda). */
   @Input() height = 252;
+  /** Con clic, Enter o Espacio se elige una categoría: la elegida mantiene su color y las demás se atenúan. */
+  @Input() override selectable = false;
+  /** Categoría seleccionada (índice en `categories`); `null`, ninguna. */
+  @Input() override selectedIndex: number | null = null;
+  /** Índice elegido, o `null` al volver a elegir el que ya estaba seleccionado. */
+  @Output() override readonly categorySelected = new EventEmitter<number | null>();
 
   protected readonly tipo = 'bar';
 
@@ -173,8 +182,8 @@ export class DivergingChartComponent extends GraficoBase<'bar'> {
         return {
           label: serie.name,
           data: serie.values.map((valor) => valor ?? null),
-          backgroundColor: color,
-          hoverBackgroundColor: color,
+          backgroundColor: this.colorSegunSeleccion(color),
+          hoverBackgroundColor: this.colorSegunSeleccion(color),
           borderRadius: 4,
           borderSkipped: 'start' as const,
           // Los dos lados comparten la fila de su categoría, donde solo uno tiene barra.

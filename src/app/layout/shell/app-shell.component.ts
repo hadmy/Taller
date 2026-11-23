@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -126,6 +126,7 @@ import { ADMIN_MENU_TREE } from '../../shared/utils/process-tree.util';
 })
 export class AppShellComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly router = inject(Router);
   private readonly shellNavigation = inject(ShellNavigationService);
   private readonly permissionService = inject(PermissionService);
@@ -247,6 +248,8 @@ export class AppShellComponent implements OnInit {
         this.trayContentOpen = false;
         this.closeFloatingPanels();
         this.syncNavigationWithUrl(event.urlAfterRedirects);
+        // OnPush con campos simples: sin esto, abrir un documento desde la bandeja dejaba la bandeja encima.
+        this.cdr.markForCheck();
       });
 
     this.shellNavigation.processMenuRequested$

@@ -32,7 +32,7 @@ export function semestresItem(item: ItemAnexo1, anio: number): [SemestreConsolid
 
 /**
  * Arma el consolidado del Anexo N.º 02 con los Anexos 01 ya revisados por la OA: los «Pendiente» no entran y los
- * «No conforme» entran marcados. Agrupa por Fuente / Rubro · Clasificador · Actividad operativa · Meta, en el orden en
+ * «Incompleto» entran marcados. Agrupa por Fuente / Rubro · Clasificador · Actividad presupuestaria · Meta, en el orden en
  * que aparecen, y suma cada semestre de cada año.
  */
 export function armarConsolidado(
@@ -64,7 +64,7 @@ export function armarConsolidado(
         precioUnitario: item.tipo === 'Bien' ? item.precioUnitario : null,
         area: area.nombre,
         estadoEvaluacion: area.estadoEvaluacion,
-        ...(area.estadoEvaluacion === 'No conforme' && area.comentarioEvaluacion ? { comentario: area.comentarioEvaluacion } : {}),
+        ...(area.estadoEvaluacion === 'Incompleto' && area.comentarioEvaluacion ? { comentario: area.comentarioEvaluacion } : {}),
         semestres,
       });
     }

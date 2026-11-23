@@ -12,6 +12,9 @@ Chart.register(CategoryScale, LinearScale, LineController, LineElement, PointEle
 /** Radio del punto activo (con el puntero o el teclado); el tooltip se apoya encima. */
 const RADIO_ACTIVO = 8;
 
+/** Desde cuántas categorías la línea es densa: puntos huecos y más chicos, y línea de 2 px. */
+const CATEGORIAS_DENSAS = 20;
+
 /**
  * Gráfico de línea del kit (Figma UI KIT, página «Graphics»: «Line»), dibujado con Chart.js: por serie, una línea de
  * 4 px con un punto de 12 px en cada categoría, para seguir cómo evoluciona un valor. El eje de valores no arranca en
@@ -24,6 +27,8 @@ const RADIO_ACTIVO = 8;
  * - Para la evolución de uno o más valores a lo largo de meses o periodos, como activos y existencias por mes.
  * - Dentro de `siaf-chart-section`, que le pone título y descripción.
  * - `min` y `max` para fijar el rango del eje (en el Figma, de 100 a 500), y `valueSuffix="%"` para porcentajes.
+ * - Para series largas (más de 20 categorías, como los días de una fase): la línea pasa a 2 px y los puntos a huecos
+ *   de 6 px, con el relleno de la superficie y el borde del color de la serie, para que cada punto se vea.
  * @evitar
  * - Para comparar cantidades entre categorías sin un orden en el tiempo: usar `siaf-bar-chart`.
  * - Para variaciones que suben y bajan respecto de cero: usar `siaf-diverging-chart`.
@@ -146,19 +151,24 @@ export class LineChartComponent extends GraficoBase<'line'> {
       labels: [...this.etiquetas],
       datasets: this.series.map((serie, i) => {
         const color = this.colorDe(tokenDeSerie(i));
+        // Con muchas categorías los puntos llenos se funden con la línea: van huecos (relleno de la superficie y borde
+        // del color de la serie) y más chicos, para ver cada uno.
+        const denso = this.etiquetas.length > CATEGORIAS_DENSAS;
+        const relleno = denso ? this.colorDe('--sys-color-bg-surfaces-surface') : color;
         return {
           label: serie.name,
           data: [...serie.values],
           borderColor: color,
           backgroundColor: color,
-          borderWidth: 4,
           borderCapStyle: 'round' as const,
           borderJoinStyle: 'round' as const,
-          pointRadius: 6,
+          borderWidth: denso ? 2 : 4,
+          pointRadius: denso ? 3 : 6,
           pointHoverRadius: RADIO_ACTIVO,
-          pointBackgroundColor: color,
+          pointBackgroundColor: relleno,
+          pointBorderColor: color,
           pointHoverBackgroundColor: color,
-          pointBorderWidth: 0,
+          pointBorderWidth: denso ? 2 : 0,
           pointHoverBorderWidth: 0,
           // Un punto en el borde del rango (con `min` o `max`) se ve entero, no cortado por el área del gráfico.
           clip: RADIO_ACTIVO,

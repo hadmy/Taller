@@ -27,7 +27,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 34;
+const VERSION = 40;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol en la entidad de la solicitud. */
@@ -132,23 +132,34 @@ export const CONTEXTO_ANEXO_2_FASE_1: ContextoAnexo2 = {
     fase: 'Fase 1 - Identificación',
     elaboradoPor: 'Especialista OA',
   },
-  resumen: { anexosRecibidos: 4, conformes: 2, observados: 1, necesidades: 21, anexosEvaluados: 3 },
+  // Referencial: la pantalla calcula el resumen de las áreas de cada solicitud.
+  resumen: { anexosRecibidos: 12, conformes: 0, observados: 0, necesidades: 104, anexosEvaluados: 0 },
+  // El consolidado de cada año se calcula de las necesidades de las áreas (más abajo, después de `itemsAnexo1`).
   marcoPresupuestario: [
-    { anio: 2027, referencia: 'APM 2025 - Año 2 (2027)', techoPresupuestal: 920_000, consolidadoAnexo1: 412_480 },
-    { anio: 2028, referencia: 'APM 2025 - Año 3 (2028)', techoPresupuestal: 980_000, consolidadoAnexo1: 316_200 },
-    { anio: 2029, referencia: 'APM 2025 - Año 4 (2029)', techoPresupuestal: 980_000, consolidadoAnexo1: 316_200 },
+    { anio: 2027, referencia: 'APM 2025 - Año 2 (2027)', techoPresupuestal: 3_600_000, consolidadoAnexo1: 0 },
+    { anio: 2028, referencia: 'APM 2025 - Año 3 (2028)', techoPresupuestal: 2_800_000, consolidadoAnexo1: 0 },
+    { anio: 2029, referencia: 'APM 2025 - Año 4 (2029)', techoPresupuestal: 2_800_000, consolidadoAnexo1: 0 },
   ],
-  // Plazos relativos a hoy, como en el Figma (19/08): tres vigentes y uno vencido.
+  // Plazos relativos a hoy, como en el Figma (19/08): las cuatro primeras son las del Figma (tres vigentes y una
+  // vencida); las demás amplían la lista de áreas usuarias (una más con el plazo vencido).
   areas: [
-    { id: 'a1-rrhh', nombre: 'Oficina de Recursos Humanos', items: 6, montoProgramado: 524_600, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(3) },
-    { id: 'a1-oti', nombre: 'Oficina de Tecnología de la Información', items: 5, montoProgramado: 577_000, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(-1) },
-    { id: 'a1-oa', nombre: 'Oficina de Abastecimiento', items: 7, montoProgramado: 467_880, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(5) },
-    { id: 'a1-oc', nombre: 'Oficina de Contabilidad', items: 3, montoProgramado: 112_200, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(4) },
+    { id: 'a1-rrhh', nombre: 'Oficina de Recursos Humanos', items: 10, montoProgramado: 865_400, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(3) },
+    { id: 'a1-oti', nombre: 'Oficina de Tecnología de la Información', items: 9, montoProgramado: 1_124_500, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(-1) },
+    { id: 'a1-oa', nombre: 'Oficina de Abastecimiento', items: 11, montoProgramado: 742_360, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(5) },
+    { id: 'a1-oc', nombre: 'Oficina de Contabilidad', items: 6, montoProgramado: 228_900, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(4) },
+    { id: 'a1-oaj', nombre: 'Oficina General de Asesoría Jurídica', items: 7, montoProgramado: 176_300, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(6) },
+    { id: 'a1-opp', nombre: 'Oficina de Planeamiento y Presupuesto', items: 8, montoProgramado: 312_750, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(2) },
+    { id: 'a1-ocom', nombre: 'Oficina de Comunicaciones e Imagen Institucional', items: 9, montoProgramado: 398_600, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(7) },
+    { id: 'a1-oci', nombre: 'Órgano de Control Institucional', items: 5, montoProgramado: 132_450, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(-2) },
+    { id: 'a1-digebr', nombre: 'Dirección General de Educación Básica Regular', items: 14, montoProgramado: 1_486_200, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(5) },
+    { id: 'a1-oac', nombre: 'Oficina de Atención al Ciudadano', items: 7, montoProgramado: 241_800, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(3) },
+    { id: 'a1-oie', nombre: 'Oficina de Infraestructura Educativa', items: 12, montoProgramado: 1_935_000, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(4) },
+    { id: 'a1-oagd', nombre: 'Oficina de Archivo y Gestión Documental', items: 6, montoProgramado: 104_700, estadoEvaluacion: 'Pendiente', plazoModificacion: diaRelativo(6) },
   ],
 };
 
 /**
- * Ítems de catálogo con que se arman los Anexos 01 (los tres primeros son los del Figma «Detalle del Anexo 1»): tipo,
+ * Ítems de catálogo con que se arman los Anexos 01 (los tres primeros son los del Figma «Anexo N° 01»): tipo,
  * unidad de medida, precio unitario (solo bienes) y clasificador de gastos, como en el formato del Anexo N.º 02.
  */
 const ITEMS_CATALOGO_ANEXO_1: {
@@ -167,14 +178,34 @@ const ITEMS_CATALOGO_ANEXO_1: {
   { item: '1520287315210803', descripcion: 'Servicio de mantenimiento de equipos', tipo: 'Servicio', unidadMedida: 'SERVICIO', precioUnitario: null, clasificador: '4 - Servicios' },
   { item: '1520284412170504', descripcion: 'Tóner para impresora láser', tipo: 'Bien', unidadMedida: 'UNIDAD', precioUnitario: 290, clasificador: '3 - Bienes' },
   { item: '1520285612100105', descripcion: 'Silla ergonómica de oficina', tipo: 'Bien', unidadMedida: 'UNIDAD', precioUnitario: 480, clasificador: '7 - Adquisición de Activos No Financieros' },
+  { item: '1520285612100212', descripcion: 'Escritorio de melamina', tipo: 'Bien', unidadMedida: 'UNIDAD', precioUnitario: 520, clasificador: '7 - Adquisición de Activos No Financieros' },
+  { item: '1520288613100307', descripcion: 'Servicio de capacitación especializada', tipo: 'Servicio', unidadMedida: 'SERVICIO', precioUnitario: null, clasificador: '4 - Servicios' },
+  { item: '1520283543211609', descripcion: 'Laptop core i7 16 GB', tipo: 'Bien', unidadMedida: 'UNIDAD', precioUnitario: 4_200, clasificador: '7 - Adquisición de Activos No Financieros' },
+  { item: '1520284412170711', descripcion: 'Archivador de palanca lomo ancho', tipo: 'Bien', unidadMedida: 'UNIDAD', precioUnitario: 9.5, clasificador: '3 - Bienes' },
+  { item: '1520288214100814', descripcion: 'Servicio de impresión de materiales educativos', tipo: 'Servicio', unidadMedida: 'SERVICIO', precioUnitario: null, clasificador: '4 - Servicios' },
+  { item: '1520283543211916', descripcion: 'Proyector multimedia', tipo: 'Bien', unidadMedida: 'UNIDAD', precioUnitario: 2_350, clasificador: '7 - Adquisición de Activos No Financieros' },
+  { item: '1520284412171018', descripcion: 'Kit de útiles de escritorio', tipo: 'Bien', unidadMedida: 'KIT', precioUnitario: 35, clasificador: '3 - Bienes' },
+  { item: '1520287315211120', descripcion: 'Servicio de mantenimiento de infraestructura', tipo: 'Servicio', unidadMedida: 'SERVICIO', precioUnitario: null, clasificador: '4 - Servicios' },
 ];
 
-/** Actividad operativa y meta de cada área usuaria (información presupuestaria del Anexo 01). */
-const PRESUPUESTO_AREA_ANEXO_1: Record<string, { actividad: string; meta: string }> = {
+/**
+ * Actividad presupuestaria y meta de cada área usuaria (información presupuestaria del Anexo 01), y `desde`: en qué ítem
+ * del catálogo empiezan sus necesidades (por defecto el primero), para que las áreas no repitan los mismos ítems.
+ * Con tres ítems o más, cada área tiene al menos un servicio, que absorbe el redondeo del reparto.
+ */
+const PRESUPUESTO_AREA_ANEXO_1: Record<string, { actividad: string; meta: string; desde?: number }> = {
   'a1-rrhh': { actividad: 'CP-RRHH-003 - Gestión de recursos humanos', meta: '0030' },
   'a1-oti': { actividad: 'CP-TEC-001 - Gestión de tecnologías de la información', meta: '0015' },
   'a1-oa': { actividad: 'CP-OA-002 - Gestión administrativa y de abastecimiento', meta: '0020' },
   'a1-oc': { actividad: 'CP-ADM-001 - Gestión contable', meta: '0012' },
+  'a1-oaj': { actividad: 'CP-OAJ-001 - Asesoría jurídica institucional', meta: '0005', desde: 8 },
+  'a1-opp': { actividad: 'CP-OPP-002 - Planeamiento y presupuesto', meta: '0008', desde: 11 },
+  'a1-ocom': { actividad: 'CP-COM-001 - Comunicación e imagen institucional', meta: '0010', desde: 12 },
+  'a1-oci': { actividad: 'CP-OCI-001 - Control gubernamental', meta: '0003', desde: 9 },
+  'a1-digebr': { actividad: 'CP-EBR-004 - Gestión de la educación básica regular', meta: '0045', desde: 8 },
+  'a1-oac': { actividad: 'CP-OAC-001 - Atención al ciudadano', meta: '0018', desde: 14 },
+  'a1-oie': { actividad: 'CP-OIE-003 - Mantenimiento de infraestructura educativa', meta: '0052', desde: 13 },
+  'a1-oagd': { actividad: 'CP-ADM-004 - Gestión documental y archivo', meta: '0014', desde: 11 },
 };
 
 /** Reparto del monto de un ítem entre los años del CMN (40 % el Año 1 y 30 % cada uno de los otros dos). */
@@ -183,34 +214,63 @@ const REPARTO_ANIOS_CMN = [0.4, 0.3, 0.3];
 const redondear = (n: number): number => Math.round(n * 100) / 100;
 
 /**
- * Ítems del Anexo 01 de un área usuaria: tantos como `area.items`, con el monto programado repartido en partes iguales
- * (Oficina de Contabilidad: 3 × S/ 37,400.00 = S/ 112,200.00, como en el Figma) y cada monto repartido entre los años
- * del CMN. Todos van con fuente RO/00 y la actividad operativa y meta del área.
+ * Ítems del Anexo 01 de un área usuaria: tantos como `area.items`, con el monto programado repartido en partes casi
+ * iguales y cada monto repartido entre los años del CMN. Todos van con fuente RO/00 y la actividad presupuestaria y meta del
+ * área.
+ *
+ * Para que el consolidado del Anexo N.º 02 cuadre con el Anexo 01, en un bien el monto de cada año es un múltiplo de su
+ * precio unitario (la cantidad sale entera y cantidad × precio da el valor exacto); lo que el redondeo les quita o les
+ * suma lo absorbe el último servicio del área, así la suma de los ítems es siempre el monto del Anexo 01.
  */
 export function itemsAnexo1(area: AreaUsuariaAnexo1): ItemAnexo1[] {
   const base = Math.floor((area.montoProgramado / area.items) * 100) / 100;
   const presupuesto = PRESUPUESTO_AREA_ANEXO_1[area.id] ?? { actividad: 'CP-GEN-000 - Gestión institucional', meta: '0001' };
-  return Array.from({ length: area.items }, (_, i) => {
-    const catalogo = ITEMS_CATALOGO_ANEXO_1[i % ITEMS_CATALOGO_ANEXO_1.length];
-    // El último ítem se lleva el redondeo para que la suma sea el monto del Anexo 01; lo mismo el último año.
-    const monto = i === area.items - 1 ? redondear(area.montoProgramado - base * (area.items - 1)) : base;
+  const items: ItemAnexo1[] = Array.from({ length: area.items }, (_, i) => {
+    const catalogo = ITEMS_CATALOGO_ANEXO_1[((presupuesto.desde ?? 0) + i) % ITEMS_CATALOGO_ANEXO_1.length];
+    // El último ítem se lleva el redondeo del reparto en partes iguales; lo mismo el último año.
+    const montoBase = i === area.items - 1 ? redondear(area.montoProgramado - base * (area.items - 1)) : base;
     const montosPorAnio: Record<number, number> = {};
     let repartido = 0;
     ANIOS_CMN.forEach((anio, k) => {
-      const valor = k === ANIOS_CMN.length - 1 ? redondear(monto - repartido) : redondear(monto * REPARTO_ANIOS_CMN[k]);
-      montosPorAnio[anio] = valor;
+      let valor = k === ANIOS_CMN.length - 1 ? redondear(montoBase - repartido) : redondear(montoBase * REPARTO_ANIOS_CMN[k]);
       repartido = redondear(repartido + valor);
+      // Bien: unidades enteras por año.
+      if (catalogo.tipo === 'Bien' && catalogo.precioUnitario) {
+        valor = redondear(Math.round(valor / catalogo.precioUnitario) * catalogo.precioUnitario);
+      }
+      montosPorAnio[anio] = valor;
     });
     return {
       id: `${area.id}-item-${i + 1}`,
       ...catalogo,
-      montoProgramado: monto,
+      montoProgramado: redondear(ANIOS_CMN.reduce((suma, anio) => suma + montosPorAnio[anio], 0)),
       fuente: 'RO/00',
       actividadOperativa: presupuesto.actividad,
       meta: presupuesto.meta,
       montosPorAnio,
     };
   });
+
+  // El último servicio absorbe la diferencia (en su último año) para que la suma sea el monto del Anexo 01.
+  const diferencia = redondear(area.montoProgramado - items.reduce((suma, item) => suma + item.montoProgramado, 0));
+  const servicio = [...items].reverse().find((item) => item.tipo === 'Servicio');
+  if (servicio && diferencia !== 0) {
+    const ultimoAnio = ANIOS_CMN[ANIOS_CMN.length - 1];
+    servicio.montosPorAnio[ultimoAnio] = redondear(servicio.montosPorAnio[ultimoAnio] + diferencia);
+    servicio.montoProgramado = redondear(servicio.montoProgramado + diferencia);
+  }
+  return items;
+}
+
+// «Consolidado Anexo 01» del marco presupuestario: lo programado por todas las áreas usuarias en cada año del CMN, así
+// cuadra con sus necesidades al cambiar las áreas, sus ítems o sus montos.
+for (const marco of CONTEXTO_ANEXO_2_FASE_1.marcoPresupuestario) {
+  marco.consolidadoAnexo1 = redondear(
+    CONTEXTO_ANEXO_2_FASE_1.areas.reduce(
+      (suma, area) => suma + itemsAnexo1(area).reduce((sumaArea, item) => sumaArea + (item.montosPorAnio[marco.anio] ?? 0), 0),
+      0,
+    ),
+  );
 }
 
 /** Catálogo de ítems que se pueden proponer como estratégicos (los del prototipo y algunos más para paginar). */
@@ -313,10 +373,15 @@ const SEMILLAS_ITEMS: SemillaItems[] = [
   { creada: '2026-09-28', estado: 'VALIDADO', items: [14, 15], justificacion: 'Inclusión de insumos priorizados para la campaña de vacunación.' },
 ];
 
-/** Anexos 02 sembrados: los del Figma «A.2-OA-EV-009» (0001 aprobado en 2025, 0002 elaborado en 2026). */
-const SEMILLAS_ANEXO_2: { creada: string; estado: EstadoSemilla }[] = [
-  { creada: '2025-01-20', estado: 'APROBADO' },
-  { creada: '2026-08-19', estado: 'ELABORADO' },
+/**
+ * Anexos 02 sembrados: los del Figma «A.2-OA-EV-009» del Ministerio de Educación (0001 aprobado en 2025, 0002 elaborado
+ * en 2026) y uno aprobado del MEF (0003), para que la pestaña Registros de CMN Programación también tenga datos con los
+ * usuarios del MEF (Ana, Luis, Carla y Marta).
+ */
+const SEMILLAS_ANEXO_2: { creada: string; estado: EstadoSemilla; entidad: 'MINEDU' | 'MEF' }[] = [
+  // MINEDU tiene un único Anexo 02 (Fase 1: Identificación), elaborado: es el que recorre evaluador y aprobador.
+  { creada: '2026-08-19', estado: 'ELABORADO', entidad: 'MINEDU' },
+  { creada: '2025-02-10', estado: 'APROBADO', entidad: 'MEF' },
 ];
 
 function enFecha(dia: string, horas: number, dias = 0): string {
@@ -514,7 +579,8 @@ function crearDatosIniciales(): DatosTaller {
     }
   }
 
-  // Anexos 02 de CMN Programación (Figma «A.2-OA-EV-009»): los registra la Especialista OA del Ministerio de Educación.
+  // Anexos 02 de CMN Programación (Figma «A.2-OA-EV-009»): los del Ministerio de Educación los registra la Especialista OA
+  // (los responden el Evaluador OA y el Aprobador OA); el del MEF, Ana (lo valida Marta y lo aprueba Luis).
   const especialista = USUARIOS_DEMO.find((u) => u.id === 'usr-especialista-oa')!;
   const aprobadorOa = USUARIOS_DEMO.find((u) => u.id === 'usr-aprobador-oa')!;
   const evaluadorOa = USUARIOS_DEMO.find((u) => u.id === 'usr-evaluador-oa')!;
@@ -523,17 +589,23 @@ function crearDatosIniciales(): DatosTaller {
     const id = nuevoId(datos, 'sol');
     datos.correlativoAnexo2Fase1 += 1;
     const creada = enFecha(semilla.creada, 9);
-    const historial = historialSemilla(datos, semilla.creada, semilla.estado, undefined, especialista, aprobadorOa, evaluadorOa);
+    const mef = semilla.entidad === 'MEF';
+    const creador = mef ? ana : especialista;
+    const historial = mef
+      ? historialSemilla(datos, semilla.creada, semilla.estado)
+      : historialSemilla(datos, semilla.creada, semilla.estado, undefined, especialista, aprobadorOa, evaluadorOa);
     datos.solicitudes.push({
       id,
       numero: numeroDocumentoAnexo2Fase1(datos.correlativoAnexo2Fase1),
       catDocumento: TIPO_DOCUMENTO_SA2F1,
       tipoAccion: TIPO_ACCION_SA2F1,
       estado: semilla.estado,
-      asuntoMotivo: `[${(perfilOa.unidad ?? '').toUpperCase()}] `,
-      entidadCreadora: { id: perfilOa.entidadId ?? '', codMef: perfilOa.entidadCodigo ?? '', siglas: perfilOa.entidadSiglas ?? '', nombre: perfilOa.entidad ?? '' },
-      unidadCreadora: { id: perfilOa.unidadId ?? '', sigla: perfilOa.unidadSigla ?? '', nombre: perfilOa.unidad ?? '' },
-      creador: { id: especialista.id, nombres: especialista.nombres, apellidoPaterno: especialista.apellidoPaterno, apellidoMaterno: especialista.apellidoMaterno },
+      asuntoMotivo: `[${(mef ? UNIDAD_CREADORA.nombre : perfilOa.unidad ?? '').toUpperCase()}] `,
+      entidadCreadora: mef
+        ? ENTIDAD_CREADORA
+        : { id: perfilOa.entidadId ?? '', codMef: perfilOa.entidadCodigo ?? '', siglas: perfilOa.entidadSiglas ?? '', nombre: perfilOa.entidad ?? '' },
+      unidadCreadora: mef ? UNIDAD_CREADORA : { id: perfilOa.unidadId ?? '', sigla: perfilOa.unidadSigla ?? '', nombre: perfilOa.unidad ?? '' },
+      creador: { id: creador.id, nombres: creador.nombres, apellidoPaterno: creador.apellidoPaterno, apellidoMaterno: creador.apellidoMaterno },
       fechaRegistro: creada,
       createdAt: creada,
       updatedAt: historial[historial.length - 1].createdAt,

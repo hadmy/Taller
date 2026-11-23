@@ -25,8 +25,8 @@ interface FaseForm {
 
 const FASES_FORM: FaseForm[] = [
   { key: 'fase1', titulo: 'Fase 1: Fase de identificación' },
-  { key: 'fase2', titulo: 'Fase 2: Fase de identificación' },
-  { key: 'fase3', titulo: 'Fase 3: Fase de identificación' },
+  { key: 'fase2', titulo: 'Fase 2: Fase de clasificación y priorización' },
+  { key: 'fase3', titulo: 'Fase 3: Fase de consolidación y aprobación' },
 ];
 
 /** dd-mm-aaaa a partir de una fecha ISO (yyyy-mm-dd); vacío si no hay fecha. */

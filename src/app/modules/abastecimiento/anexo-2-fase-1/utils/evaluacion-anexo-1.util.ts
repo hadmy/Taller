@@ -2,11 +2,12 @@ import { StatusTagTone } from '../../../../shared/ui/status-tag/status-tag.compo
 import { EstadoEvaluacionAnexo1 } from '../models/anexo-2-fase-1.model';
 
 /**
- * Etiqueta de la evaluación de un Anexo 01 (Figma «status items tags» y «3. Detalle items»): tono, ícono y texto.
- * La comparten la tabla «Registros» de la solicitud y «Detalle del Anexo 1».
+ * Etiqueta de la evaluación de un Anexo 01 (Figma «A.1 Rol Creador · 3. detalle items», propuesta 2): tono y texto,
+ * para `siaf-status-tag` con `appearance="soft"` (Pendiente en gris, Completo en verde azulado, Incompleto en amarillo).
+ * La comparten la tabla «Registros» de la solicitud y el panel «Anexo N° 01».
  */
-export const ESTILO_EVALUACION_ANEXO_1: Record<EstadoEvaluacionAnexo1, { tone: StatusTagTone; icon: string; texto: string }> = {
-  Pendiente: { tone: 'default', icon: 'pending', texto: 'Pendiente' },
-  Conforme: { tone: 'info', icon: 'check_box', texto: 'Conforme' },
-  'No conforme': { tone: 'warning', icon: 'warning', texto: 'No Conforme' },
+export const ESTILO_EVALUACION_ANEXO_1: Record<EstadoEvaluacionAnexo1, { tone: StatusTagTone; texto: string }> = {
+  Pendiente: { tone: 'default', texto: 'Pendiente' },
+  Completo: { tone: 'success', texto: 'Completo' },
+  Incompleto: { tone: 'warning', texto: 'Incompleto' },
 };

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
@@ -27,7 +28,7 @@ import { CatalogoCubso, PrecioDiferenciado } from '../models/precio-diferenciado
 @Component({
   selector: 'siaf-precios-diferenciados',
   standalone: true,
-  imports: [
+  imports: [ConfiguracionTabsComponent, 
     ButtonComponent,
     FormTableSearchComponent,
     ModalComponent,
@@ -75,7 +76,7 @@ export class PreciosDiferenciadosComponent implements OnInit {
 
   /**
    * Pantalla principal (Figma «Configuracion_precios 01», nodo 5887:146069): mientras ningún CUBSO tenga precios
-   * generados se ve «Ítems de precios diferenciados» con la lupa, el aviso y la tabla de CUBSO con 0 precios.
+   * generados se ve (sin título) la lupa, el aviso y la tabla de CUBSO con 0 precios.
    */
   readonly sinPrecios = computed(() => this.cubsos().length > 0 && this.cubsos().every((c) => c.numPreciosGenerados === 0));
 

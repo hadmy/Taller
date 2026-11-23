@@ -1,9 +1,12 @@
-import { ChangeDetectionStrategy, Component, Input, OnChanges, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, OnInit, inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 
 import { CustomFilterApplyEvent, CustomFilterComponent, FilterRow } from '../../shared/components/custom-filter/custom-filter.component';
 import { FilterPillComponent } from '../../shared/components/filter-pill/filter-pill.component';
 import { FlowStatusTagComponent } from '../../shared/ui/flow-status-tag/flow-status-tag.component';
 import { IconComponent } from '../../shared/ui/icon/icon.component';
+import { ModalComponent } from '../../shared/ui/modal/modal.component';
 import { IconDropdownMenuComponent, IconDropdownMenuItem } from '../../shared/ui/icon-dropdown-menu/icon-dropdown-menu.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { RecordsSearchToolbarComponent } from '../../shared/components/records-search-toolbar/records-search-toolbar.component';
@@ -14,8 +17,27 @@ import { PermissionService } from '../../core/auth/permission.service';
 import { respondeSolicitudes } from '../../core/auth/role.model';
 import { TooltipDirective } from '../../shared/ui/tooltip/tooltip.directive';
 import { ESTADO, ESTADOS_RESPUESTA_APROBADOR } from '../../core/models/documento.model';
+import { NOMBRE_PROCESO as NOMBRE_PROCESO_SA2F1, REQUEST_ROUTE as RUTA_SA2F1 } from '../../modules/abastecimiento/anexo-2-fase-1/config/anexo-2-fase-1.rutas';
+import { NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SA2F1 } from '../../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
+import { REQUEST_ROUTE as RUTA_SIE } from '../../modules/abastecimiento/items-estrategicos/config/items-estrategicos.rutas';
+import { NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SIE, SISTEMA_NACIONAL } from '../../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
+
+/** Por documento: la pantalla de la solicitud (para abrirla desde la bandeja) y el sistema que se muestra. */
+const DOCUMENTOS_BANDEJA: Record<string, { ruta: string; sistema: string }> = {
+  [NOMBRE_DOCUMENTO_SA2F1]: { ruta: RUTA_SA2F1, sistema: NOMBRE_PROCESO_SA2F1 },
+  [NOMBRE_DOCUMENTO_SIE]: { ruta: RUTA_SIE, sistema: SISTEMA_NACIONAL },
+};
+
+/** Tipo de acción como lo muestran las pantallas («creacion» → «Creación»). */
+const ETIQUETAS_TIPO_ACCION: Record<string, string> = { creacion: 'Creación', modificacion: 'Modificación', eliminacion: 'Eliminación' };
+
+/** Fecha con dos dígitos, como en el Figma: «19/8/2026» → «19/08/2026». */
+const fechaDosDigitos = (fecha: string): string => fecha.split('/').map((parte) => parte.padStart(2, '0')).join('/');
 
 type TrayDocumentRow = {
+  /** Id de la solicitud y pantalla donde se abre (vacía si el documento no tiene una). */
+  id: string;
+  route: string;
   document: string;
   number: string;
   actionType: string;
@@ -51,12 +73,14 @@ type AppliedCustomFilter = {
  *   o Papelera en `siaf-tray-menu`, con esa sección en `title`.
  * - Para revisar los documentos propios según el rol: el creador ve borradores, enviados, respuestas del aprobador y
  *   eliminados; el aprobador, lo que recibe para aprobar y lo que ya respondió.
+ * - Al marcar documentos: Editar (con uno solo) abre la solicitud y Eliminar, con confirmación, elimina los propios en
+ *   estado Elaborado; el resto queda igual.
  * @evitar
  * - Para los documentos de un proceso (plan de cuentas, asientos de ajuste, catálogo de eventos…): usar
  *   `siaf-documents-records-page`, con pestañas Documentos / Registros e historial.
  * - Para la sección Notificaciones de la bandeja: usar `siaf-tray-notifications-view`.
- * - Como base de una grilla nueva: varios controles aún no hacen nada (casillas, Campos, Favorito, Más opciones,
- *   Historial e Inicio); partir de `siaf-table-controls`, `siaf-documents-records-table` y `siaf-pagination`.
+ * - Como base de una grilla nueva: varios controles aún no hacen nada (Campos, Favorito, Más opciones, Historial e
+ *   Inicio); partir de `siaf-table-controls`, `siaf-documents-records-table` y `siaf-pagination`.
  * @teclado
  * - **Enter** en el buscador: aplica la búsqueda, igual que la lupa; escribir no filtra por sí solo.
  * - **Enter / Espacio** en la X de un filtro personalizado: lo quita; sobre el resto del chip, lo abre para editarlo.
@@ -77,8 +101,8 @@ type AppliedCustomFilter = {
  *   los controles del kit traen el suyo.
  * - **Pendiente · 2.5.8 Tamaño del objetivo (AA)**: la X para quitar un filtro personalizado mide 20 px (`size-5`) y está
  *   dentro del chip, que es otro objetivo.
- * - **Pendiente · 4.1.2 Nombre, función y valor (A)**: las casillas de fila no tienen nombre; el chip de filtro
- *   personalizado se llama siempre «Filtro personalizado aplicado» (tapa campo y valor) y su X es un `role="button"`
+ * - **Pendiente · 4.1.2 Nombre, función y valor (A)**: las casillas de fila se llaman «Seleccionar» más el documento;
+ *   el chip de filtro personalizado se llama siempre «Filtro personalizado aplicado» (tapa campo y valor) y su X es un `role="button"`
  *   dentro de otro `<button>`, que los lectores no anuncian bien; «Agregar filtro personalizado» no publica
  *   `aria-expanded`.
  * - **Pendiente · 4.1.3 Mensajes de estado (AA)**: buscar, filtrar o paginar cambia la grilla y el contador «1-10 de N»
@@ -87,7 +111,7 @@ type AppliedCustomFilter = {
 @Component({
   selector: 'siaf-tray-documents-view',
   standalone: true,
-  imports: [CustomFilterComponent, FilterPillComponent, FlowStatusTagComponent, IconComponent, IconDropdownMenuComponent, PaginationComponent, RecordsSearchToolbarComponent, TableControlsComponent, TooltipDirective],
+  imports: [CustomFilterComponent, FilterPillComponent, FlowStatusTagComponent, IconComponent, IconDropdownMenuComponent, ModalComponent, PaginationComponent, RecordsSearchToolbarComponent, TableControlsComponent, TooltipDirective],
   template: `
     <section class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)]">
       <section class="bg-surface">
@@ -146,8 +170,20 @@ type AppliedCustomFilter = {
               </button>
             </div>
 
+            <!-- Con documentos marcados: Editar (uno solo, abre la solicitud) y Eliminar (los propios en Elaborado). -->
             <siaf-table-controls
               selectAllLabel="Seleccionar documentos de bandeja"
+              [checked]="pageFullySelected"
+              [indeterminate]="pagePartiallySelected"
+              [selectedCount]="selectedIds.size"
+              [showEditAction]="true"
+              [editDisabled]="!editableSelection"
+              editLabel="Abrir el documento seleccionado"
+              [showDeleteAction]="true"
+              deleteLabel="Eliminar los documentos seleccionados"
+              (selectionChange)="toggleSelectPage($event)"
+              (edit)="editSelected()"
+              (delete)="deleteOpen = true"
               [page]="page"
               [pageSize]="rowsPerPage"
               [totalItems]="filteredRows.length"
@@ -175,8 +211,28 @@ type AppliedCustomFilter = {
                 <tbody>
                   @for (row of paginatedRows; track row.document + row.number) {
                     <tr class="h-[58px] border-b border-[var(--sys-color-divider-default)] bg-surface text-[var(--sys-color-text-neutral-medium)] hover:bg-[var(--sys-color-bg-states-light-hover)]">
-                      <td class="px-siaf-sm py-siaf-sm"><input class="size-4 accent-[var(--sys-color-icon-states-enabled)]" type="checkbox" /></td>
-                      <td class="px-siaf-md py-siaf-sm" [class.font-bold]="$index === 0">{{ row.document }}</td>
+                      <td class="px-siaf-sm py-siaf-sm">
+                        <input
+                          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                          type="checkbox"
+                          [attr.aria-label]="'Seleccionar ' + row.document + ' ' + row.number"
+                          [checked]="selectedIds.has(row.id)"
+                          (change)="toggleRow(row.id, $any($event.target).checked)"
+                        />
+                      </td>
+                      <td class="px-siaf-md py-siaf-sm" [class.font-bold]="$index === 0">
+                        @if (row.route) {
+                          <!-- Abre la solicitud para revisarla y responderla según el rol. -->
+                          <button
+                            type="button"
+                            class="cursor-pointer rounded-siaf-xs text-left underline-offset-2 hover:text-[var(--sys-color-text-neutral-high)] hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+                            [attr.aria-label]="'Abrir ' + row.document + ' ' + row.number"
+                            (click)="abrirDocumento(row)"
+                          >{{ row.document }}</button>
+                        } @else {
+                          {{ row.document }}
+                        }
+                      </td>
                       <td class="px-siaf-md py-siaf-sm" [class.font-bold]="$index === 0">{{ row.number }}</td>
                       <td class="px-siaf-md py-siaf-sm" [class.font-bold]="$index === 0">{{ row.actionType }}</td>
                       <td class="px-siaf-md py-siaf-sm">
@@ -229,6 +285,18 @@ type AppliedCustomFilter = {
             />
           </div>
         }
+
+        <!-- Solo se eliminan los documentos propios en Elaborado (las reglas del flujo); el resto queda igual. -->
+        <siaf-modal
+          [open]="deleteOpen"
+          variant="custom"
+          [title]="deletableSelection.length ? '¿Eliminar documentos?' : 'No se pueden eliminar'"
+          [description]="deleteDescription"
+          [confirmLabel]="deletableSelection.length ? 'Eliminar' : 'Aceptar'"
+          (canceled)="deleteOpen = false"
+          (closed)="deleteOpen = false"
+          (confirmed)="confirmDelete()"
+        />
       </section>
     </section>
   `,
@@ -238,8 +306,14 @@ export class TrayDocumentsViewComponent implements OnInit, OnChanges {
   private readonly solicitudesState = inject(SolicitudesStateService);
   private readonly solicitudesFacade = inject(SolicitudesFacadeService);
   private readonly permissionService = inject(PermissionService);
+  private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() title = 'Borradores';
+
+  /** Documentos marcados (por id de la solicitud): Editar con uno, Eliminar con los que se puedan. */
+  selectedIds = new Set<string>();
+  deleteOpen = false;
 
   customFilterOpen = false;
   selectedStatusFilter = '';
@@ -281,7 +355,7 @@ export class TrayDocumentsViewComponent implements OnInit, OnChanges {
     { label: ESTADO.APROBADO, value: ESTADO.APROBADO },
     { label: ESTADO.OBSERVADO, value: ESTADO.OBSERVADO },
     { label: ESTADO.RECHAZADO, value: ESTADO.RECHAZADO },
-    { label: 'Creacion', value: 'Creacion' },
+    { label: 'Creación', value: 'Creación' },
     { label: 'Solicitud de notificacion', value: 'Solicitud de notificacion' },
     { label: 'Sistema Nacional de Contabilidad', value: 'Sistema Nacional de Contabilidad' },
     { label: '1. Institucional', value: '1. Institucional' }
@@ -326,7 +400,7 @@ export class TrayDocumentsViewComponent implements OnInit, OnChanges {
     return this.SECTION_STATES[roleKey][this.title] ?? [];
   }
 
-  readonly actionTypeFilterOptions = ['Creacion'];
+  readonly actionTypeFilterOptions = ['Creación'];
 
   /** Pendientes primero: Observado/Rechazado arriba en Recibidos del creador; lo pendiente arriba para el evaluador y el aprobador. */
   private readonly STATUS_PRIORITY_BY_ROLE: Record<string, Record<string, number>> = {
@@ -405,16 +479,93 @@ export class TrayDocumentsViewComponent implements OnInit, OnChanges {
   }
 
   private mapSolicitudToRow(s: SolicitudDemo): TrayDocumentRow {
+    const documento = DOCUMENTOS_BANDEJA[s.tipoDocumento];
     return {
+      id: s.id,
+      route: documento?.ruta ?? '',
       document: s.tipoDocumento,
       number: s.numero || '-',
-      actionType: s.tipoAccion,
+      actionType: ETIQUETAS_TIPO_ACCION[s.tipoAccion] ?? s.tipoAccion,
       status: s.estado as TrayDocumentStatus,
-      system: 'Sistema Nacional de Contabilidad',
-      date: s.fecha,
+      system: documento?.sistema ?? 'Sistema Nacional de Contabilidad',
+      date: fechaDosDigitos(s.fecha),
       institutionalScope: s.cuentas[0]?.institutionalScopes || '-',
       entity: s.entidad,
     };
+  }
+
+  // ── Selección, Editar y Eliminar ──────────────────────────────────
+  get pageFullySelected(): boolean {
+    const rows = this.paginatedRows;
+    return rows.length > 0 && rows.every((r) => this.selectedIds.has(r.id));
+  }
+
+  get pagePartiallySelected(): boolean {
+    return this.paginatedRows.some((r) => this.selectedIds.has(r.id)) && !this.pageFullySelected;
+  }
+
+  /** Editar abre la solicitud: con un solo documento marcado que tenga pantalla. */
+  get editableSelection(): TrayDocumentRow | null {
+    if (this.selectedIds.size !== 1) return null;
+    const row = this.rowsForCurrentTray.find((r) => this.selectedIds.has(r.id));
+    return row?.route ? row : null;
+  }
+
+  /** Se eliminan solo los documentos propios en Elaborado (nunca observados): el creador, como en la solicitud. */
+  get deletableSelection(): TrayDocumentRow[] {
+    if (respondeSolicitudes(this.permissionService.currentRole())) return [];
+    return this.rowsForCurrentTray.filter((r) => this.selectedIds.has(r.id) && r.status === ESTADO.ELABORADO);
+  }
+
+  get deleteDescription(): string {
+    const total = this.selectedIds.size;
+    const n = this.deletableSelection.length;
+    if (n === 0) return 'Solo se eliminan documentos propios en estado Elaborado.';
+    const omitidos = total - n;
+    const base = n === 1 ? 'Se eliminará 1 documento en estado Elaborado.' : `Se eliminarán ${n} documentos en estado Elaborado.`;
+    return omitidos ? `${base} Los otros ${omitidos} no se pueden eliminar y quedan igual.` : base;
+  }
+
+  toggleRow(id: string, checked: boolean): void {
+    const next = new Set(this.selectedIds);
+    if (checked) next.add(id);
+    else next.delete(id);
+    this.selectedIds = next;
+  }
+
+  toggleSelectPage(checked: boolean): void {
+    const next = new Set(this.selectedIds);
+    for (const row of this.paginatedRows) {
+      if (checked) next.add(row.id);
+      else next.delete(row.id);
+    }
+    this.selectedIds = next;
+  }
+
+  editSelected(): void {
+    const row = this.editableSelection;
+    if (row) this.abrirDocumento(row);
+  }
+
+  confirmDelete(): void {
+    const ids = this.deletableSelection.map((r) => r.id);
+    this.deleteOpen = false;
+    if (ids.length === 0) return;
+    forkJoin(ids.map((id) => this.solicitudesFacade.eliminar(id))).subscribe({
+      next: () => this.afterDelete(),
+      error: () => this.afterDelete(),
+    });
+  }
+
+  private afterDelete(): void {
+    this.selectedIds = new Set();
+    this.cargarBandeja();
+    this.cdr.markForCheck();
+  }
+
+  /** Abre la solicitud en su pantalla: ahí el evaluador valida y el aprobador aprueba, observa o rechaza. */
+  abrirDocumento(row: TrayDocumentRow): void {
+    if (row.route) void this.router.navigate([row.route, row.id]);
   }
 
   selectFieldsMenuOption(option: string): void {

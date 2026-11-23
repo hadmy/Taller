@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { ArcElement, Chart, DoughnutController, Interaction, Tooltip } from 'chart.js';
-import type { ChartData, ChartOptions, InteractionItem, InteractionModeFunction } from 'chart.js';
+import type { ChartData, ChartOptions, InteractionItem, InteractionModeFunction, Plugin } from 'chart.js';
 import { TAU, _angleBetween, getAngleFromPoint, getRelativePosition } from 'chart.js/helpers';
 
 import { ChartLegendComponent, ChartLegendItem } from '../chart-legend/chart-legend.component';
 import { formatearPorcentaje, formatearValor, tokenDeTramo } from '../charts/chart-tema';
-import { GraficoBase, SerieDibujada } from '../charts/grafico-base';
+import { GraficoBase, SerieDibujada, conOpacidad } from '../charts/grafico-base';
 
 Chart.register(ArcElement, DoughnutController, Tooltip);
 
@@ -22,6 +22,11 @@ const RADIO = 75;
 const BORDE_ACTIVO = 10;
 /** Relleno inferior del marco del Figma (24 px), que la figura no tiene: sin él, el anillo quedaría 12 px más abajo. */
 const AIRE_INFERIOR = 24;
+/** En torta: aire alrededor del círculo para los porcentajes de afuera, y su separación del borde del tramo. */
+const AIRE_TORTA = 36;
+const DISTANCIA_PORCENTAJE = 10;
+
+export type DonutChartVariant = 'donut' | 'pie';
 
 /**
  * El tramo cuyo anillo contiene al puntero, con medio borde activo de margen a cada lado. El `inRange` de Chart.js
@@ -55,6 +60,11 @@ Interaction.modes.siafTramo = (grafico, evento, _opciones, posicionFinal): Inter
  * - Para ver cómo se reparte un total entre pocas partes: activos, patrimonio y pasivos de un balance.
  * - Dentro de `siaf-chart-section`, que le pone título y descripción.
  * - `valueSuffix` cuando los valores llevan unidad en la tabla de datos; el centro siempre muestra el porcentaje.
+ * - `variant="pie"` para una torta llena con el porcentaje de cada parte afuera y la leyenda a la derecha, cuando se
+ *   quieren ver todos los porcentajes a la vez (sin pasar el puntero). Con nombres que incluyan el total («Aprobada: 98»)
+ *   la leyenda muestra también la cantidad de cada color.
+ * - `selectable` con `[selectedIndex]` y `(categorySelected)` para un tablero interactivo: el clic (o Enter / Espacio)
+ *   elige un tramo, que conserva su color mientras los demás se atenúan; volver a elegirlo emite `null`.
  * @evitar
  * - Para un avance de 0 a 100 %: usar `siaf-progress-circular`.
  * - Para comparar cantidades entre categorías: usar `siaf-bar-chart`.
@@ -67,6 +77,7 @@ Interaction.modes.siafTramo = (grafico, evento, _opciones, posicionFinal): Inter
  *   vuelta.
  * - **Inicio / Fin**: van al primer o al último tramo.
  * - **Escape**: oculta el centro; salir del gráfico también lo oculta.
+ * - **Enter / Espacio** (con `selectable`): eligen el tramo activo o quitan la selección.
  * @accesibilidad
  * - **1.1.1 Contenido no textual (A)**: el lienzo es `role="img"` con `ariaLabel` y, además, hay una tabla de datos
  *   oculta (`sr-only`) con el valor y el porcentaje de cada parte.
@@ -89,11 +100,18 @@ Interaction.modes.siafTramo = (grafico, evento, _opciones, posicionFinal): Inter
   host: { class: 'block' },
   template: `
     <!-- Relleno del Figma («Progress»): 24 px arriba y a los lados, también dentro de siaf-chart-section. -->
-    <figure class="m-0 flex flex-col gap-siaf-md px-siaf-lg pt-siaf-lg">
+    <!-- En torta, la leyenda va a la derecha y en columna (primera en el DOM, para leerse antes). -->
+    <figure
+      class="m-0 flex gap-siaf-md px-siaf-lg pt-siaf-lg"
+      [class.flex-col]="!esTorta"
+      [class.flex-row-reverse]="esTorta"
+      [class.items-center]="esTorta"
+      [class.pb-siaf-md]="esTorta"
+    >
       @if (categories.length) {
-        <siaf-chart-legend [items]="leyenda" />
+        <siaf-chart-legend [class.shrink-0]="esTorta" [items]="leyenda" [vertical]="esTorta" />
       }
-      <div class="relative w-full" [style.height.px]="height">
+      <div class="relative w-full min-w-0" [class.flex-1]="esTorta" [style.height.px]="height">
         <canvas
           #lienzo
           class="rounded-siaf-sm outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
@@ -103,7 +121,7 @@ Interaction.modes.siafTramo = (grafico, evento, _opciones, posicionFinal): Inter
           (keydown)="alTeclado($event)"
           (blur)="ocultarTooltip()"
         ></canvas>
-        @if (tooltip(); as activo) {
+        @if (!esTorta && tooltip(); as activo) {
           <!-- Centro del anillo («.a.progress», estado hover): nombre y porcentaje del tramo activo. -->
           <div
             class="pointer-events-none absolute left-1/2 flex w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center leading-[normal] text-[var(--sys-color-text-neutral-medium)]"
@@ -159,8 +177,48 @@ export class DonutChartComponent extends GraficoBase<'doughnut'> {
   @Input() valueLabel = 'Valor';
   /** Alto del área del gráfico en px (sin la leyenda). */
   @Input() height = 252;
+  /** Con `true`, el clic (o Enter / Espacio) en un tramo lo elige y emite `categorySelected`. */
+  @Input() override selectable = false;
+  /** Tramo seleccionado: los demás se atenúan. `null`, ninguno. */
+  @Input() override selectedIndex: number | null = null;
+  /** Índice del tramo elegido, o `null` al volver a elegir el seleccionado. */
+  @Output() override readonly categorySelected = new EventEmitter<number | null>();
+  /**
+   * `donut` (por defecto): el anillo del Figma, con el nombre y el porcentaje del tramo activo al centro. `pie`: torta
+   * llena, con el porcentaje de cada parte afuera de su tramo y la leyenda a la derecha.
+   */
+  @Input() variant: DonutChartVariant = 'donut';
 
   protected readonly tipo = 'doughnut';
+
+  get esTorta(): boolean {
+    return this.variant === 'pie';
+  }
+
+  protected override complementos(): Plugin<'doughnut'>[] {
+    return [{ id: 'siafPorcentajesTorta', afterDatasetsDraw: (grafico) => this.rotularTorta(grafico) }];
+  }
+
+  /** En torta, el porcentaje de cada parte afuera de su tramo, a la altura de su mitad. */
+  private rotularTorta(grafico: Chart<'doughnut'>): void {
+    if (!this.esTorta) return;
+    const { ctx } = grafico;
+    const { colorTexto, fuente } = this.estiloDeEjes();
+    ctx.save();
+    ctx.font = `bold ${fuente.size}px ${fuente.family}`;
+    ctx.fillStyle = colorTexto;
+    ctx.textBaseline = 'middle';
+    grafico.getDatasetMeta(0).data.forEach((arco, i) => {
+      if (this.valorPositivo(i) === null) return;
+      const { x, y, startAngle, endAngle, outerRadius } = arco.getProps(['x', 'y', 'startAngle', 'endAngle', 'outerRadius'], true);
+      const medio = (startAngle + endAngle) / 2;
+      const distancia = outerRadius + DISTANCIA_PORCENTAJE;
+      const cos = Math.cos(medio);
+      ctx.textAlign = Math.abs(cos) < 0.2 ? 'center' : cos > 0 ? 'left' : 'right';
+      ctx.fillText(this.porcentaje(i), x + cos * distancia, y + Math.sin(medio) * distancia);
+    });
+    ctx.restore();
+  }
 
   get etiquetas(): readonly string[] {
     return this.categories;
@@ -205,13 +263,28 @@ export class DonutChartComponent extends GraficoBase<'doughnut'> {
   }
 
   protected datos(): ChartData<'doughnut'> {
-    const colores = this.categories.map((_, i) => this.colorDe(tokenDeTramo(i)));
+    const elegido = this.selectedIndex;
+    const colores = this.categories.map((_, i) => {
+      const color = this.colorDe(tokenDeTramo(i));
+      return elegido !== null && elegido >= 0 && i !== elegido ? conOpacidad(color, 0.3) : color;
+    });
+    const data = this.categories.map((_, i) => this.valorPositivo(i) ?? 0);
+    if (this.esTorta) {
+      // Torta: tramos separados por una línea de la superficie; el activo se separa del centro.
+      const superficie = this.colorDe('--sys-color-bg-surfaces-surface');
+      return {
+        labels: [...this.categories],
+        datasets: [
+          { label: this.valueLabel, data, backgroundColor: colores, hoverBackgroundColor: colores, borderColor: superficie, borderWidth: 2, hoverBorderColor: superficie, hoverOffset: 6 },
+        ],
+      };
+    }
     return {
       labels: [...this.categories],
       datasets: [
         {
           label: this.valueLabel,
-          data: this.categories.map((_, i) => this.valorPositivo(i) ?? 0),
+          data,
           backgroundColor: colores,
           hoverBackgroundColor: colores,
           borderWidth: 0,
@@ -225,6 +298,15 @@ export class DonutChartComponent extends GraficoBase<'doughnut'> {
   }
 
   protected opciones(): ChartOptions<'doughnut'> {
+    if (this.esTorta) {
+      return {
+        ...this.opcionesComunes(),
+        interaction: { mode: 'siafTramo', intersect: true },
+        cutout: 0,
+        // Aire alrededor para los porcentajes de afuera.
+        layout: { padding: AIRE_TORTA },
+      };
+    }
     return {
       ...this.opcionesComunes(),
       // El tramo se activa al pasar el puntero sobre su anillo (modo propio, estable al engrosarse el tramo activo).

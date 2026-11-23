@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -26,7 +27,7 @@ import { FaseFecha, FechaFaseCmnDplaip, faseFechaVacia } from '../models/fecha-f
 @Component({
   selector: 'siaf-fecha-fase-cmn-dplaip-form',
   standalone: true,
-  imports: [ButtonComponent, DateTimePickerComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TextFieldComponent],
+  imports: [ConfiguracionTabsComponent, ButtonComponent, DateTimePickerComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TextFieldComponent],
   templateUrl: './fecha-fase-cmn-dplaip-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

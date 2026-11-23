@@ -316,7 +316,7 @@ export interface SolicitudResponse {
   /** Taller: ítems propuestos como estratégicos en la solicitud SIE (CMN). */
   detalleItemsEstrategicos?: { documentoId: string; items: ItemEstrategico[] } | null; // SIE
   /** Taller: áreas usuarias (Anexos 01) incluidas en la solicitud del Anexo 02, Fase 1 (CMN). */
-  detalleAnexo2Fase1?: { documentoId: string; areas: AreaUsuariaAnexo1[] } | null; // SA2F1
+  detalleAnexo2Fase1?: { documentoId: string; areas: AreaUsuariaAnexo1[]; /** Fase del CMN (1 si falta). */ fase?: 1 | 2 | 3 } | null; // SA2F1
   detalleConfiguracionMensual?: {
     documentoId: string;
     periodoContableId: string;

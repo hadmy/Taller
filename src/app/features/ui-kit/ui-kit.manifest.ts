@@ -1543,10 +1543,24 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "ui",
     "importacion": "@siaf/ui/bar-chart/bar-chart.component",
     "archivo": "src/app/shared/ui/bar-chart/bar-chart.component.ts",
-    "descripcion": "Gráfico de barras del kit (Figma UI KIT, página «Graphics»: «Bar», «Bar grouped», «Comparative bars» y «Stacked\nbar»), dibujado con Chart.js. Con una serie son barras simples; con dos o más, agrupadas por categoría; y con una sola\ncategoría (o ninguna), el comparativo: las series lado a lado, sin etiqueta de categoría y con un tooltip por barra.\n`orientation=\"horizontal\"`\npone las categorías a la izquierda. Con `stacked` las series se apilan en cada categoría, con 2 px de aire entre\ntramos y el porcentaje de cada tramo adentro cuando entra; con una sola categoría es la barra 100 % del Figma: una\nbarra horizontal que llena el ancho, sin ejes, con el nombre de cada tramo debajo. Los colores salen de la paleta del\nkit (`TOKENS_SERIES`) y se vuelven a leer al cambiar de tema; la leyenda y el tooltip son `siaf-chart-legend` y\n`siaf-chart-tooltip`.",
+    "descripcion": "Gráfico de barras del kit (Figma UI KIT, página «Graphics»: «Bar», «Bar grouped», «Comparative bars» y «Stacked\nbar»), dibujado con Chart.js. Con una serie son barras simples; con dos o más, agrupadas por categoría; y con una sola\ncategoría (o ninguna), el comparativo: las series lado a lado, sin etiqueta de categoría y con un tooltip por barra.\n`orientation=\"horizontal\"`\npone las categorías a la izquierda y muestra el nombre de todas (sin saltear; los de más de 16 caracteres, en varias\nlíneas): el `height` debe dar al menos 14 px por categoría, o 28 px si los nombres son largos. En vertical, los nombres\nde más de 22 caracteres también se parten en líneas, en vez de inclinarse. Con `stacked` las series se apilan en cada categoría, con 2 px de aire entre\ntramos y el porcentaje de cada tramo adentro cuando entra; con una sola categoría es la barra 100 % del Figma: una\nbarra horizontal que llena el ancho, sin ejes, con el nombre de cada tramo debajo. Los colores salen de la paleta del\nkit (`TOKENS_SERIES`) y se vuelven a leer al cambiar de tema; la leyenda y el tooltip son `siaf-chart-legend` y\n`siaf-chart-tooltip`.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
+      {
+        "nombre": "alertIndexes",
+        "tipo": "readonly number[]",
+        "porDefecto": "[]",
+        "requerida": false,
+        "descripcion": "Categorías en alerta (índices en `categories`): sus barras van en rojo (`bg-feedback-dark-danger`) y la leyenda suma `alertLabel` con ese color. Solo sin `stacked`."
+      },
+      {
+        "nombre": "alertLabel",
+        "tipo": "string",
+        "porDefecto": "'Urgente'",
+        "requerida": false,
+        "descripcion": "Nombre del rojo en la leyenda cuando hay categorías en alerta."
+      },
       {
         "nombre": "ariaLabel",
         "tipo": "string",
@@ -1590,11 +1604,39 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "selectable",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Con clic, Enter o Espacio se elige una categoría: la elegida mantiene su color y las demás se atenúan."
+      },
+      {
+        "nombre": "selectedIndex",
+        "tipo": "number | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "Categoría seleccionada (índice en `categories`); `null`, ninguna."
+      },
+      {
+        "nombre": "selectedSeries",
+        "tipo": "number | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "En barras apiladas: serie (tramo) seleccionada; las demás series se atenúan."
+      },
+      {
         "nombre": "series",
         "tipo": "readonly ChartSeries[]",
         "porDefecto": "[]",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "showValues",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Escribe el valor de cada barra en su extremo (a la derecha en horizontal, encima en vertical), con `valueSuffix`. Sin efecto en barras apiladas, que ya muestran el porcentaje de cada tramo."
       },
       {
         "nombre": "stacked",
@@ -1611,8 +1653,19 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Sufijo de los valores en el eje, el tooltip y la tabla (por ejemplo `%`)."
       }
     ],
-    "eventos": [],
-    "usar": "- Para comparar cantidades entre categorías o meses (recaudación, documentos por estado), con pocas series.\n- Dentro de `siaf-chart-section`, que le pone título y descripción.\n- `valueSuffix=\"%\"` cuando los valores son porcentajes, y `ariaLabel` con lo que muestra el gráfico.\n- `stacked` para las partes de un total en cada categoría y, con una sola categoría, para la composición de un total\n  en una barra (activos y patrimonio).",
+    "eventos": [
+      {
+        "nombre": "categorySelected",
+        "tipo": "number | null",
+        "descripcion": "Índice elegido, o `null` al volver a elegir el que ya estaba seleccionado."
+      },
+      {
+        "nombre": "segmentSelected",
+        "tipo": "{ category: number; series: number; } | null",
+        "descripcion": "Con `selectable`, el clic en un tramo emite su categoría y su serie (o `null` si ya estaba elegido)."
+      }
+    ],
+    "usar": "- `selectable` con `[selectedIndex]` y `(categorySelected)` para un tablero interactivo: el clic (o Enter / Espacio\n  tras recorrer con las flechas) elige una categoría, que conserva su color mientras las demás se atenúan; la pantalla\n  filtra con ella. Volver a elegirla emite `null`.\n- Apilado y `selectable`: `(segmentSelected)` trae la categoría y la serie del tramo pulsado (por ejemplo, nivel de\n  gobierno y estado) y `[selectedSeries]` atenúa las demás series.\n- Para comparar cantidades entre categorías o meses (recaudación, documentos por estado), con pocas series.\n- Dentro de `siaf-chart-section`, que le pone título y descripción.\n- `valueSuffix=\"%\"` cuando los valores son porcentajes, y `ariaLabel` con lo que muestra el gráfico.\n- `showValues` para escribir el valor de cada barra en su extremo, cuando la cifra exacta importa (montos, cantidades).\n- `alertIndexes` para marcar en rojo las categorías urgentes (la leyenda suma «Urgente» o `alertLabel`), por ejemplo\n  el pendiente que vence antes. El rojo no basta solo: la leyenda lo nombra.\n- `stacked` para las partes de un total en cada categoría y, con una sola categoría, para la composición de un total\n  en una barra (activos y patrimonio).",
     "evitar": "- Para la evolución de un valor a lo largo del tiempo: usar `siaf-line-chart`.\n- Para variaciones que suben y bajan respecto de cero: usar `siaf-diverging-chart`.\n- Para las partes de un total en un anillo, con el porcentaje de cada parte al centro: usar `siaf-donut-chart`.\n- Con más de cuatro series: la paleta da la vuelta y los colores se repiten.\n- Para un solo número destacado: usar `siaf-kpi-card`.",
     "teclado": "- **Tab**: enfoca el gráfico (una sola parada).\n- **Flecha derecha / izquierda** (vertical) o **abajo / arriba** (horizontal): recorren las categorías y muestran el\n  tooltip con el valor de cada serie; dan la vuelta.\n- En el comparativo, las flechas pasan de una barra a la siguiente y el tooltip muestra solo su valor.\n- **Inicio / Fin**: van a la primera o a la última categoría.\n- **Escape**: oculta el tooltip; salir del gráfico también lo oculta.",
     "accesibilidad": "- **1.1.1 Contenido no textual (A)**: el lienzo es `role=\"img\"` con `ariaLabel` y, además, hay una tabla de datos\n  oculta (`sr-only`) con una fila por categoría y una columna por serie.\n- **1.3.1 Información y relaciones (A)**: la tabla usa `caption`, `th scope=\"col\"` para las series y\n  `th scope=\"row\"` para las categorías.\n- **2.1.1 Teclado (A)**: los valores se recorren con las flechas; al moverse, una región `aria-live` anuncia la\n  categoría y los valores.\n- **2.4.7 Foco visible (AA)**: el lienzo enfocado muestra el contorno de 2 px `border-states-focus`.\n- **1.4.1 Uso del color (A)**: las series se distinguen por color, pero sus nombres están en la leyenda, en el\n  tooltip y en la tabla de datos.\n- **1.4.3 Contraste mínimo (AA)**: el porcentaje dentro de un tramo apilado toma, entre blanco, `text-neutral-high` y la\n  superficie, el de más contraste con su color (4.71:1 como mínimo, en claro y en oscuro); lo dibujado en el lienzo\n  está también en la tabla de datos.\n- **1.4.13 Contenido en hover o foco (AA)**: Escape oculta el tooltip sin mover el puntero ni el foco.\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: en oscuro las barras de las series 1 y 2 (`bg-brand-primary`,\n  2.66:1, y `bg-brand-secondary`, 2.99:1) no llegan a 3:1 sobre la superficie y la 2 y la 3 quedan del mismo tono;\n  la paleta oscura de los gráficos está por definir con diseño.",
@@ -2354,7 +2407,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "ui",
     "importacion": "@siaf/ui/chart-legend/chart-legend.component",
     "archivo": "src/app/shared/ui/chart-legend/chart-legend.component.ts",
-    "descripcion": "Leyenda de los gráficos del kit (Figma UI KIT, página «Graphics», «Leyenda»): un punto de 15 px con el color de\ncada serie y su nombre, alineados a la derecha sobre el gráfico.",
+    "descripcion": "Leyenda de los gráficos del kit (Figma UI KIT, página «Graphics», «Leyenda»): un punto de 10 px con el color de\ncada serie y su nombre en texto chico, en una fila alineada a la izquierda sobre el gráfico (si no entra, sigue en\nla línea de abajo; cada nombre nunca se corta). Con `vertical`, en columna: un nombre por línea.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
@@ -2364,6 +2417,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "[]",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "vertical",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "En columna, un nombre por línea (la torta la pone a la derecha del gráfico)."
       }
     ],
     "eventos": [],
@@ -2391,16 +2451,16 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
-        "token": "--sys-gap-base-lg",
+        "token": "--sys-gap-base-md",
         "via": [
-          "gap-x-siaf-lg"
+          "gap-x-siaf-md"
         ]
       },
       {
-        "token": "--sys-gap-base-xs",
+        "token": "--sys-gap-base-xxs",
         "via": [
-          "gap-siaf-xs",
-          "gap-y-siaf-xs"
+          "gap-siaf-xxs",
+          "gap-y-siaf-xxs"
         ]
       }
     ],
@@ -4343,6 +4403,20 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Qué significa el lado positivo, en color secundario: nombre en la leyenda, el tooltip y la tabla."
       },
       {
+        "nombre": "selectable",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Con clic, Enter o Espacio se elige una categoría: la elegida mantiene su color y las demás se atenúan."
+      },
+      {
+        "nombre": "selectedIndex",
+        "tipo": "number | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "Categoría seleccionada (índice en `categories`); `null`, ninguna."
+      },
+      {
         "nombre": "values",
         "tipo": "readonly number[]",
         "porDefecto": "[]",
@@ -4357,8 +4431,14 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Sufijo de los valores en el eje, el tooltip y la tabla (por ejemplo `%`)."
       }
     ],
-    "eventos": [],
-    "usar": "- Para variaciones respecto de cero por mes o categoría: variación de existencias, superávit y déficit.\n- `negativeLabel` y `positiveLabel` con lo que significa cada lado, como «Disminución» y «Aumento».\n- Dentro de `siaf-chart-section`, que le pone título y descripción.",
+    "eventos": [
+      {
+        "nombre": "categorySelected",
+        "tipo": "number | null",
+        "descripcion": "Índice elegido, o `null` al volver a elegir el que ya estaba seleccionado."
+      }
+    ],
+    "usar": "- `selectable` con `[selectedIndex]` y `(categorySelected)` para un tablero interactivo: el clic (o Enter / Espacio\n  tras recorrer con las flechas) elige una categoría, que conserva su color mientras las demás se atenúan; la pantalla\n  filtra con ella. Volver a elegirla emite `null`.\n- Para variaciones respecto de cero por mes o categoría: variación de existencias, superávit y déficit.\n- `negativeLabel` y `positiveLabel` con lo que significa cada lado, como «Disminución» y «Aumento».\n- Dentro de `siaf-chart-section`, que le pone título y descripción.",
     "evitar": "- Para valores que no cambian de signo: usar `siaf-bar-chart`, horizontal si las etiquetas son largas.\n- Para varias series por categoría: usar `siaf-bar-chart` agrupado.\n- Para la evolución de un valor en el tiempo: usar `siaf-line-chart`.",
     "teclado": "- **Tab**: enfoca el gráfico (una sola parada).\n- **Flecha abajo / arriba**: recorren las categorías y muestran el tooltip con su valor; dan la vuelta.\n- **Inicio / Fin**: van a la primera o a la última categoría.\n- **Escape**: oculta el tooltip; salir del gráfico también lo oculta.",
     "accesibilidad": "- **1.1.1 Contenido no textual (A)**: el lienzo es `role=\"img\"` con `ariaLabel` y, además, hay una tabla de datos\n  oculta (`sr-only`) con una fila por categoría y el valor en la columna de su lado.\n- **1.3.1 Información y relaciones (A)**: la tabla usa `caption`, `th scope=\"col\"` para los dos lados y\n  `th scope=\"row\"` para las categorías.\n- **2.1.1 Teclado (A)**: los valores se recorren con las flechas; al moverse, una región `aria-live` anuncia la\n  categoría, el lado y el valor.\n- **2.4.7 Foco visible (AA)**: el lienzo enfocado muestra el contorno de 2 px `border-states-focus`.\n- **1.4.1 Uso del color (A)**: el lado no depende solo del color: la barra queda a la izquierda o a la derecha del\n  cero, el valor lleva su signo y el nombre del lado está en la leyenda, en el tooltip y en la tabla.\n- **1.4.13 Contenido en hover o foco (AA)**: Escape oculta el tooltip sin mover el puntero ni el foco.\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: en oscuro las barras de los dos lados (`bg-brand-primary`,\n  2.66:1, y `bg-brand-secondary`, 2.99:1) no llegan a 3:1 sobre la superficie; la paleta oscura de los gráficos está\n  por definir con diseño.",
@@ -4473,7 +4553,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "components",
     "importacion": "@siaf/shared/components/document-history-panel/document-history-panel.component",
     "archivo": "src/app/shared/components/document-history-panel/document-history-panel.component.ts",
-    "descripcion": "Modal centrado «Historial del documento» (Figma «CMN Programación · Solicitud de Ítems Estratégicos», nodo\n18911:7221), que abre la bandeja `siaf-documents-records-page` desde la pestaña Documentos.\n\nMuestra el documento en su fila y debajo su N° y el tipo de acción, una sección plegable opcional de atributos y la\ntabla del historial de estados (usuario y unidad organizacional en mayúsculas, fecha y hora en una línea y el estado\ncon `siaf-flow-status-tag`), que pide a la API con\n`solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o pulsando el fondo, que emiten `closed`.",
+    "descripcion": "Panel lateral «Historial del documento» (`siaf-side-panel` sin pie; Figma «CMN Programación · Solicitud de Ítems\nEstratégicos», nodo 18911:7221), que abre la bandeja `siaf-documents-records-page` desde la pestaña Documentos.\n\nMuestra el documento en su fila y debajo su N° y el tipo de acción, una sección plegable opcional de atributos y la\ntabla del historial de estados (usuario y unidad organizacional en mayúsculas, fecha y hora en una línea y el estado\ncon `siaf-flow-status-tag`), que pide a la API con\n`solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o con Escape, que emiten `closed`.",
     "usaSesion": true,
     "proyectaContenido": false,
     "entradas": [
@@ -4502,7 +4582,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "usar": "- Para ver desde la pestaña Documentos de cualquier bandeja quién movió el documento y cuándo pasó por Elaborado,\n  Verificado, Observado o Aprobado, sin abrir la solicitud.\n- Con `attributes` y `staticRows` para documentos que no son solicitudes del flujo, como los asientos de apertura\n  anual (Registrado, Procesado, Anulado).",
     "evitar": "- Para registros (pestaña Registros): usar `siaf-account-history-panel` o `siaf-asiento-history-panel`.\n- Dentro de la solicitud abierta: usar `siaf-detail-history-tabs` y `siaf-action-tracker` en la página.\n- Para mostrar comentarios u observaciones: la tabla no pinta el `comentario` aunque viaje en cada fila; usar\n  `siaf-detail-history-tabs`.",
     "teclado": "- **Tab**: al abrir, el foco entra en la X; recorre el botón de atributos y da la vuelta sin salir del panel.\n- **Enter / Espacio** en la X: cierran el panel (emite `closed`).\n- **Escape**: cierra el panel (emite `closed`) y el foco vuelve al botón de historial.\n- **Enter / Espacio** en el botón de atributos: pliegan o despliegan la sección.",
-    "accesibilidad": "- **Pendiente · 4.1.2 Nombre, función y valor (A)**: es `role=\"dialog\"` con `aria-modal`, nombre desde su título y\n  la X «Cerrar historial»; pero el botón de atributos no publica `aria-expanded` ni `aria-controls`: su estado solo\n  se ve en la flecha.\n- **1.3.1 Información y relaciones (A)**: título `h2` y estados en una `table` con `thead` y `th`, dentro de una\n  sección nombrada «Historial de estados».\n- **1.4.1 Uso del color (A)**: cada estado va escrito en `siaf-flow-status-tag`.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: etiquetas `text-neutral-low` 5.01:1 (oscuro 8.86:1), valores\n  `text-neutral-high` 16.29:1 (16.53:1) y celdas `text-neutral-medium` 14.53:1 (12.87:1) cumplen, pero el estado\n  Observado da 3.39:1 en claro.\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir lleva el foco a la X y lo retiene en el panel; al cerrar (X,\n  Escape o clic en el fondo) lo devuelve al botón de historial.\n- **2.4.7 Foco visible (AA)**: la X y el botón de atributos no definen estilo de foco: muestran el contorno por\n  defecto del navegador.\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: la carga pinta filas grises animadas sin texto ni `aria-busy`, así\n  que no se anuncia.",
+    "accesibilidad": "- **Pendiente · 4.1.2 Nombre, función y valor (A)**: `siaf-side-panel` lo hace `role=\"dialog\"` con `aria-modal`,\n  nombre desde su título y la X «Cerrar» más el título; pero el botón de atributos no publica `aria-expanded` ni `aria-controls`: su estado solo\n  se ve en la flecha.\n- **1.3.1 Información y relaciones (A)**: título `h2` y estados en una `table` con `thead` y `th`, dentro de una\n  sección nombrada «Historial de estados».\n- **1.4.1 Uso del color (A)**: cada estado va escrito en `siaf-flow-status-tag`.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: etiquetas `text-neutral-low` 5.01:1 (oscuro 8.86:1), valores\n  `text-neutral-high` 16.29:1 (16.53:1) y celdas `text-neutral-medium` 14.53:1 (12.87:1) cumplen, pero el estado\n  Observado da 3.39:1 en claro.\n- **2.4.3 Orden del foco (A)**: `siaf-side-panel` (con `siafFoco`) lleva el foco a la X al abrir y lo retiene en el\n  panel; al cerrar (X o Escape) lo devuelve al botón de historial.\n- **2.4.7 Foco visible (AA)**: la X trae el anillo de foco de `siaf-side-panel`; el botón de atributos no define\n  estilo de foco y muestra el contorno por defecto del navegador.\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: la carga pinta filas grises animadas sin texto ni `aria-busy`, así\n  que no se anuncia.",
     "figma": [
       {
         "nodo": "18911:7221",
@@ -4510,26 +4590,15 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "aria": {
-      "roles": [
-        "dialog"
-      ],
+      "roles": [],
       "atributos": [
-        "aria-label",
-        "aria-labelledby",
-        "aria-modal"
+        "aria-label"
       ]
     },
     "tokens": [
       {
-        "token": "--sys-color-bg-surfaces-surface",
-        "via": [
-          "bg-surface"
-        ]
-      },
-      {
         "token": "--sys-color-bg-surfaces-surface-high",
         "via": [
-          "bg-surface-muted",
           "var()"
         ]
       },
@@ -4573,8 +4642,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-gap-base-lg",
         "via": [
           "gap-siaf-lg",
-          "gap-y-siaf-lg",
-          "p-siaf-lg"
+          "gap-y-siaf-lg"
         ]
       },
       {
@@ -4585,20 +4653,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
           "ml-siaf-md",
           "mt-siaf-md",
           "p-siaf-md",
-          "px-siaf-md",
-          "py-siaf-md"
+          "px-siaf-md"
         ]
       },
       {
         "token": "--sys-gap-base-sm",
         "via": [
           "py-siaf-sm"
-        ]
-      },
-      {
-        "token": "--sys-gap-base-xl",
-        "via": [
-          "px-siaf-xl"
         ]
       },
       {
@@ -4625,18 +4686,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
           "rounded-l-siaf-sm",
           "rounded-r-siaf-sm"
         ]
-      },
-      {
-        "token": "--sys-shadow-lg",
-        "via": [
-          "shadow-siaf-lg"
-        ]
       }
     ],
     "usa": [
-      "[siafFoco]",
       "siaf-flow-status-tag",
-      "siaf-icon"
+      "siaf-icon",
+      "siaf-side-panel"
     ],
     "sinUso": false
   },
@@ -4773,7 +4828,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "components",
     "importacion": "@siaf/shared/components/documents-records-page/documents-records-page.component",
     "archivo": "src/app/shared/components/documents-records-page/documents-records-page.component.ts",
-    "descripcion": "Pantalla «Documentos y registros» de un proceso, armada desde un `DocumentsRecordsConfig`: breadcrumb, título,\n«Crear documento», pestañas Documentos / Registros, buscador con menús y filtros, grilla estándar con paginación y\nlos paneles de historial y de columnas.\nAplica las reglas de rol (el creador crea, el aprobador aprueba validados y el resto solo consulta; `modoConsulta`\nquita crear y las acciones) y ejecuta aprobar en lote contra el backend.\nCon `serverQuery` / `serverRecordsQuery` la búsqueda y la paginación las resuelve el padre en el servidor, y la\nselección sobrevive al refresco por polling.",
+    "descripcion": "Pantalla «Documentos y registros» de un proceso, armada desde un `DocumentsRecordsConfig`: breadcrumb, título,\n«Crear documento», pestañas Documentos / Registros, buscador con menús y filtros, grilla estándar con paginación y\nlos paneles de historial y de columnas.\nAplica las reglas de rol (el creador crea, marca documentos y los abre con Editar o elimina los Elaborados; el\naprobador aprueba validados; el resto solo consulta; `modoConsulta` quita crear y las acciones) y ejecuta aprobar y\neliminar en lote contra el backend.\nCon `serverQuery` / `serverRecordsQuery` la búsqueda y la paginación las resuelve el padre en el servidor, y la\nselección sobrevive al refresco por polling.",
     "usaSesion": true,
     "proyectaContenido": true,
     "entradas": [
@@ -5181,6 +5236,20 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Alto del área del gráfico en px (sin la leyenda)."
       },
       {
+        "nombre": "selectable",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Con `true`, el clic (o Enter / Espacio) en un tramo lo elige y emite `categorySelected`."
+      },
+      {
+        "nombre": "selectedIndex",
+        "tipo": "number | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "Tramo seleccionado: los demás se atenúan. `null`, ninguno."
+      },
+      {
         "nombre": "valueLabel",
         "tipo": "string",
         "porDefecto": "'Valor'",
@@ -5200,12 +5269,25 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "''",
         "requerida": false,
         "descripcion": "Sufijo de los valores en la tabla de datos y el anuncio (por ejemplo `%`)."
+      },
+      {
+        "nombre": "variant",
+        "tipo": "'donut' | 'pie'",
+        "porDefecto": "'donut'",
+        "requerida": false,
+        "descripcion": "`donut` (por defecto): el anillo del Figma, con el nombre y el porcentaje del tramo activo al centro. `pie`: torta llena, con el porcentaje de cada parte afuera de su tramo y la leyenda a la derecha."
       }
     ],
-    "eventos": [],
-    "usar": "- Para ver cómo se reparte un total entre pocas partes: activos, patrimonio y pasivos de un balance.\n- Dentro de `siaf-chart-section`, que le pone título y descripción.\n- `valueSuffix` cuando los valores llevan unidad en la tabla de datos; el centro siempre muestra el porcentaje.",
+    "eventos": [
+      {
+        "nombre": "categorySelected",
+        "tipo": "number | null",
+        "descripcion": "Índice del tramo elegido, o `null` al volver a elegir el seleccionado."
+      }
+    ],
+    "usar": "- Para ver cómo se reparte un total entre pocas partes: activos, patrimonio y pasivos de un balance.\n- Dentro de `siaf-chart-section`, que le pone título y descripción.\n- `valueSuffix` cuando los valores llevan unidad en la tabla de datos; el centro siempre muestra el porcentaje.\n- `variant=\"pie\"` para una torta llena con el porcentaje de cada parte afuera y la leyenda a la derecha, cuando se\n  quieren ver todos los porcentajes a la vez (sin pasar el puntero). Con nombres que incluyan el total («Aprobada: 98»)\n  la leyenda muestra también la cantidad de cada color.\n- `selectable` con `[selectedIndex]` y `(categorySelected)` para un tablero interactivo: el clic (o Enter / Espacio)\n  elige un tramo, que conserva su color mientras los demás se atenúan; volver a elegirlo emite `null`.",
     "evitar": "- Para un avance de 0 a 100 %: usar `siaf-progress-circular`.\n- Para comparar cantidades entre categorías: usar `siaf-bar-chart`.\n- Para la composición de un total en una barra, con el porcentaje de cada parte a la vista: usar `siaf-bar-chart` con\n  `stacked` y una sola categoría.\n- Con más de cuatro partes: la paleta da la vuelta y los colores se repiten.",
-    "teclado": "- **Tab**: enfoca el gráfico (una sola parada).\n- **Flecha derecha / izquierda**: recorren los tramos y muestran al centro el nombre y el porcentaje de cada uno; dan la\n  vuelta.\n- **Inicio / Fin**: van al primer o al último tramo.\n- **Escape**: oculta el centro; salir del gráfico también lo oculta.",
+    "teclado": "- **Tab**: enfoca el gráfico (una sola parada).\n- **Flecha derecha / izquierda**: recorren los tramos y muestran al centro el nombre y el porcentaje de cada uno; dan la\n  vuelta.\n- **Inicio / Fin**: van al primer o al último tramo.\n- **Escape**: oculta el centro; salir del gráfico también lo oculta.\n- **Enter / Espacio** (con `selectable`): eligen el tramo activo o quitan la selección.",
     "accesibilidad": "- **1.1.1 Contenido no textual (A)**: el lienzo es `role=\"img\"` con `ariaLabel` y, además, hay una tabla de datos\n  oculta (`sr-only`) con el valor y el porcentaje de cada parte.\n- **1.3.1 Información y relaciones (A)**: la tabla usa `caption`, `th scope=\"col\"` y `th scope=\"row\"` para cada parte.\n- **2.1.1 Teclado (A)**: los tramos se recorren con las flechas; al moverse, una región `aria-live` anuncia la parte, su\n  porcentaje y su valor.\n- **2.4.7 Foco visible (AA)**: el lienzo enfocado muestra el contorno de 2 px `border-states-focus`.\n- **1.4.1 Uso del color (A)**: las partes se distinguen por color, pero sus nombres están en la leyenda, en el centro y\n  en la tabla de datos.\n- **1.4.3 Contraste mínimo (AA)**: el centro va en `text-neutral-medium` sobre la superficie.\n- **1.4.13 Contenido en hover o foco (AA)**: Escape oculta el centro sin mover el puntero ni el foco.\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: en oscuro los tramos primario (`bg-brand-primary`, 2.66:1) y\n  secundario (`bg-brand-secondary`, 2.99:1) no llegan a 3:1 sobre la superficie; la paleta oscura de los gráficos está\n  por definir con diseño.",
     "figma": [
       {
@@ -5250,7 +5332,8 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-md",
         "via": [
-          "gap-siaf-md"
+          "gap-siaf-md",
+          "pb-siaf-md"
         ]
       },
       {
@@ -6407,6 +6490,20 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Monto ya formateado («$1,245,800.00»)."
       },
       {
+        "nombre": "compact",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Versión compacta, para tableros con muchas tarjetas: menos relleno, y título, ícono y monto más chicos."
+      },
+      {
+        "nombre": "description",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "Línea opcional bajo la barra con el detalle del dato («1,234 sin iniciar · 567 en elaboración»)."
+      },
+      {
         "nombre": "icon",
         "tipo": "string",
         "porDefecto": "'arrow_outward'",
@@ -6443,7 +6540,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "eventos": [],
-    "usar": "- Para un número clave de un tablero, como «Total Activos», con su avance respecto de una meta.\n- `tone` para acompañar el sentido del dato (éxito, advertencia, riesgo), repitiéndolo en el título o el monto.\n- En una grilla junto a otras tarjetas KPI, sobre las `siaf-chart-section` del mismo tablero.",
+    "usar": "- Para un número clave de un tablero, como «Total Activos», con su avance respecto de una meta.\n- `tone` para acompañar el sentido del dato (éxito, advertencia, riesgo), repitiéndolo en el título o el monto.\n- `description` para una línea de detalle bajo la barra, como el desglose del número.\n- `compact` en tableros densos (cinco o más tarjetas por fila) para que ocupen menos alto.\n- En una grilla junto a otras tarjetas KPI, sobre las `siaf-chart-section` del mismo tablero.",
     "evitar": "- Para una serie de valores o una comparación: usar `siaf-bar-chart` o `siaf-line-chart` dentro de\n  `siaf-chart-section`.\n- Para el resumen de un documento o registro elegido: usar `siaf-summary-card`.\n- Para un número sin avance que medir: la barra siempre se muestra y quedaría en 0 %.\n- Como única señal de un estado: el tono es solo color.",
     "teclado": "- No recibe foco: no es interactiva.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: es un `article` nombrado con el título; el ícono es decorativo\n  (`aria-hidden`).\n- **4.1.2 Nombre, función y valor (A)**: la barra es `role=\"progressbar\"` con `aria-valuenow` y el título como\n  nombre; el porcentaje visible va con `aria-hidden` para no leerse dos veces.\n- **1.4.1 Uso del color (A)**: el tono del ícono no dice nada por sí solo; el sentido del dato debe estar en el\n  título o en el monto.\n- **1.4.3 Contraste mínimo (AA)**: monto `text-neutral-high` (16.29:1 claro / 16.53:1 oscuro), título\n  `text-neutral-low` (5.01:1 / 8.86:1) y porcentaje `text-neutral-medium` sobre la superficie.\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: en oscuro el relleno de la barra (`bg-brand-primary`) no llega\n  a 3:1 sobre su riel; la paleta oscura de los gráficos está por definir con diseño.",
@@ -6504,13 +6601,15 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-md",
         "via": [
-          "gap-siaf-md"
+          "gap-siaf-md",
+          "px-siaf-md"
         ]
       },
       {
         "token": "--sys-gap-base-sm",
         "via": [
-          "gap-siaf-sm"
+          "gap-siaf-sm",
+          "py-siaf-sm"
         ]
       },
       {
@@ -6614,7 +6713,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "eventos": [],
-    "usar": "- Para la evolución de uno o más valores a lo largo de meses o periodos, como activos y existencias por mes.\n- Dentro de `siaf-chart-section`, que le pone título y descripción.\n- `min` y `max` para fijar el rango del eje (en el Figma, de 100 a 500), y `valueSuffix=\"%\"` para porcentajes.",
+    "usar": "- Para la evolución de uno o más valores a lo largo de meses o periodos, como activos y existencias por mes.\n- Dentro de `siaf-chart-section`, que le pone título y descripción.\n- `min` y `max` para fijar el rango del eje (en el Figma, de 100 a 500), y `valueSuffix=\"%\"` para porcentajes.\n- Para series largas (más de 20 categorías, como los días de una fase): la línea pasa a 2 px y los puntos a huecos\n  de 6 px, con el relleno de la superficie y el borde del color de la serie, para que cada punto se vea.",
     "evitar": "- Para comparar cantidades entre categorías sin un orden en el tiempo: usar `siaf-bar-chart`.\n- Para variaciones que suben y bajan respecto de cero: usar `siaf-diverging-chart`.\n- Con más de cuatro series: la paleta da la vuelta y los colores se repiten.",
     "teclado": "- **Tab**: enfoca el gráfico (una sola parada).\n- **Flecha derecha / izquierda**: recorren las categorías y muestran el tooltip con el valor de cada serie; dan la\n  vuelta.\n- **Inicio / Fin**: van a la primera o a la última categoría.\n- **Escape**: oculta el tooltip; salir del gráfico también lo oculta.",
     "accesibilidad": "- **1.1.1 Contenido no textual (A)**: el lienzo es `role=\"img\"` con `ariaLabel` y, además, hay una tabla de datos\n  oculta (`sr-only`) con una fila por categoría y una columna por serie.\n- **1.3.1 Información y relaciones (A)**: la tabla usa `caption`, `th scope=\"col\"` para las series y\n  `th scope=\"row\"` para las categorías.\n- **2.1.1 Teclado (A)**: los valores se recorren con las flechas; al moverse, una región `aria-live` anuncia la\n  categoría y los valores.\n- **2.4.7 Foco visible (AA)**: el lienzo enfocado muestra el contorno de 2 px `border-states-focus`.\n- **1.4.1 Uso del color (A)**: las líneas se distinguen solo por color (el Figma no usa trazos distintos), pero sus\n  nombres están en la leyenda, en el tooltip y en la tabla de datos.\n- **1.4.13 Contenido en hover o foco (AA)**: Escape oculta el tooltip sin mover el puntero ni el foco.\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: en oscuro las líneas de las series 1 y 2 (`bg-brand-primary`,\n  2.66:1, y `bg-brand-secondary`, 2.99:1) no llegan a 3:1 sobre la superficie; la paleta oscura de los gráficos está\n  por definir con diseño.",
@@ -9253,7 +9352,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "archivo": "src/app/shared/components/query-report-page/query-report-page.component.ts",
     "descripcion": "Plantilla de pantalla «Consultas y reportes» (Guía de Estructura de Pantallas, nodo 9455:107865): la nueva versión de\nlas consultas, armada desde un `QueryReportConfig`. Antes de consultar muestra el estado vacío; «Parámetros» abre\n`siaf-query-parameters-panel` y, al aplicar, emite `queried` para que la pantalla traiga el resultado. Con resultado\npinta «Parámetros aplicados», y en «Resultado de reporte» las pestañas, la card resumen, el buscador (Filtrar y\nColumnas), los filtros predeterminados, la tabla de datos detallada y la paginación. Buscar, filtrar y paginar\nocurren sobre las filas recibidas.\n\nCon `charts` en la configuración, el encabezado del resultado suma el selector «Vista de datos | Vista de gráficas»\n(nodo 22715:21316) y la vista de gráficas (nodo 22402:16766): tarjetas KPI y gráficos calculados con las mismas filas\nque muestra la tabla, es decir, después de buscar y filtrar; un gráfico que se queda sin datos muestra un aviso en vez\nde ejes vacíos. Esa vista se carga con `@defer` al abrirla, así Chart.js\nno pesa en la pantalla hasta que alguien la usa. «Exportar» abre el menú Excel, CSV y PDF y emite `exported` con el\nformato.\n\nNo llama a la API: la pantalla consulta y entrega `result` (con `loading` mientras tanto).",
     "usaSesion": false,
-    "proyectaContenido": false,
+    "proyectaContenido": true,
     "entradas": [
       {
         "nombre": "activeTab",
@@ -9270,11 +9369,25 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "initialView",
+        "tipo": "'datos' | 'graficas'",
+        "porDefecto": null,
+        "requerida": false,
+        "descripcion": "Vista al empezar: `graficas` abre en KPI y gráficos (un tablero); sin `charts` en la configuración, siempre datos."
+      },
+      {
         "nombre": "loading",
         "tipo": "boolean",
         "porDefecto": "false",
         "requerida": false,
         "descripcion": "Mientras la pantalla consulta: la tabla o las gráficas pasan a esqueleto y «Exportar» se deshabilita."
+      },
+      {
+        "nombre": "parameters",
+        "tipo": "QueryReportParameters | null",
+        "porDefecto": null,
+        "requerida": false,
+        "descripcion": "Parámetros ya aplicados al entrar, sin abrir el panel: la pantalla consulta con ellos por su cuenta y entrega `result` (no se emite `queried`)."
       },
       {
         "nombre": "result",
@@ -9293,7 +9406,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "nombre": "columnsRequested",
         "tipo": "void",
-        "descripcion": "«Columnas» del buscador (Columnas visibles)."
+        "descripcion": "«Columnas» del buscador: además de abrir el panel «Ocultar o mostrar columnas», avisa a la pantalla."
       },
       {
         "nombre": "exported",
@@ -9321,7 +9434,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Para una pantalla «Consultas y reportes» de un proceso: título, migas, campos de parámetros, columnas (con grupos y\n  la última fija), pestañas y filtros predeterminados en la configuración.\n- `tabs` cuando el reporte tiene varias vistas del mismo resultado: la pantalla recibe `tabChanged` y entrega el\n  resultado de esa pestaña.\n- `charts` para la vista de gráficas: cada KPI suma una columna (o cuenta filas), con un filtro opcional por valor, y\n  cada gráfico agrupa por una columna (o por mes, con una fecha), en valores, índice respecto de la primera categoría\n  (`index`) o variación respecto de ella (`change`). `width: 'narrow'` pone un gráfico en la columna de 336 px a la\n  derecha del anterior, como en el Figma.\n- `exported` para generar el archivo: trae el formato elegido y las filas que quedaron tras buscar y filtrar.\n- `favoritesRequested`, `advancedFiltersRequested` y `columnsRequested` para lo que la pantalla resuelve por su cuenta\n  mientras la plantilla no traiga esos paneles.",
+    "usar": "- Para una pantalla «Consultas y reportes» de un proceso: título, migas, campos de parámetros, columnas (con grupos y\n  la última fija), pestañas y filtros predeterminados en la configuración.\n- `tabs` cuando el reporte tiene varias vistas del mismo resultado: la pantalla recibe `tabChanged` y entrega el\n  resultado de esa pestaña.\n- `charts` para la vista de gráficas: cada KPI suma una columna (o cuenta filas), con un filtro opcional por valor, y\n  cada gráfico agrupa por una columna (o por mes, con una fecha), en valores, índice respecto de la primera categoría\n  (`index`) o variación respecto de ella (`change`). `width: 'narrow'` pone un gráfico en la columna de 336 px a la\n  derecha del anterior, como en el Figma.\n- Un elemento con el atributo `reportFilters` (por ejemplo, una fila de combos) para filtros rápidos bajo el título del\n  resultado, en las dos vistas: la pantalla filtra las filas y entrega el `result` filtrado.\n- `charts.interactive` para un tablero: el clic en una barra filtra los KPI (y los gráficos de otra dimensión) por esa\n  categoría, la resalta en los que agrupan igual y muestra un chip para quitarla.\n- `initialView=\"graficas\"` y `parameters` para un tablero que abre ya consultado y en la vista de gráficas: la pantalla\n  consulta al entrar con esos parámetros.\n- `exported` para generar el archivo: trae el formato elegido y las filas que quedaron tras buscar y filtrar.\n- «Columnas» del buscador abre `siaf-column-visibility-panel`: la primera columna queda fija y las demás se ocultan o se\n  muestran al «Aplicar» (en todas las pestañas). `favoritesRequested`, `advancedFiltersRequested` y `columnsRequested`\n  avisan a la pantalla de lo que resuelve por su cuenta.",
     "evitar": "- Para la bandeja de documentos y registros de un proceso: usar `siaf-documents-records-page`.\n- Para una vista de solo lectura que no es un reporte: usar `siaf-page-shell` con `siaf-page-header`.\n- Maquetar otra consulta con estado vacío, panel de búsqueda y tabla a mano: pasar su configuración a esta\n  plantilla.\n- Calcular los KPI o los gráficos en la pantalla y pintarlos aparte: declararlos en `charts`, así siguen a la búsqueda\n  y a los filtros de la tabla.",
     "teclado": "- **Tab**: recorre las migas, «Favoritos» y «Parámetros», las tarjetas de parámetros aplicados, el selector de vista,\n  «Exportar», las pestañas y, en la vista de datos, el buscador y sus botones, los filtros, la tabla y la paginación;\n  en la de gráficas, cada gráfico.\n- **Enter** en el buscador: busca en todas las columnas (sin distinguir mayúsculas ni tildes) y vuelve a la primera\n  página.\n- El panel de parámetros, el selector de vista, el menú «Exportar», las pestañas, las píldoras, la tabla y los\n  gráficos siguen su componente.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: el título de la pantalla es el `h1` de `siaf-page-header`; el de la tarjeta\n  del resultado, un `h2`, y el de cada gráfico, el `h3` de `siaf-chart-section`.\n- **4.1.2 Nombre, función y valor (A)**: el selector de vista es un grupo «Vista del resultado» con `aria-pressed` en\n  cada botón, nombrado como su tooltip; «Exportar» anuncia su menú con `aria-haspopup` y `aria-expanded`.\n- **4.1.3 Mensajes de estado (AA)**: el total de filas tras buscar o filtrar se anuncia en una región\n  `aria-live=\"polite\"` que no se ve.\n- **2.4.3 Orden del foco (A)**: al cerrar el panel de parámetros el foco vuelve a «Parámetros».\n- **3.2.2 Al introducir datos (A)**: escribir en el buscador no cambia la tabla hasta pulsar Enter; elegir un filtro\n  predeterminado sí filtra al momento, y se anuncia.\n- **1.1.1 Contenido no textual (A)**: cada gráfico se llama como su título y lleva su tabla de datos oculta; con una\n  búsqueda o un filtro activos, una nota avisa con cuántas filas se calcularon.\n- **1.4.10 Reajuste del contenido (AA)**: en pantallas angostas las acciones del encabezado bajan, las tarjetas KPI\n  y los gráficos pasan a una columna y la tabla se desplaza dentro de su zona, sin desplazar la página.",
@@ -9355,6 +9468,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       },
       {
         "token": "--sys-color-text-neutral-high",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-medium",
         "via": [
           "var()"
         ]
@@ -9400,6 +9519,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-button",
       "siaf-buttons-group",
       "siaf-chart-section",
+      "siaf-column-visibility-panel",
       "siaf-diverging-chart",
       "siaf-donut-chart",
       "siaf-empty-state",
@@ -9416,9 +9536,10 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-report-summary-card",
       "siaf-report-table",
       "siaf-table-skeleton",
-      "siaf-tabs"
+      "siaf-tabs",
+      "siaf-tag"
     ],
-    "sinUso": true
+    "sinUso": false
   },
   {
     "selector": "siaf-radio-group",
@@ -10966,7 +11087,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Para un panel lateral con contenido libre y, si hace falta, confirmación: un detalle breve, ayuda contextual o un\n  formulario corto que no tiene ya su panel propio.\n- `showFooter` en false para un panel de solo lectura; `confirmDisabled` mientras falte algo para aceptar.\n- `showReturn` cuando el panel es un segundo paso y la flecha vuelve al anterior (emite `returned`).\n- `embedded` para pintarlo dentro de otro contenedor, como el panel de filtros de `siaf-side-panel`.",
+    "usar": "- Para un panel lateral con contenido libre y, si hace falta, confirmación: un detalle breve, ayuda contextual o un\n  formulario corto que no tiene ya su panel propio.\n- `showFooter` en false para un panel de solo lectura; `confirmDisabled` mientras falte algo para aceptar. * - `showReturn` cuando el panel es un segundo paso y la flecha vuelve al anterior (emite `returned`).\n- `embedded` para pintarlo dentro de otro contenedor, como el panel de filtros de `siaf-side-panel`.",
     "evitar": "- Para elegir registros de un catálogo: usar `siaf-selection-side-nav`; para adjuntar archivos, `siaf-upload-side-nav`;\n  para los parámetros de una consulta, `siaf-query-parameters-panel`.\n- Para el historial de un documento o registro: usar `siaf-document-history-panel`, `siaf-account-history-panel` o\n  `siaf-asiento-history-panel`.\n- Cuando el contenido necesita todo el ancho de la pantalla (una tabla, un documento): usar `siaf-side-panel`.\n- Para una confirmación corta: usar `siaf-modal`.",
     "teclado": "- **Tab / Shift + Tab**: al abrir, el foco entra en el primer control del encabezado (la flecha o la X); recorren el\n  contenido y Cancelar / Aceptar, y dan la vuelta sin salir del panel.\n- **Escape**: cierra el panel (emite `closed`) y el foco vuelve al control que lo abrió.\n- **Enter / Espacio**: la flecha emite `returned`, la X emite `closed`, Cancelar emite `canceled` (y `closed` si no es\n  `embedded`) y Aceptar emite `confirmed`.\n- `embedded` no atrapa el foco ni cierra con Escape: sigue el orden de la página que lo contiene.",
     "accesibilidad": "- **4.1.2 Nombre, función y valor (A)**: el panel es `role=\"dialog\"` con `aria-modal=\"true\"` y `aria-labelledby` al\n  título; la X se llama «Cerrar» más el título y la flecha, «Volver». Con `embedded` es una sección nombrada por su\n  título, sin diálogo.\n- **1.3.1 Información y relaciones (A)**: el título es un `h2`; con `embedded`, un `h3`, porque va dentro de otro\n  panel con título propio.\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir lleva el foco al encabezado y al cerrar lo devuelve al control\n  que lo abrió; Tab no sale a la página de atrás.\n- **2.1.2 Sin trampas de teclado (A)**: Tab queda dentro mientras está abierto, pero Escape siempre lo cierra.\n- **2.4.7 Foco visible (AA)**: la flecha y la X muestran el anillo `border-states-focus` de 2 px (5.35:1 claro /\n  10.15:1 oscuro); Cancelar y Aceptar siguen `siaf-button`.\n- **2.5.8 Tamaño del objetivo (AA)**: la flecha y la X miden 40 px.\n- **1.4.3 Contraste mínimo (AA)**: título `text-neutral-high` sobre la superficie (16.29:1 claro / 16.53:1 oscuro).",
@@ -13314,7 +13435,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "components",
     "importacion": "@siaf/shared/components/table-controls/table-controls.component",
     "archivo": "src/app/shared/components/table-controls/table-controls.component.ts",
-    "descripcion": "Barra superior estándar de las grillas: checkbox de seleccionar todo (con estado indeterminado), acciones sobre las\nfilas elegidas y, a la derecha, `siaf-pagination` en posición `Top`.\n\nLas acciones (editar, eliminar, exportar, más opciones y las que la página proyecta con el atributo `tableAction`)\nsolo aparecen con `selectedCount` mayor que 0, cada una encendida con `showEditAction`, `showDeleteAction`,\n`showExportAction` o `showMenuAction`. Con `[showSelection]=\"false\"` queda solo la paginación.",
+    "descripcion": "Barra superior estándar de las grillas: checkbox de seleccionar todo (con estado indeterminado), acciones sobre las\nfilas elegidas y, a la derecha, `siaf-pagination` en posición `Top`.\n\nLas acciones (editar, eliminar, exportar, más opciones y las que la página proyecta con el atributo `tableAction`)\nsolo aparecen con `selectedCount` mayor que 0, cada una encendida con `showEditAction`, `showDeleteAction`,\n`showExportAction` o `showMenuAction`. Con `[showSelection]=\"false\"` queda solo la paginación, y con\n`[showTopPagination]=\"false\"` la grilla se pagina solo con la paginación de abajo.",
     "usaSesion": false,
     "proyectaContenido": true,
     "entradas": [
@@ -13443,6 +13564,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "true",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "showTopPagination",
+        "tipo": "boolean",
+        "porDefecto": "true",
+        "requerida": false,
+        "descripcion": "`false` quita la paginación de arriba (queda solo la de abajo de la tabla, `siaf-pagination` en `Bottom`)."
       },
       {
         "nombre": "totalItems",
@@ -14467,10 +14595,10 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "eventos": [],
-    "usar": "- Como contenido de la Bandeja de Documentos en `siaf-app-shell`: se pinta al elegir Recibidos, Enviados, Borradores\n  o Papelera en `siaf-tray-menu`, con esa sección en `title`.\n- Para revisar los documentos propios según el rol: el creador ve borradores, enviados, respuestas del aprobador y\n  eliminados; el aprobador, lo que recibe para aprobar y lo que ya respondió.",
-    "evitar": "- Para los documentos de un proceso (plan de cuentas, asientos de ajuste, catálogo de eventos…): usar\n  `siaf-documents-records-page`, con pestañas Documentos / Registros e historial.\n- Para la sección Notificaciones de la bandeja: usar `siaf-tray-notifications-view`.\n- Como base de una grilla nueva: varios controles aún no hacen nada (casillas, Campos, Favorito, Más opciones,\n  Historial e Inicio); partir de `siaf-table-controls`, `siaf-documents-records-table` y `siaf-pagination`.",
+    "usar": "- Como contenido de la Bandeja de Documentos en `siaf-app-shell`: se pinta al elegir Recibidos, Enviados, Borradores\n  o Papelera en `siaf-tray-menu`, con esa sección en `title`.\n- Para revisar los documentos propios según el rol: el creador ve borradores, enviados, respuestas del aprobador y\n  eliminados; el aprobador, lo que recibe para aprobar y lo que ya respondió.\n- Al marcar documentos: Editar (con uno solo) abre la solicitud y Eliminar, con confirmación, elimina los propios en\n  estado Elaborado; el resto queda igual.",
+    "evitar": "- Para los documentos de un proceso (plan de cuentas, asientos de ajuste, catálogo de eventos…): usar\n  `siaf-documents-records-page`, con pestañas Documentos / Registros e historial.\n- Para la sección Notificaciones de la bandeja: usar `siaf-tray-notifications-view`.\n- Como base de una grilla nueva: varios controles aún no hacen nada (Campos, Favorito, Más opciones, Historial e\n  Inicio); partir de `siaf-table-controls`, `siaf-documents-records-table` y `siaf-pagination`.",
     "teclado": "- **Enter** en el buscador: aplica la búsqueda, igual que la lupa; escribir no filtra por sí solo.\n- **Enter / Espacio** en la X de un filtro personalizado: lo quita; sobre el resto del chip, lo abre para editarlo.\n- **Tab**: al abrir el panel de filtros personalizados el foco entra en su primer campo, aunque se pinte después de\n  la paginación; se cierra con Aplicar, Cancelar o Escape.\n- Los demás controles siguen su componente: `siaf-records-search-toolbar`, `siaf-filter-pill`, `siaf-icon-dropdown-menu`,\n  `siaf-table-controls`, `siaf-pagination` y `siaf-custom-filter`.",
-    "accesibilidad": "- **Pendiente · 1.3.1 Información y relaciones (A)**: `h1`, `h2` y `<table>` con `<th>` están bien, pero la ruta de\n  navegación es un `nav` hecho a mano, sin `ol`/`li` ni `aria-current` (`siaf-breadcrumb` ya lo resuelve); las\n  columnas de casilla e Historial tienen `<th>` vacío y el encabezado «Fecha de re...» viene cortado en el texto.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: celdas en `text-neutral-medium` sobre la superficie (14.53:1 / 12.87:1),\n  pero la etiqueta Observado (`siaf-flow-status-tag`) queda en 3.39:1 en claro.\n- **2.4.3 Orden del foco (A)**: el panel de filtros personalizados (`siaf-custom-filter`) recibe el foco al abrirse,\n  cierra con Escape y lo devuelve al botón que lo abrió, aunque se pinte después de la grilla.\n- **2.4.7 Foco visible (AA)**: los botones propios (Inicio, Más opciones, chips de filtro personalizado, «Agregar\n  filtro personalizado» e Historial) y las casillas no tienen estilo de foco y quedan con el anillo del navegador;\n  los controles del kit traen el suyo.\n- **Pendiente · 2.5.8 Tamaño del objetivo (AA)**: la X para quitar un filtro personalizado mide 20 px (`size-5`) y está\n  dentro del chip, que es otro objetivo.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: las casillas de fila no tienen nombre; el chip de filtro\n  personalizado se llama siempre «Filtro personalizado aplicado» (tapa campo y valor) y su X es un `role=\"button\"`\n  dentro de otro `<button>`, que los lectores no anuncian bien; «Agregar filtro personalizado» no publica\n  `aria-expanded`.\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: buscar, filtrar o paginar cambia la grilla y el contador «1-10 de N»\n  sin anunciarlo, y sin resultados la tabla queda vacía, sin mensaje.",
+    "accesibilidad": "- **Pendiente · 1.3.1 Información y relaciones (A)**: `h1`, `h2` y `<table>` con `<th>` están bien, pero la ruta de\n  navegación es un `nav` hecho a mano, sin `ol`/`li` ni `aria-current` (`siaf-breadcrumb` ya lo resuelve); las\n  columnas de casilla e Historial tienen `<th>` vacío y el encabezado «Fecha de re...» viene cortado en el texto.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: celdas en `text-neutral-medium` sobre la superficie (14.53:1 / 12.87:1),\n  pero la etiqueta Observado (`siaf-flow-status-tag`) queda en 3.39:1 en claro.\n- **2.4.3 Orden del foco (A)**: el panel de filtros personalizados (`siaf-custom-filter`) recibe el foco al abrirse,\n  cierra con Escape y lo devuelve al botón que lo abrió, aunque se pinte después de la grilla.\n- **2.4.7 Foco visible (AA)**: los botones propios (Inicio, Más opciones, chips de filtro personalizado, «Agregar\n  filtro personalizado» e Historial) y las casillas no tienen estilo de foco y quedan con el anillo del navegador;\n  los controles del kit traen el suyo.\n- **Pendiente · 2.5.8 Tamaño del objetivo (AA)**: la X para quitar un filtro personalizado mide 20 px (`size-5`) y está\n  dentro del chip, que es otro objetivo.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: las casillas de fila se llaman «Seleccionar» más el documento;\n  el chip de filtro personalizado se llama siempre «Filtro personalizado aplicado» (tapa campo y valor) y su X es un `role=\"button\"`\n  dentro de otro `<button>`, que los lectores no anuncian bien; «Agregar filtro personalizado» no publica\n  `aria-expanded`.\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: buscar, filtrar o paginar cambia la grilla y el contador «1-10 de N»\n  sin anunciarlo, y sin resultados la tabla queda vacía, sin mensaje.",
     "figma": [],
     "aria": {
       "roles": [
@@ -14527,6 +14655,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
+        "token": "--sys-color-border-states-focus",
+        "via": [
+          "var()"
+        ]
+      },
+      {
         "token": "--sys-color-divider-default",
         "via": [
           "var()"
@@ -14553,7 +14687,8 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-color-text-neutral-high",
         "via": [
-          "text-text"
+          "text-text",
+          "var()"
         ]
       },
       {
@@ -14631,6 +14766,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-flow-status-tag",
       "siaf-icon",
       "siaf-icon-dropdown-menu",
+      "siaf-modal",
       "siaf-pagination",
       "siaf-records-search-toolbar",
       "siaf-table-controls"

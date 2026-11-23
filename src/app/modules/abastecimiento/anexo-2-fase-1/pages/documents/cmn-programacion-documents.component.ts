@@ -105,7 +105,7 @@ export class CmnProgramacionDocumentsComponent implements OnInit {
       area: r.area,
       items: String(r.items),
       monto: formatearSoles(r.montoProgramado),
-      fechaRegistro: new Date(r.fechaAprobacion).toLocaleDateString('es-PE'),
+      fechaRegistro: fechaDosDigitos(new Date(r.fechaAprobacion).toLocaleDateString('es-PE')),
       // Para el historial del registro: la solicitud que lo incluyó.
       document: NOMBRE_DOCUMENTO,
       documentId: r.documentoId,

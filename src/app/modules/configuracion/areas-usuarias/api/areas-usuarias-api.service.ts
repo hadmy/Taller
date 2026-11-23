@@ -28,7 +28,12 @@ export class AreasUsuariasApiService {
     return this.http.post<{ area: AreaUsuaria | null }>(`${this.base}/configuracion/areas-usuarias/sincronizar`, {});
   }
 
-  /** Reemplaza las cuatro banderas de las áreas indicadas. */
+  /** Panel «Sincronizar»: unidades del clasificador organizacional que la lista todavía no tiene. */
+  disponibles(): Observable<AreaUsuaria[]> {
+    return this.http.get<AreaUsuaria[]>(`${this.base}/configuracion/areas-usuarias/disponibles`);
+  }
+
+  /** Reemplaza las cuatro banderas de las áreas indicadas; las unidades incorporadas quedan registradas. */
   guardar(cambios: Pick<AreaUsuaria, 'id' | 'generaCmn' | 'esAte' | 'esOa' | 'esMaa'>[]): Observable<{ message: string }> {
     return this.http.put<{ message: string }>(`${this.base}/configuracion/areas-usuarias`, { areas: cambios });
   }

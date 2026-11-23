@@ -9,7 +9,7 @@ import { MessageBoxComponent } from '../../shared/ui/message-box/message-box.com
 import { TextFieldComponent } from '../../shared/ui/text-field/text-field.component';
 import { AuthService } from '../../core/auth/auth.service';
 import { reiniciarDatosDemo } from '../../mock/mock-db';
-import { CONTRASENA_DEMO, USUARIOS_DEMO } from '../../mock/usuarios-demo';
+import { CONTRASENA_DEMO, USUARIOS_DEMO, USUARIOS_LOGIN } from '../../mock/usuarios-demo';
 
 @Component({
   selector: 'siaf-login',
@@ -136,7 +136,7 @@ export class LoginComponent {
 
   // ── Taller: usuarios de demostración (src/app/mock/usuarios-demo.ts) ──
   readonly contrasenaDemo = CONTRASENA_DEMO;
-  readonly usuariosDemo: ListItem[] = USUARIOS_DEMO.map((u) => ({
+  readonly usuariosDemo: ListItem[] = USUARIOS_LOGIN.map((id) => USUARIOS_DEMO.find((u) => u.id === id)!).map((u) => ({
     id: u.email,
     title: `${u.nombres} ${u.apellidoPaterno} ${u.apellidoMaterno}`,
     description: `${u.email} · ${u.descripcion}`,

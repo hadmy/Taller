@@ -1,49 +1,73 @@
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración de áreas usuarias" />
+  <siaf-page-header pageHeader title="Configuración del Cuadro Multianual de Necesidades" />
+
+  <siaf-configuracion-tabs activa="areas-usuarias" />
 
   <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
     <header class="flex items-center justify-between">
-      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Fechas de fase en la entidad</h2>
+      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Áreas usuarias</h2>
       <div class="flex gap-siaf-sm">
-        <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
-        <siaf-button variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
-          Grabar
-        </siaf-button>
+        @if (enEdicion()) {
+          <siaf-button variant="outline" data-cancelar (click)="cancelar()">Cancelar</siaf-button>
+          <siaf-button variant="filled" icon="save" data-grabar [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="pedirGrabar()">
+            Grabar
+          </siaf-button>
+        } @else {
+          <siaf-button variant="outline" icon="edit" data-editar [disabled]="cargando()" (click)="editar()">Editar</siaf-button>
+        }
       </div>
     </header>
 
     <div class="flex items-center justify-between">
       <h3 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Registros</h3>
-      <siaf-button
-        variant="filled"
-        icon="sync"
-        [iconOnly]="true"
-        ariaLabel="Sincronizar registros"
-        siafTooltip="Sincronizar"
-        tooltipMode="always"
-        [disabled]="cargando() || sincronizando()"
-        (click)="sincronizar()"
-      />
+      <!-- «Sincronizar» solo en edición: lo incorporado queda pendiente hasta «Grabar». -->
+      @if (enEdicion()) {
+        <siaf-button
+          variant="filled"
+          icon="sync"
+          [iconOnly]="true"
+          ariaLabel="Sincronizar registros"
+          siafTooltip="Sincronizar"
+          tooltipMode="always"
+          data-sincronizar
+          (click)="sincronizar()"
+        />
+      }
     </div>
 
-    <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria"(typing)="filtrar($event)" (valueChange)="buscar($event)" />
+    <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" (typing)="filtrar($event)" (valueChange)="filtrar($event)" />
 
-    <!-- Barra de selección: checkbox «todas» + Editar cuando hay exactamente un área marcada. -->
-    <div class="flex h-10 items-center gap-siaf-xs">
-      <input
-        class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
-        type="checkbox"
-        aria-label="Seleccionar todas las áreas"
-        [checked]="todasVisiblesSeleccionadas()"
-        [indeterminate]="algunasVisiblesSeleccionadas()"
-        [disabled]="areasPaginadas().length === 0"
-        (change)="alternarSeleccionVisibles($any($event.target).checked)"
-      />
-      <span class="mx-siaf-xs h-6 w-px bg-[var(--sys-color-divider-strong)]" aria-hidden="true"></span>
-      <siaf-button variant="text" size="sm" icon="edit" [iconOnly]="true" ariaLabel="Editar" siafTooltip="Editar" tooltipMode="always" [disabled]="!areaParaEditar()" (click)="editarSeleccionada()" />
-      <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" ariaLabel="Eliminar" [disabled]="true" />
-      <siaf-button variant="text" size="sm" icon="more_vert" [iconOnly]="true" ariaLabel="Más opciones" />
-    </div>
+    <!-- Barra de selección (solo lectura): «todas»; con áreas marcadas aparecen el lápiz y, con una sola, el ícono de lista. -->
+    @if (!enEdicion()) {
+      <div class="flex h-10 items-center gap-siaf-xs">
+        <input
+          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+          type="checkbox"
+          aria-label="Seleccionar todas las áreas"
+          [checked]="todasVisiblesSeleccionadas()"
+          [indeterminate]="algunasVisiblesSeleccionadas()"
+          [disabled]="areasPaginadas().length === 0"
+          (change)="alternarSeleccionVisibles($any($event.target).checked)"
+        />
+        @if (seleccionadas().size > 0) {
+          <span class="mx-siaf-xs h-6 w-px bg-[var(--sys-color-divider-strong)]" aria-hidden="true"></span>
+          <siaf-button variant="text" size="sm" icon="edit" [iconOnly]="true" ariaLabel="Editar" siafTooltip="Editar" tooltipMode="always" data-lapiz (click)="editarSeleccionadas()" />
+          @if (areaUnica()) {
+            <siaf-button
+              variant="text"
+              size="sm"
+              icon="list_alt"
+              [iconOnly]="true"
+              ariaLabel="Detalle de necesidades del área"
+              siafTooltip="Detalle de necesidades del área"
+              tooltipMode="always"
+              data-necesidades
+              (click)="verNecesidades()"
+            />
+          }
+        }
+      </div>
+    }
 
     <div class="min-h-0 flex-1 overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
       <table class="w-full min-w-[720px] border-collapse text-sm">
@@ -55,31 +79,48 @@
           class="[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-surface [&_th]:bg-[linear-gradient(var(--sys-color-bg-surfaces-surface-high),var(--sys-color-bg-surfaces-surface-high))] [&_th]:shadow-[inset_0_-1px_0_var(--sys-color-divider-strong)]"
         >
           <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-            <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
+            @if (!enEdicion()) {
+              <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
+            }
             <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código área</th>
             <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Denominación</th>
             @for (bandera of banderas; track bandera.key) {
               <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">
-                <span class="cursor-help" [siafTooltip]="bandera.descripcion" tooltipMode="always">{{ bandera.label }}</span>
+                <span class="inline-flex items-center gap-siaf-xs">
+                  <!-- Selección masiva de «¿Genera CMN?»: solo en edición, sobre las áreas editables filtradas. -->
+                  @if (enEdicion() && bandera.key === 'generaCmn') {
+                    <input
+                      class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                      type="checkbox"
+                      aria-label="Marcar ¿Genera CMN? en todas las áreas"
+                      data-genera-cmn-todas
+                      [checked]="todasGeneraCmn()"
+                      [indeterminate]="algunasGeneraCmn()"
+                      [disabled]="editablesGeneraCmn().length === 0"
+                      (change)="alternarGeneraCmnMasivo($any($event.target).checked)"
+                    />
+                  }
+                  <span class="cursor-help" [siafTooltip]="bandera.descripcion" tooltipMode="always">{{ bandera.label }}</span>
+                </span>
               </th>
             }
+            <th class="w-36 border-b border-l border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Estado</th>
           </tr>
         </thead>
         <tbody>
           @for (area of areasPaginadas(); track area.id) {
-            <tr
-              class="border-b border-[var(--sys-color-divider-default)] last:border-b-0"
-              [class.bg-[var(--sys-color-bg-states-light-selected)]]="seleccionadas().has(area.id)"
-            >
-              <td class="p-siaf-sm">
-                <input
-                  class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
-                  type="checkbox"
-                  [attr.aria-label]="'Seleccionar ' + area.denominacion"
-                  [checked]="seleccionadas().has(area.id)"
-                  (change)="alternarSeleccion(area.id, $any($event.target).checked)"
-                />
-              </td>
+            <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0" [class.bg-[var(--sys-color-bg-states-light-selected)]]="resaltada(area)">
+              @if (!enEdicion()) {
+                <td class="p-siaf-sm">
+                  <input
+                    class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                    type="checkbox"
+                    [attr.aria-label]="'Seleccionar ' + area.denominacion"
+                    [checked]="seleccionadas().has(area.id)"
+                    (change)="alternarSeleccion(area.id, $any($event.target).checked)"
+                  />
+                </td>
+              }
               <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.codigo }}</td>
               <td class="px-siaf-md py-siaf-sm uppercase text-[var(--sys-color-text-neutral-medium)]">
                 <span class="flex items-center gap-siaf-sm">
@@ -91,21 +132,24 @@
               </td>
               @for (bandera of banderas; track bandera.key) {
                 <td class="px-siaf-md py-siaf-sm text-center">
-                  <!-- `!`: la regla global `:disabled:checked` (styles.css) pinta de gris; aquí lo marcado va en azul también inactivo. -->
+                  <!-- `!`: la regla global `:disabled:checked` (styles.css) pinta de gris; en solo lectura lo marcado va en azul. -->
                   <input
                     class="size-4 accent-[var(--sys-color-icon-states-enabled)] disabled:checked:border-[var(--sys-color-icon-states-active)]! disabled:checked:bg-[var(--sys-color-icon-states-active)]!"
                     type="checkbox"
                     [attr.aria-label]="bandera.label + ' — ' + area.denominacion"
                     [checked]="$any(area)[bandera.key]"
-                    [disabled]="!area.configurada"
+                    [disabled]="!editable(area)"
                     (change)="alternar(area.id, bandera.key, $any($event.target).checked)"
                   />
                 </td>
               }
+              <td class="border-l border-[var(--sys-color-divider-default)] px-siaf-md py-siaf-sm text-center">
+                <siaf-record-status-tag status="Activo" />
+              </td>
             </tr>
           } @empty {
             <tr>
-              <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="3 + banderas.length">
+              <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="(enEdicion() ? 3 : 4) + banderas.length">
                 @if (cargando()) {
                   Cargando áreas usuarias…
                 } @else {
@@ -132,5 +176,87 @@
       (next)="paginaSiguiente()"
       (rowsPerPageChange)="cambiarFilasPorPagina($event)"
     />
+  </div>
+
+  <!-- Panel «Sincronizar»: solo lectura → «Editar» → elegir → «Aceptar» incorpora las unidades como pendientes. -->
+  <siaf-selection-side-nav
+    [open]="panelAbierto()"
+    title="Unidades organizacionales"
+    mode="multiple"
+    [customTable]="true"
+    [selectedIds]="seleccionPanel()"
+    (accepted)="aceptarPanel($event)"
+    (closed)="cerrarPanel()"
+  >
+    <div class="flex flex-col gap-siaf-sm" data-panel-unidades>
+      <div class="flex h-10 items-center justify-between">
+        @if (panelEditable()) {
+          <label class="flex items-center gap-siaf-xs text-sm text-[var(--sys-color-text-neutral-high)]">
+            <input
+              class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+              type="checkbox"
+              [checked]="disponibles().length > 0 && seleccionPanel().length === disponibles().length"
+              [indeterminate]="seleccionPanel().length > 0 && seleccionPanel().length < disponibles().length"
+              [disabled]="disponibles().length === 0"
+              (change)="alternarTodasPanel($any($event.target).checked)"
+            />
+            Seleccionar todas
+          </label>
+        } @else {
+          <span></span>
+          <siaf-button variant="outline" size="sm" icon="edit" data-editar-panel [disabled]="disponibles().length === 0" (click)="editarPanel()">Editar</siaf-button>
+        }
+      </div>
+      @if (disponibles().length === 0) {
+        <p class="m-0 p-siaf-md text-sm text-[var(--sys-color-text-neutral-medium)]">No hay unidades organizacionales disponibles para incorporar.</p>
+      } @else {
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+              <th class="w-10 p-siaf-sm"></th>
+              <th class="px-siaf-sm py-siaf-sm text-left">Código</th>
+              <th class="px-siaf-sm py-siaf-sm text-left">Denominación</th>
+              <th class="px-siaf-sm py-siaf-sm text-center">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (unidad of disponibles(); track unidad.id) {
+              <tr class="border-b border-[var(--sys-color-divider-default)]" [class.bg-[var(--sys-color-bg-states-light-selected)]]="seleccionPanel().includes(unidad.id)">
+                <td class="p-siaf-sm">
+                  <input
+                    class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                    type="checkbox"
+                    [attr.aria-label]="'Incorporar ' + unidad.denominacion"
+                    [checked]="seleccionPanel().includes(unidad.id)"
+                    [disabled]="!panelEditable()"
+                    (change)="alternarPanel(unidad.id, $any($event.target).checked)"
+                  />
+                </td>
+                <td class="px-siaf-sm py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ unidad.codigo }}</td>
+                <td class="px-siaf-sm py-siaf-sm uppercase text-[var(--sys-color-text-neutral-medium)]">{{ unidad.denominacion }}</td>
+                <td class="px-siaf-sm py-siaf-sm text-center"><siaf-record-status-tag status="Activo" /></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </siaf-selection-side-nav>
+
+  <siaf-modal
+    [open]="modalGrabar()"
+    variant="save"
+    [showIllustration]="true"
+    title="¿Grabar?"
+    [description]="msjConfirmar"
+    confirmLabel="Aceptar"
+    [confirmDisabled]="guardando()"
+    (canceled)="modalGrabar.set(false)"
+    (closed)="modalGrabar.set(false)"
+    (confirmed)="confirmarGrabar()"
+  />
+
+  <div class="fixed bottom-siaf-lg left-1/2 z-50 w-[min(430px,calc(100vw-32px))] -translate-x-1/2">
+    <siaf-snackbar [open]="!!aviso()" tone="success" [message]="aviso() ?? ''" (closed)="aviso.set(null)" />
   </div>
 </siaf-page-shell>

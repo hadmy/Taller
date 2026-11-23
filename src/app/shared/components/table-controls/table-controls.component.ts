@@ -9,7 +9,8 @@ import { PaginationComponent } from '../pagination/pagination.component';
  *
  * Las acciones (editar, eliminar, exportar, más opciones y las que la página proyecta con el atributo `tableAction`)
  * solo aparecen con `selectedCount` mayor que 0, cada una encendida con `showEditAction`, `showDeleteAction`,
- * `showExportAction` o `showMenuAction`. Con `[showSelection]="false"` queda solo la paginación.
+ * `showExportAction` o `showMenuAction`. Con `[showSelection]="false"` queda solo la paginación, y con
+ * `[showTopPagination]="false"` la grilla se pagina solo con la paginación de abajo.
  *
  * @usar
  * - Arriba de toda grilla, siempre: bandeja, pestañas Documentos / Registros, panel lateral de selección y tablas de
@@ -108,9 +109,11 @@ import { PaginationComponent } from '../pagination/pagination.component';
         <ng-content select="[tableAction]" />
       }
 
-      <div class="ml-auto min-w-[220px]" [class.hidden]="hideTopPaginationOnMobile" [class.md:block]="hideTopPaginationOnMobile">
-        <siaf-pagination navigation="Activate" position="Top" [page]="page" [pageSize]="pageSize" [totalItems]="totalItems" [totalPages]="totalPages" (previous)="previous.emit()" (next)="next.emit()" />
-      </div>
+      @if (showTopPagination) {
+        <div class="ml-auto min-w-[220px]" [class.hidden]="hideTopPaginationOnMobile" [class.md:block]="hideTopPaginationOnMobile">
+          <siaf-pagination navigation="Activate" position="Top" [page]="page" [pageSize]="pageSize" [totalItems]="totalItems" [totalPages]="totalPages" (previous)="previous.emit()" (next)="next.emit()" />
+        </div>
+      }
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -131,6 +134,8 @@ export class TableControlsComponent {
   @Input() showSelection = true;
   @Input() editDisabled = false;
   @Input() hideTopPaginationOnMobile = false;
+  /** `false` quita la paginación de arriba (queda solo la de abajo de la tabla, `siaf-pagination` en `Bottom`). */
+  @Input() showTopPagination = true;
   @Input() selectAllLabel = 'Seleccionar filas';
   @Input() editLabel = 'Editar fila seleccionada';
   @Input() deleteLabel = 'Eliminar filas seleccionadas';

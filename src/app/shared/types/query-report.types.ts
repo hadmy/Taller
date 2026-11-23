@@ -65,6 +65,8 @@ export interface QueryReportKpi {
   aggregate?: QueryReportAggregate;
   /** Con filtro, la barra muestra qué parte del total de la columna representan esas filas; sin él, el 100 %. */
   where?: QueryReportRowFilter;
+  /** Decimales de una suma (2 por defecto); en 0 para cantidades como Entidades. Los conteos van siempre sin decimales. */
+  decimals?: number;
   /** Texto antes del monto («S/ »). */
   prefix?: string;
 }
@@ -102,6 +104,11 @@ export interface QueryReportChart {
 export interface QueryReportChartsConfig {
   kpis: QueryReportKpi[];
   charts: QueryReportChart[];
+  /**
+   * Tablero interactivo: el clic en una barra (de `bar` o `diverging`) elige esa categoría; los KPI y los gráficos de otra
+   * dimensión se recalculan con sus filas, y los que agrupan igual la resaltan. Un chip «Mes: MAR ×» la quita.
+   */
+  interactive?: boolean;
 }
 
 export type QueryReportExportFormat = 'excel' | 'csv' | 'pdf';

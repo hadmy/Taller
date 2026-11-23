@@ -22,23 +22,36 @@ Abrir <http://127.0.0.1:4200>. Otro puerto: `npm start -- --port 4300`.
 
 ## Usuarios de demostración
 
-La contraseña de todos es **`Taller2026*`**. En el login, el campo «Usuario» acepta el correo o el DNI, y el panel
-«Usuarios de demostración» llena el correo y la contraseña con un clic.
+La contraseña de todos es **`Taller2026*`**. En el login, el campo «Usuario» acepta el correo o el DNI. El panel
+«Usuarios de demostración» lista solo los tres usuarios del flujo del CMN (Especialista OA, Evaluador OA y Aprobador
+OA) y llena el correo y la contraseña con un clic; los demás entran escribiendo su correo o DNI
+(`USUARIOS_LOGIN` en `src/app/mock/usuarios-demo.ts`).
 
 | Usuario | Correo | DNI | Perfil | Qué puede hacer |
 | --- | --- | --- | --- | --- |
 | Ana Torres Díaz | `ana.torres@taller.pe` | `11111111` | Creador | Crear, grabar, editar, verificar y eliminar solicitudes |
-| Luis Ramírez Soto | `luis.ramirez@taller.pe` | `22222222` | Aprobador | Aprobar, observar (con comentario) o rechazar lo validado |
+| Luis Ramírez Soto | `luis.ramirez@taller.pe` | `22222222` | Aprobador | Aprobar u observar (con comentario) lo validado |
 | Carla Mendoza Ríos | `carla.mendoza@taller.pe` | `33333333` | Creador y Aprobador | Lo mismo que Ana y Luis: cambia de perfil desde su menú de usuario |
-| Marta Quispe Vega | `marta.quispe@taller.pe` | `66666666` | Evaluador | Validar (con comentario), observar o rechazar lo verificado |
+| Marta Quispe Vega | `marta.quispe@taller.pe` | `66666666` | Evaluador | Validar (con comentario) u observar lo verificado |
 | Usuario Especialista OA | `especialista-oa@minedu.gob.pe` | `44444444` | Creador (Ministerio de Educación) | Registra las solicitudes del CMN, como el Anexo N.º 02 |
 | Usuario Evaluador OA | `evaluador-oa@minedu.gob.pe` | `77777777` | Evaluador (Ministerio de Educación) | Valida u observa las solicitudes de su entidad, como el Anexo N.º 02 |
-| Usuario Aprobador OA | `aprobador-oa@minedu.gob.pe` | `55555555` | Aprobador (Ministerio de Educación) | Aprueba, observa o rechaza las solicitudes de su entidad, como el Anexo N.º 02 |
+| Usuario Aprobador OA | `aprobador-oa@minedu.gob.pe` | `55555555` | Aprobador (Ministerio de Educación) | Aprueba u observa las solicitudes de su entidad, como el Anexo N.º 02 |
 
 «Olvidé mi contraseña» también funciona: con el correo de un usuario (por ejemplo `ana.torres@taller.pe`) el código de
 verificación es `123456`.
 
 ## Recorrido sugerido para la clase
+
+**Flujo del CMN (los tres usuarios del login):**
+
+1. Entrar como la **Especialista OA**: en **Procesos**, buscar «CMN Programación» y abrir la Solicitud de CMN - Anexo
+   N.º 02 elaborada (0002) o crear una con **Crear documento**. **Verificar**.
+2. **Cerrar sesión** y entrar como el **Evaluador OA**: la solicitud aparece en **Bandeja → Recibidos** (y en sus
+   notificaciones). Abrirla desde el nombre del documento y **Validar** (pide comentario) u **Observar**.
+3. Entrar como el **Aprobador OA**: la solicitud validada aparece en su **Bandeja → Recibidos**. Abrirla y **Aprobar** u
+   **Observar**; al aprobar, sus áreas usuarias pasan a la pestaña Registros.
+
+**Otros recorridos (entrar escribiendo el correo o el DNI):**
 
 1. **Login** como Ana. El escritorio virtual muestra la bandeja, los contadores y sus notificaciones.
 2. **Procesos → Solicitudes → Solicitud del cuadro multianual de necesidades → Necesidades estratégicas** (Documentos y registros). La pestaña Documentos es la bandeja; Registros,
@@ -78,7 +91,7 @@ Para empezar de cero: **Reiniciar datos** en el login (o borrar el almacenamient
 
 - **`src/app/mock/mock-backend.interceptor.ts`** hace de backend: responde las llamadas a `/api/v1` con las mismas
   rutas y respuestas que el backend real del SIAF-RP, y aplica sus reglas (quién puede hacer cada cambio de estado,
-  comentario obligatorio al observar o rechazar, datos obligatorios para elaborar, número al elaborar, registro al
+  comentario obligatorio al observar (el Evaluador y el Aprobador del CMN no rechazan), datos obligatorios para elaborar, número al elaborar, registro al
   aprobar, notificaciones para cada rol). Simula 250 ms de latencia. Si una pantalla llama a una ruta que no simula,
   lo avisa en la consola con `[mock] Endpoint no simulado`.
 - **`src/app/mock/mock-db.ts`** guarda los datos en el `localStorage` del navegador (clave `taller-siaf-rp:datos`): lo

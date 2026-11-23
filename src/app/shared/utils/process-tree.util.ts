@@ -32,7 +32,7 @@ export interface ProcessMenuNode {
 }
 
 /**
- * Árbol de procesos del taller: dos grupos, Solicitudes y Configuraciones. Para sumar un proceso real: una hoja con
+ * Árbol de procesos del taller: cuatro grupos, Solicitudes, Configuraciones, Reportes y Consultas y reportes. Para sumar un proceso real: una hoja con
  * `moduleRoute` (Documentos y registros) en su grupo, y sus rutas en `app.routes.ts`. Lo que no está implementado va
  * como «Próximamente».
  */
@@ -45,6 +45,11 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
         id: 'solicitud-cuadro-multianual-necesidades',
         label: 'Solicitud del cuadro multianual de necesidades',
         children: [
+          {
+            id: 'cmn-programacion-escritorio',
+            label: 'Escritorio virtual CMN',
+            moduleRoute: '/procesos/cmn-programacion/escritorio',
+          },
           {
             id: 'cmn-programacion',
             label: 'CMN Programación',
@@ -92,6 +97,38 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
         id: 'cuadro-multianual-necesidades-configuracion-distribucion-interna-presupuestaria',
         label: 'Configuración de distribución interna presupuestaria',
         moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/distribucion-interna-presupuesto',
+      },
+    ],
+  },
+  {
+    id: 'reportes',
+    label: 'Reportes',
+    children: [
+      {
+        id: 'reportes-dashboard',
+        label: 'Dashboard',
+        moduleRoute: '/procesos/reportes/dashboard',
+      },
+      {
+        id: 'reportes-seguimiento-nacional-cmn',
+        label: 'Seguimiento del CMN',
+        moduleRoute: '/procesos/reportes/seguimiento-nacional-cmn',
+      },
+    ],
+  },
+  {
+    id: 'consultas',
+    label: 'Consultas y reportes',
+    children: [
+      {
+        id: 'consultas-seguimiento-dplaip',
+        label: 'Seguimiento del CMN – DPLAIP',
+        moduleRoute: '/procesos/consultas/seguimiento-dplaip',
+      },
+      {
+        id: 'consultas-seguimiento-entidad',
+        label: 'Seguimiento del CMN – Entidad',
+        moduleRoute: '/procesos/consultas/seguimiento-entidad',
       },
     ],
   },

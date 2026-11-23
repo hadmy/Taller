@@ -1,0 +1,218 @@
+@if (!datos()) {
+  <section class="rounded-siaf-md bg-surface p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-medium)]">Cargando el resumen de la Entidad…</section>
+} @else {
+  <div class="flex flex-col gap-siaf-md">
+    <!-- Filtros del resumen: «Ver como» elige la vista (OA o un área usuaria); el resto filtra al instante. -->
+    <section class="flex flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg" aria-label="Filtros del resumen de la Entidad" data-filtros-entidad>
+      <div class="flex flex-wrap items-center justify-between gap-siaf-md">
+        <p class="m-0 text-sm text-[var(--sys-color-text-neutral-medium)]" data-subtitulo-entidad>{{ subtitulo() }}</p>
+        <siaf-button variant="outline" icon="file_download" (click)="exportar()">Exportar datos</siaf-button>
+      </div>
+      <div class="grid grid-cols-1 gap-siaf-sm sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[repeat(7,minmax(0,1fr))_auto]">
+        <siaf-input type="select" label="Ver como" [options]="opcionesVista" [value]="filtros().vista" (valueChange)="cambiarVista($any($event).toString())" />
+        @if (filtros().vista === 'AU') {
+          <siaf-input type="select" label="Área de la vista" [options]="opcionesAreaVista()" [value]="filtros().areaVista" (valueChange)="cambiarAreaVista($any($event).toString())" />
+        }
+        <siaf-input type="select" label="Periodo" [options]="opcionesPeriodo" value="2026" [disabled]="true" />
+        <siaf-input type="select" label="Fase" [options]="opcionesFase()" [value]="'' + filtros().fase" (valueChange)="cambiarFase($any($event).toString())" />
+        @if (filtros().vista === 'OA') {
+          <siaf-input type="select" label="Área usuaria" [options]="opcionesArea()" [value]="valor('area')" (valueChange)="cambiarCombo('area', $any($event).toString())" />
+        }
+        <siaf-input type="select" label="ATE" [options]="opcionesAte()" [value]="valor('ate')" (valueChange)="cambiarCombo('ate', $any($event).toString())" />
+        <siaf-input type="select" label="Genérica" [options]="opcionesGenerica" [value]="valor('generica')" (valueChange)="cambiarCombo('generica', $any($event).toString())" />
+        <siaf-input type="select" label="Año" [options]="opcionesAnio" [value]="'' + filtros().anio" (valueChange)="cambiarAnio($any($event).toString())" />
+        <div class="flex items-center">
+          <siaf-button variant="text" icon="filter_alt_off" (click)="borrarFiltros()">Borrar filtros</siaf-button>
+        </div>
+      </div>
+
+      @if (chips().length) {
+        <div class="flex flex-wrap items-center gap-siaf-sm text-sm text-[var(--sys-color-text-neutral-medium)]" data-chips-entidad>
+          <span>Filtros por selección:</span>
+          @for (chip of chips(); track chip.clave) {
+            <siaf-tag variant="input" [selected]="true" [removable]="true" [removeLabel]="'Quitar ' + chip.texto" (removed)="cambiarSeleccion(chip.clave, undefined)">{{ chip.texto }}</siaf-tag>
+          }
+        </div>
+      }
+    </section>
+
+    <div class="grid grid-cols-1 gap-siaf-md sm:grid-cols-2 xl:grid-cols-5" data-kpis-entidad>
+      @for (kpi of kpis(); track kpi.title) {
+        <siaf-kpi-card [compact]="true" [title]="kpi.title" [amount]="kpi.amount" [progress]="kpi.progress" [description]="kpi.description" [tone]="kpi.tone" [icon]="kpi.icon" />
+      }
+    </div>
+
+    <div class="grid grid-cols-1 gap-siaf-md lg:grid-cols-2 xl:grid-cols-3">
+      <siaf-chart-section class="min-w-0" title="Línea de tiempo de la fase">
+        @if (lineaDeTiempo(); as lt) {
+          <div class="flex flex-col gap-siaf-sm px-siaf-lg pb-siaf-md pt-siaf-sm" data-linea-tiempo>
+            <siaf-steps orientation="vertical" size="small" [steps]="lt.hitos" [activeStep]="lt.activo" />
+            <p class="m-0 text-xs font-bold text-[var(--sys-color-text-feedback-danger)]">Hoy: {{ lt.hoyTexto }}</p>
+          </div>
+        }
+      </siaf-chart-section>
+
+      <siaf-chart-section class="min-w-0" title="Uso del techo presupuestario por Genérica">
+        <siaf-bar-chart
+          [showValues]="true"
+          [categories]="techoCategorias()"
+          [series]="techoSeries()"
+          orientation="horizontal"
+          [height]="210"
+          ariaLabel="Uso del techo presupuestario por Genérica"
+          categoryLabel="Genérica"
+          [selectable]="true"
+          [selectedIndex]="techoSeleccionado()"
+          (categorySelected)="elegirGenerica($event)"
+        />
+      </siaf-chart-section>
+
+      <siaf-chart-section class="min-w-0" title="Estado de los Anexos N.º 01">
+        <siaf-bar-chart
+          [showValues]="true"
+          [categories]="categoriasEstado"
+          [series]="estadoSeries()"
+          [height]="230"
+          ariaLabel="Estado de los Anexos N.º 01"
+          categoryLabel="Estado"
+          [selectable]="true"
+          [selectedIndex]="seleccion().estado ?? null"
+          (categorySelected)="elegirEstado($event)"
+        />
+      </siaf-chart-section>
+    </div>
+
+    <div class="grid grid-cols-1 gap-siaf-md lg:grid-cols-2 xl:grid-cols-3">
+      <siaf-chart-section class="min-w-0" title="Necesidades remitidas por ATE">
+        <siaf-bar-chart
+          [showValues]="true"
+          [categories]="remitidasCategorias()"
+          [series]="remitidasSeries()"
+          [height]="230"
+          ariaLabel="Necesidades remitidas por ATE"
+          categoryLabel="ATE"
+          [selectable]="true"
+          [selectedIndex]="ateSeleccionada()"
+          (categorySelected)="elegirAte($event)"
+        />
+      </siaf-chart-section>
+
+      <siaf-chart-section class="min-w-0" title="Monto programado por orden de prelación">
+        <siaf-bar-chart
+          [showValues]="true"
+          [categories]="ordenes"
+          [series]="ordenSeries()"
+          orientation="horizontal"
+          [height]="190"
+          ariaLabel="Monto programado por orden de prelación"
+          categoryLabel="Orden de prelación"
+          [selectable]="true"
+          [selectedIndex]="seleccion().orden ?? null"
+          (categorySelected)="elegirOrden($event)"
+        />
+      </siaf-chart-section>
+
+      @if (filtros().vista === 'OA') {
+        <siaf-chart-section class="min-w-0" title="Pendientes de la Oficina de Abastecimiento" data-pendientes>
+          <siaf-bar-chart
+            [showValues]="true"
+            [categories]="pendientesCategorias"
+            [series]="pendientesSeries()"
+            orientation="horizontal"
+            [height]="225"
+            ariaLabel="Pendientes de la Oficina de Abastecimiento"
+            categoryLabel="Pendiente"
+            [alertIndexes]="pendientesUrgentes()"
+            [selectable]="true"
+            [selectedIndex]="pendienteSeleccionado()"
+            (categorySelected)="elegirPendiente($event)"
+          />
+          <p class="m-0 px-siaf-lg pb-siaf-md text-xs text-[var(--sys-color-text-neutral-medium)]" data-plazos-pendientes>{{ pendientesPlazos() }}</p>
+        </siaf-chart-section>
+      }
+    </div>
+
+    <section class="flex flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg" aria-labelledby="titulo-avance-area" data-avance-area>
+      <div>
+        <h2 id="titulo-avance-area" class="m-0 text-base font-bold text-[var(--sys-color-text-neutral-high)]">Avance por Área usuaria</h2>
+      </div>
+      <div class="max-h-[360px] overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]" tabindex="0" role="region" aria-label="Tabla del avance por Área usuaria" data-avance-scroll>
+        <table class="w-full min-w-[1000px] border-collapse text-sm">
+          <thead>
+            <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+              @for (col of columnasArea; track col.titulo) {
+                <th class="sticky top-0 z-[1] bg-surface bg-[image:linear-gradient(var(--sys-color-bg-surfaces-surface-high),var(--sys-color-bg-surfaces-surface-high))] p-0 shadow-[inset_0_-1px_0_var(--sys-color-divider-strong)]" [class.text-right]="col.numero" [attr.aria-sort]="ariaOrdenArea(col.clave)">
+                  @if (col.clave) {
+                    <button
+                      type="button"
+                      class="flex w-full cursor-pointer items-center gap-siaf-xxs bg-transparent px-siaf-md py-siaf-sm text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+                      [class.justify-end]="col.numero"
+                      (click)="ordenarArea(col.clave)"
+                    >
+                      {{ col.titulo }}
+                      @if (ordenArea().clave === col.clave) {
+                        <siaf-icon [name]="ordenArea().dir === 1 ? 'arrow_upward' : 'arrow_downward'" [size]="14" />
+                      }
+                    </button>
+                  } @else {
+                    <span class="block px-siaf-md py-siaf-sm">{{ col.titulo }}</span>
+                  }
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (fila of filasArea(); track fila.area.codigo) {
+              <tr
+                class="border-b border-[var(--sys-color-divider-default)] last:border-b-0 hover:bg-[var(--sys-color-bg-states-light-hover)]"
+                [class.bg-[var(--sys-color-bg-states-light-selected)]]="seleccion().area === fila.area.codigo"
+              >
+                <td class="p-0">
+                  <button
+                    type="button"
+                    class="w-full cursor-pointer bg-transparent px-siaf-md py-siaf-sm text-left text-sm text-[var(--sys-color-text-neutral-high)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+                    [attr.aria-pressed]="seleccion().area === fila.area.codigo"
+                    (click)="elegirArea(fila.area.codigo)"
+                  >
+                    {{ fila.area.codigo }} {{ fila.area.nombre }}
+                    @if (fila.area.titular) {
+                      <span class="text-[var(--sys-color-text-neutral-low)]">(dep. de {{ fila.area.titular }})</span>
+                    }
+                  </button>
+                </td>
+                <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.area.esAte ? 'ATE' : '–' }}</td>
+                <td class="px-siaf-md py-siaf-sm">
+                  @if (fila.situacion.estado === SIN_ANEXO_01) {
+                    <span class="text-[var(--sys-color-text-neutral-low)]">– (sin Anexo N.º 01)</span>
+                  } @else {
+                    <siaf-status-tag [tone]="tonoAnexo01[fila.situacion.estado]" size="small">{{ estadosAnexo01[fila.situacion.estado] }}</siaf-status-tag>
+                  }
+                  @if (fila.situacion.ampliacion) {
+                    <span class="ml-siaf-xs text-xs text-[var(--sys-color-text-neutral-low)]">· ampl. {{ fila.situacion.ampliacion.toLowerCase() }}</span>
+                  }
+                </td>
+                <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">
+                  {{ fila.situacion.estado === ANEXO_01_APROBADO && fila.situacion.revision !== null ? revisiones[fila.situacion.revision] + (fila.situacion.ajustado ? ' · v' + fila.situacion.version : '') : '–' }}
+                </td>
+                <td class="px-siaf-md py-siaf-sm text-right text-[var(--sys-color-text-neutral-medium)]">{{ fila.necesidades }}</td>
+                <td class="px-siaf-md py-siaf-sm text-right text-[var(--sys-color-text-neutral-medium)]">{{ formatoMonto(fila.monto) }}</td>
+                <td class="px-siaf-md py-siaf-sm">
+                  <div class="flex items-center gap-siaf-sm">
+                    <siaf-loading-progress class="block w-28" variant="bar" [value]="porcentajeUso(fila.uso)" [label]="'Uso del techo de ' + fila.area.nombre" />
+                    <span class="text-xs" [class.font-bold]="fila.uso > 1" [class.text-[var(--sys-color-text-feedback-danger)]]="fila.uso > 1" [class.text-[var(--sys-color-text-neutral-medium)]]="fila.uso <= 1">
+                      {{ porcentajeVisible(fila.uso, 1) }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="columnasArea.length">No hay áreas usuarias con estos filtros.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+}

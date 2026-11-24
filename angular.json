@@ -51,7 +51,8 @@
                   "maximumError": "32kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "baseHref": "/app/abastecimiento/celula-01/cmn-programacion-2/"
             },
             "development": {
               "optimization": false,

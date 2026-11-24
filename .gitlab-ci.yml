@@ -1,0 +1,37 @@
+# Pipeline del GitLab del MEF (célula 01, inversiones). Este archivo viaja con la
+# publicación de frontend/ a la rama `dev` del repo del MEF (scripts/publicar-frontend-mef.sh);
+# en GitHub no se usa. Los jobs vienen de la plantilla compartida de siaf-rp-devops.
+# Se despliega la demo con datos mock (configuración `demo-release`), sin backend.
+variables:
+  APP_SOURCE_DIR: "."
+  DEVOPS_REF: "feature/oracle-wallet-openshift"
+  DEPLOY_VALUES_FILE: "deploy/values.yml"
+  CONFIG_EXPECTED_NAME: "cmn-programacion-2"
+  PUBLIC_BASE_URL: "/app/abastecimiento/celula-01/"
+  BUILD_CONFIGURATION: "demo-release"
+  GIT_CLEAN_FLAGS: "-ffdx -e .buildah-storage/ -e .buildah-run/"
+
+include:
+  - project: 'siaf-rp/02-devops-plataforma/siaf-rp-devops'
+    ref: 'feature/oracle-wallet-openshift'
+    file:
+      - '/gitlab-ci/frontend-angular.yml'
+
+# @siaf-rp/ui se instala del registro npm del proyecto 74 del GitLab interno: `npm ci`
+# necesita un .npmrc con token. Por defecto se usa el token del propio job (CI_JOB_TOKEN):
+# el proyecto 74 debe permitir el acceso de este proyecto en Settings > CI/CD > Job token
+# permissions. Si se define la variable CI/CD NPM_TOKEN (enmascarada), se usa esa.
+.npmrc-registro-interno:
+  before_script:
+    - |-
+      REGISTRY_TOKEN="${NPM_TOKEN:-${CI_JOB_TOKEN}}"
+      {
+        echo "@siaf-rp:registry=http://172.16.1.20/api/v4/projects/74/packages/npm/"
+        echo "//172.16.1.20/api/v4/projects/74/packages/npm/:_authToken=${REGISTRY_TOKEN}"
+      } > .npmrc
+
+# Al redefinir `extends` se reemplaza la lista de la plantilla: repetir sus entradas.
+build-application:
+  extends:
+    - .cache-node
+    - .npmrc-registro-interno

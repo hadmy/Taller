@@ -1,0 +1,69 @@
+#######################################################
+#
+# Archivo de configuracion de despliegue
+# Proyecto: cmn-programacion-2 (demo SIAF-RP con datos mock)
+#
+#######################################################
+
+namespace: mef-siafrp-dev
+name: cmn-programacion-2
+version: latest
+
+ingress:
+  enabled: true
+  path: /app/abastecimiento/celula-01/cmn-programacion-2
+  rewrite:
+    enabled: true
+  PathPrefixStrip:
+    enabled: false
+
+deployment:
+  port: 8080
+  protocol: TCP
+  secrets:
+    type: envFrom
+  configmap:
+    type: envFrom
+
+service:
+  port: 8080
+
+PersistentVolumeClaim:
+  enabled: false
+  accessModes:
+  size: {}
+  path: {}
+
+secrets:
+  enabled: false
+
+externalsecret1: ""
+externalsecret2: ""
+externalsecret3: ""
+
+configmap:
+  enabled: false
+
+resources:
+  requests:
+    enabled: true
+    memory: 32Mi
+    cpu: 25m
+  limits:
+    enabled: true
+    memory: 128Mi
+    cpu: 200m
+
+hpa:
+  enabled: false
+  minReplicas:
+  maxReplicas:
+  targetCPUUtilizationPercentage:
+  targetMemoryUtilizationPercentage:
+
+actuatorport:
+  enabled: false
+  port:
+
+livenessProbe:
+  enabled: false

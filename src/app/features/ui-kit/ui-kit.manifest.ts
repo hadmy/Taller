@@ -2764,7 +2764,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "usa": [],
-    "sinUso": true
+    "sinUso": false
   },
   {
     "selector": "siaf-collapsible-card",
@@ -4854,6 +4854,11 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Consulta remota de la pestaña Documentos (solo si la config declara `serverQuery`): se emite al confirmar la búsqueda (Enter/lupa), al cambiar de página y al cambiar el tamaño de página. El padre la resuelve contra el backend y devuelve `documentRows` ya filtrados y paginados."
       },
       {
+        "nombre": "recordHistoryOpened",
+        "tipo": "DocumentsRecordsRow",
+        "descripcion": "Historial de un registro con `recordHistoryKind: 'personalizado'`: el módulo abre su propio panel."
+      },
+      {
         "nombre": "recordsQueryChange",
         "tipo": "DocumentsQuery",
         "descripcion": "Igual que `documentsQueryChange`, para la pestaña Registros (`serverRecordsQuery`)."
@@ -5026,7 +5031,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "ui",
     "importacion": "@siaf/ui/documents-records-table/documents-records-table.component",
     "archivo": "src/app/shared/ui/documents-records-table/documents-records-table.component.ts",
-    "descripcion": "Tabla de las pestañas Documentos / Registros: columnas configurables, celdas por tipo\n(enlace al documento, tag de flujo, tag de registro), checkbox de selección y botón de historial.\n\nEs la tabla interna de `siaf-documents-records-page`; para una grilla nueva compón la grilla\nestándar (`siaf-table-controls` arriba + `siaf-pagination Bottom` abajo) alrededor de ella.",
+    "descripcion": "Tabla de las pestañas Documentos / Registros: columnas configurables, celdas por tipo (enlace al documento, tag de\nflujo, tag de registro, monto frente a su presupuesto con barra de avance), checkbox de selección y botón de historial.\n\nEs la tabla interna de `siaf-documents-records-page`; para una grilla nueva compón la grilla\nestándar (`siaf-table-controls` arriba + `siaf-pagination Bottom` abajo) alrededor de ella.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
@@ -5155,6 +5160,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
+        "token": "--sys-color-text-neutral-low",
+        "via": [
+          "text-text-muted"
+        ]
+      },
+      {
         "token": "--sys-gap-base-md",
         "via": [
           "px-siaf-md"
@@ -5175,6 +5186,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
+        "token": "--sys-gap-base-xxs",
+        "via": [
+          "gap-siaf-xxs"
+        ]
+      },
+      {
         "token": "--sys-radius-md",
         "via": [
           "rounded-siaf-md"
@@ -5192,6 +5209,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "[siafTooltip]",
       "siaf-flow-status-tag",
       "siaf-icon",
+      "siaf-loading-progress",
       "siaf-record-status-tag"
     ],
     "sinUso": false

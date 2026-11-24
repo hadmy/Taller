@@ -10,8 +10,11 @@ import {
   DetalleAnexo1,
   EvaluacionAnexo1Request,
   FaseCmn,
+  GuardarModificacionRequest,
+  ModificacionAnexo2,
   RegistroAnexo2,
   SolicitudEscritorioCmn,
+  VigenteAnexo2,
 } from '../models/anexo-2-fase-1.model';
 
 /**
@@ -28,9 +31,24 @@ export class Anexo2Fase1ApiService {
     return this.http.get<ContextoAnexo2>(`${this.base}/cmn/anexo-2-fase-1/contexto`);
   }
 
-  /** Áreas usuarias de los Anexos 02 aprobados: pestaña Registros de CMN Programación. */
+  /** Un registro por Anexo 02 aprobado de cada fase: pestaña Registros de CMN Programación. */
   listarRegistros(): Observable<RegistroAnexo2[]> {
     return this.http.get<RegistroAnexo2[]>(`${this.base}/cmn/anexo-2-fase-1/registros`);
+  }
+
+  /** Anexo 02 vigente de la fase y lo que se puede modificar; avisa si ya hay una modificación en curso. */
+  obtenerVigente(fase: FaseCmn): Observable<VigenteAnexo2> {
+    return this.http.get<VigenteAnexo2>(`${this.base}/cmn/anexo-2/vigente`, { params: { fase } });
+  }
+
+  /** Modificación grabada en una solicitud: lo vigente al registrarla y lo que cambia. */
+  obtenerModificacion(solicitudId: string): Observable<ModificacionAnexo2> {
+    return this.http.get<ModificacionAnexo2>(`${this.base}/solicitudes/${solicitudId}/anexo-2-fase-1/modificacion`);
+  }
+
+  /** Guarda (o reemplaza) los cambios de una solicitud de Modificación. */
+  guardarModificacion(solicitudId: string, cambios: GuardarModificacionRequest): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.base}/solicitudes/${solicitudId}/anexo-2-fase-1/modificacion`, cambios);
   }
 
   /** «Bandeja de solicitudes» del escritorio de CMN Programación: las solicitudes del Anexo N.º 02 de la entidad. */

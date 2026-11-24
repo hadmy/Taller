@@ -47,18 +47,18 @@ export const ABASTECIMIENTO_ROUTES: Routes = [
   {
     path: ANEXO_2_REQUEST_ROUTE.slice(1),
     loadComponent: () =>
-      import('./anexo-2-fase-1/pages/solicitud/anexo-2-fase-1-request.component').then((m) => m.Anexo2Fase1RequestComponent),
+      import('./anexo-2-fase-1/pages/solicitud/anexo-2-solicitud.component').then((m) => m.Anexo2SolicitudComponent),
   },
   {
     path: `${ANEXO_2_REQUEST_ROUTE.slice(1)}/:id`,
     loadComponent: () =>
-      import('./anexo-2-fase-1/pages/solicitud/anexo-2-fase-1-request.component').then((m) => m.Anexo2Fase1RequestComponent),
+      import('./anexo-2-fase-1/pages/solicitud/anexo-2-solicitud.component').then((m) => m.Anexo2SolicitudComponent),
   },
   // Fases 2 y 3 del CMN: la misma solicitud del Anexo N.º 02, creada con su fase.
   ...([2, 3] as const).map((fase) => ({
     path: ANEXO_2_REQUEST_ROUTE_POR_FASE[fase].slice(1),
     data: { fase },
     loadComponent: () =>
-      import('./anexo-2-fase-1/pages/solicitud/anexo-2-fase-1-request.component').then((m) => m.Anexo2Fase1RequestComponent),
+      import('./anexo-2-fase-1/pages/solicitud/anexo-2-solicitud.component').then((m) => m.Anexo2SolicitudComponent),
   })),
 ];

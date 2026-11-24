@@ -1,4 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
+import type { FaseCmn } from '../../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import { ESTADO, ESTADOS_RESPUESTA_APROBADOR, EstadoSolicitudUi } from '../models/documento.model';
 
 // ─────────────────────────────────────────────
@@ -38,6 +39,8 @@ export interface SolicitudDemo {
   numero: string;
   tipoDocumento: string;
   tipoAccion: string;
+  /** Fase del CMN (solo en las solicitudes del Anexo N.º 02). */
+  faseCmn?: FaseCmn;
   estado: EstadoSolicitudDemo;
   fecha: string;
   entidad: string;

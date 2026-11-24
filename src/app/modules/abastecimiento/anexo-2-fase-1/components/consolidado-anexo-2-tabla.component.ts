@@ -33,7 +33,7 @@ import { ConsolidadoAnexo2, FilaConsolidado, GrupoConsolidado } from '../models/
     } @else if (datos(); as c) {
       <!-- Scroll horizontal (y vertical con alto máximo, para que la barra horizontal siempre quede a la vista). -->
       <div
-        class="max-h-[600px] overflow-auto rounded-siaf-sm border border-[var(--sys-color-divider-default)]"
+        class="isolate max-h-[600px] overflow-auto rounded-siaf-sm border border-[var(--sys-color-divider-default)]"
         tabindex="0"
         role="region"
         aria-label="Consolidado del Anexo N.º 02, con desplazamiento horizontal"

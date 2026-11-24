@@ -5,7 +5,6 @@ import { filter } from 'rxjs';
 
 import {
   CREATE_DOCUMENT_OPTIONS as CREATE_DOCUMENT_OPTIONS_ANEXO_2,
-  REQUEST_ROUTE as ANEXO_2_REQUEST_ROUTE,
 } from '../../modules/abastecimiento/anexo-2-fase-1/config/anexo-2-fase-1.rutas';
 import { CREATE_DOCUMENT_OPTIONS, REQUEST_ROUTE } from '../../modules/abastecimiento/items-estrategicos/config/items-estrategicos.rutas';
 import { CreateDocumentAccepted, CreateDocumentComponent, CreateDocumentProcessOption } from '../../shared/components/create-document/create-document.component';
@@ -183,20 +182,22 @@ export class AppShellComponent implements OnInit {
       grupos.get(procesoCodigo)!.tipos.push(t);
     }
 
-    // «Crear documento» solo ofrece los procesos del CMN (necesidades estratégicas y Anexo N.º 02, Fase 1).
+    // «Crear documento» solo ofrece los procesos del CMN (necesidades estratégicas y Anexo N.º 02).
     const ROUTE_BY_PROCESO: Record<string, { processRoute: string; tipoRoutes: Record<string, string> }> = {
       'items-estrategicos': {
         processRoute: REQUEST_ROUTE,
         tipoRoutes: { SIE: REQUEST_ROUTE },
       },
-      'cmn-anexo-2-fase-1': {
-        processRoute: ANEXO_2_REQUEST_ROUTE,
-        tipoRoutes: { SA2F1: ANEXO_2_REQUEST_ROUTE },
-      },
     };
 
     const result: CreateDocumentProcessOption[] = [];
     for (const [procesoCodigo, grupo] of grupos) {
+      // El Anexo N.º 02 es un solo tipo de documento con una opción por fase del CMN.
+      const opcionesPropias = CREATE_DOCUMENT_OPTIONS_ANEXO_2.find((o) => o.id === procesoCodigo);
+      if (opcionesPropias) {
+        result.push(opcionesPropias);
+        continue;
+      }
       const routeConfig = ROUTE_BY_PROCESO[procesoCodigo];
       if (!routeConfig) continue; // Procesos no implementados todavía se ignoran
 

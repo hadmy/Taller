@@ -6,6 +6,7 @@ import { NotificationsStateService } from '../../../core/realtime/notifications-
 import type { DocumentsRecordsColumn, DocumentsRecordsRow, DocumentsRecordsTab } from '../../types/documents-records.types';
 import { FlowStatus, FlowStatusTagComponent } from '../flow-status-tag/flow-status-tag.component';
 import { IconComponent } from '../icon/icon.component';
+import { LoadingProgressComponent } from '../loading-progress/loading-progress.component';
 import { RecordStatus, RecordStatusTagComponent } from '../record-status-tag/record-status-tag.component';
 import { TooltipDirective } from '../tooltip/tooltip.directive';
 
@@ -15,8 +16,8 @@ export type DocumentsRecordsSelectionChange = {
 };
 
 /**
- * Tabla de las pestañas Documentos / Registros: columnas configurables, celdas por tipo
- * (enlace al documento, tag de flujo, tag de registro), checkbox de selección y botón de historial.
+ * Tabla de las pestañas Documentos / Registros: columnas configurables, celdas por tipo (enlace al documento, tag de
+ * flujo, tag de registro, monto frente a su presupuesto con barra de avance), checkbox de selección y botón de historial.
  *
  * Es la tabla interna de `siaf-documents-records-page`; para una grilla nueva compón la grilla
  * estándar (`siaf-table-controls` arriba + `siaf-pagination Bottom` abajo) alrededor de ella.
@@ -63,7 +64,7 @@ export type DocumentsRecordsSelectionChange = {
 @Component({
   selector: 'siaf-documents-records-table',
   standalone: true,
-  imports: [FlowStatusTagComponent, IconComponent, NgClass, RecordStatusTagComponent, RouterLink, TooltipDirective],
+  imports: [FlowStatusTagComponent, IconComponent, LoadingProgressComponent, NgClass, RecordStatusTagComponent, RouterLink, TooltipDirective],
   template: `
     <div class="siaf-table-scroll min-w-0">
       <table class="w-full border-collapse text-left text-sm" [ngClass]="minWidthClass">
@@ -106,6 +107,13 @@ export type DocumentsRecordsSelectionChange = {
                     <siaf-flow-status-tag [status]="flowStatus(row[column.key])" size="small" />
                   } @else if (column.kind === 'record-status') {
                     <siaf-record-status-tag [status]="recordStatus(row[column.key])" [size]="activeTab === 'records' ? 'small' : 'standard'" />
+                  } @else if (column.kind === 'budget') {
+                    <span class="flex flex-col gap-siaf-xxs whitespace-nowrap py-siaf-xs text-xs">
+                      <strong class="text-sm font-bold text-text">{{ row[column.key] }}</strong>
+                      <span class="text-text-muted">{{ row[column.key + 'Techo'] }}</span>
+                      <siaf-loading-progress variant="bar" [value]="toNumber(row[column.key + 'Avance'])" [label]="column.label + ': programado respecto del presupuesto'" />
+                      <span class="text-text-muted">{{ row[column.key + 'Saldo'] }}</span>
+                    </span>
                   } @else {
                     <span class="block truncate" siafTooltip>{{ row[column.key] }}</span>
                   }
@@ -160,6 +168,10 @@ export class DocumentsRecordsTableComponent {
       row,
       selected: (event.target as HTMLInputElement).checked
     });
+  }
+
+  toNumber(value: unknown): number {
+    return Number(value) || 0;
   }
 
   recordStatus(value: unknown): RecordStatus {

@@ -5,7 +5,7 @@ import type {
   DocumentsRecordsFilterOption,
 } from '../../../../shared/types/documents-records.types';
 import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
-import { ETIQUETA_TIPO_ACCION, NOMBRE_DOCUMENTO } from '../models/anexo-2-fase-1.model';
+import { ANIOS_CMN, ETIQUETA_MODIFICACION, ETIQUETA_TIPO_ACCION, FASES_CMN, NOMBRE_DOCUMENTO, nombreRegistroFase } from '../models/anexo-2-fase-1.model';
 import { CREATE_DOCUMENT_OPTIONS, NOMBRE_PROCESO, PROCESS_ID, PROCESS_ROUTE, REQUEST_ROUTE } from './anexo-2-fase-1.rutas';
 
 /**
@@ -14,13 +14,13 @@ import { CREATE_DOCUMENT_OPTIONS, NOMBRE_PROCESO, PROCESS_ID, PROCESS_ROUTE, REQ
  */
 
 const documentColumns: DocumentsRecordsColumn[] = [
-  { key: 'document', label: 'Documento', visibility: 'visible', group: 'default', widthClass: 'w-[250px]', kind: 'document-link' },
+  { key: 'document', label: 'Documento', visibility: 'visible', group: 'default', widthClass: 'w-[372px]', kind: 'document-link' },
   { key: 'number', label: 'Número', visibility: 'visible', group: 'default', widthClass: 'w-[80px]' },
-  { key: 'actionType', label: 'Tipo de acción', visibility: 'visible', group: 'default', widthClass: 'w-[120px]' },
+  { key: 'actionType', label: 'Tipo de acción', visibility: 'visible', group: 'default', widthClass: 'w-[130px]' },
   { key: 'status', label: 'Estado', visibility: 'visible', group: 'default', widthClass: 'w-[110px]', kind: 'flow-status' },
-  { key: 'system', label: 'Sistema', visibility: 'visible', group: 'default', widthClass: 'w-[170px]' },
-  { key: 'date', label: 'Fecha de registro', visibility: 'visible', group: 'default', widthClass: 'w-[150px]' },
-  { key: 'entity', label: 'Entidad', visibility: 'visible', group: 'default', widthClass: 'w-[220px]' },
+  { key: 'system', label: 'Sistema', visibility: 'visible', group: 'default', widthClass: 'w-[160px]' },
+  { key: 'date', label: 'Fecha de registro', visibility: 'visible', group: 'default', widthClass: 'w-[140px]' },
+  { key: 'entity', label: 'Entidad', visibility: 'visible', group: 'default', widthClass: 'w-[125px]' },
   { key: 'creator', label: 'Creador', visibility: 'hidden', group: 'more', widthClass: 'w-[220px]' },
   { key: 'requesterArea', label: 'Área solicitante', visibility: 'hidden', group: 'more', widthClass: 'w-[240px]' },
   { key: 'evaluationDate', label: 'Fecha de evaluación', visibility: 'hidden', group: 'more', widthClass: 'w-[200px]' },
@@ -30,11 +30,15 @@ const documentColumns: DocumentsRecordsColumn[] = [
 ];
 
 const recordColumns: DocumentsRecordsColumn[] = [
-  { key: 'area', label: 'Área usuaria', visibility: 'visible', group: 'default', widthClass: 'min-w-[320px]' },
-  { key: 'items', label: 'Ítems', visibility: 'visible', group: 'default', widthClass: 'w-[120px]' },
-  { key: 'monto', label: 'Monto programado A01', visibility: 'visible', group: 'default', widthClass: 'w-[220px]' },
-  { key: 'number', label: 'Solicitud', visibility: 'visible', group: 'default', widthClass: 'w-[280px]' },
-  { key: 'fechaRegistro', label: 'Fecha de aprobación', visibility: 'visible', group: 'default', widthClass: 'w-[170px]' },
+  { key: 'numeroRegistro', label: 'N° registro', visibility: 'visible', group: 'default', widthClass: 'w-[95px]' },
+  { key: 'registro', label: 'Registro', visibility: 'visible', group: 'default', widthClass: 'w-[270px]' },
+  { key: 'necesidades', label: 'Necesidades', visibility: 'visible', group: 'default', widthClass: 'w-[150px]' },
+  ...ANIOS_CMN.map((anio): DocumentsRecordsColumn => ({
+    key: `programado${anio}`, label: `Programado ${anio}`, visibility: 'visible', group: 'default', widthClass: 'w-[164px]', kind: 'budget',
+  })),
+  { key: 'estado', label: 'Estado', visibility: 'visible', group: 'default', widthClass: 'w-[125px]', kind: 'record-status' },
+  { key: 'areas', label: 'Áreas usuarias', visibility: 'hidden', group: 'more', widthClass: 'w-[130px]' },
+  { key: 'fechaRegistro', label: 'Fecha de aprobación', visibility: 'hidden', group: 'more', widthClass: 'w-[170px]' },
 ];
 
 const filterCampoOptions: DocumentsRecordsFilterOption[] = [
@@ -52,6 +56,7 @@ const filterValorOptions: DocumentsRecordsFilterOption[] = [
   { label: ESTADO.VALIDADO, value: ESTADO.VALIDADO },
   { label: ESTADO.APROBADO, value: ESTADO.APROBADO },
   { label: ETIQUETA_TIPO_ACCION, value: ETIQUETA_TIPO_ACCION },
+  { label: ETIQUETA_MODIFICACION, value: ETIQUETA_MODIFICACION },
 ];
 
 export const CMN_PROGRAMACION_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
@@ -65,19 +70,22 @@ export const CMN_PROGRAMACION_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
   documentColumns,
   recordColumns,
   // `table-fixed`: las columnas toman el ancho del Figma y el documento largo se corta (con tooltip), sin scroll.
-  documentTableMinWidthClass: 'min-w-[1000px] table-fixed',
-  recordTableMinWidthClass: 'min-w-[1100px]',
+  documentTableMinWidthClass: 'min-w-[1080px] table-fixed',
+  recordTableMinWidthClass: 'min-w-[1200px] table-fixed',
   recordTrackKey: 'recordId',
   recordHistoryDocumentLabel: NOMBRE_DOCUMENTO,
-  // El historial de un registro es el de la solicitud (Anexo 02) que lo incluyó.
-  recordHistoryKind: 'documento',
+  // El historial de un registro son sus versiones aprobadas (la creación y las modificaciones): panel del módulo.
+  recordHistoryKind: 'personalizado',
   statusFilterOptions: [ESTADO.ELABORADO, ESTADO.VERIFICADO, ESTADO.VALIDADO, ESTADO.OBSERVADO, ESTADO.APROBADO, ESTADO.RECHAZADO],
-  actionTypeFilterOptions: [ETIQUETA_TIPO_ACCION],
+  actionTypeFilterOptions: [ETIQUETA_TIPO_ACCION, ETIQUETA_MODIFICACION],
   filterCampoOptions,
   filterValorOptions,
+  recordFilter1Label: 'Fase',
+  recordFilter1Key: 'fase',
+  recordFilter1Options: ([1, 2, 3] as const).map((fase) => FASES_CMN[fase].etiqueta),
   recordFilterCampoOptions: [
-    { label: 'Área usuaria', value: 'area' },
-    { label: 'Solicitud', value: 'number' },
+    { label: 'N° de registro', value: 'numeroRegistro' },
+    { label: 'Registro', value: 'registro' },
   ],
-  recordFilterValorOptions: [],
+  recordFilterValorOptions: ([1, 2, 3] as const).map((fase) => ({ label: nombreRegistroFase(fase), value: nombreRegistroFase(fase) })),
 };

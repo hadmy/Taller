@@ -13,7 +13,7 @@ import { IconComponent } from '../../../../../shared/ui/icon/icon.component';
 import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs.util';
 import { Anexo2Fase1ApiService } from '../../api/anexo-2-fase-1-api.service';
 import { DESDE_ESCRITORIO, ESCRITORIO_PROCESS_ID, ESCRITORIO_ROUTE, REQUEST_ROUTE, REQUEST_ROUTE_POR_FASE } from '../../config/anexo-2-fase-1.rutas';
-import { ANIOS_CMN, FASES_CMN, FaseCmn, SolicitudEscritorioCmn } from '../../models/anexo-2-fase-1.model';
+import { ANIOS_CMN, FASES_CMN, FaseCmn, SolicitudEscritorioCmn, TIPO_ACCION, TIPO_ACCION_MODIFICACION, etiquetaTipoAccion } from '../../models/anexo-2-fase-1.model';
 import { fechaHora } from '../../utils/formato.util';
 
 /** Estado del backend → etiqueta de `siaf-flow-status-tag` (la solicitud nueva, aún sin elaborar, va como Pendiente). */
@@ -40,7 +40,8 @@ export function nombreSolicitudFase(fase: FaseCmn): string {
  * «Escritorio virtual» de CMN Programación: la entrada a las fases del CMN y la bandeja de sus solicitudes.
  *
  * - **Procesos**: una tarjeta por fase (Solicitud de CMN - Anexo N.º 02, Fases 1, 2 y 3). Para el rol creador cada
- *   tarjeta es un botón que abre una solicitud nueva de esa fase; los demás roles las ven como información.
+ *   tarjeta es un botón que abre una solicitud nueva de esa fase (la Modificación si ya tiene un Anexo 02 aprobado; si
+ *   no, la Creación); los demás roles las ven como información.
  * - **Bandeja de solicitudes**: las Solicitudes de CMN - Anexo N.º 02 de la entidad, con su fase, número, fecha, áreas y
  *   necesidades, responsable actual y estado; se buscan por texto, se paginan abajo y el ojo abre la solicitud.
  *
@@ -78,8 +79,8 @@ export function nombreSolicitudFase(fase: FaseCmn): string {
                   type="button"
                   class="flex w-full flex-col gap-siaf-xs rounded-siaf-md border border-[var(--sys-color-divider-strong)] bg-surface p-siaf-md text-left transition-colors focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)] enabled:cursor-pointer enabled:hover:bg-[var(--sys-color-bg-states-light-hover)] disabled:cursor-default"
                   [disabled]="!puedeCrear()"
-                  [attr.aria-label]="tarjeta.titulo + (puedeCrear() ? '. Crear una solicitud nueva' : '')"
-                  (click)="crear(tarjeta.fase)"
+                  [attr.aria-label]="tarjeta.titulo + (puedeCrear() ? '. ' + tarjeta.accion : '')"
+                  (click)="crear(tarjeta.fase, tarjeta.tipoAccion)"
                 >
                   <span class="mb-siaf-xs flex size-11 items-center justify-center rounded-siaf-md bg-[var(--sys-color-bg-feedback-light-info)] text-[var(--sys-color-text-feedback-info)]">
                     <siaf-icon name="description" [size]="24" />
@@ -87,6 +88,9 @@ export function nombreSolicitudFase(fase: FaseCmn): string {
                   <strong class="text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ tarjeta.titulo }}</strong>
                   <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.descripcion }}</span>
                   <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.resumen }}</span>
+                  @if (puedeCrear()) {
+                    <span class="text-xs font-bold text-[var(--sys-color-text-neutral-high)]">{{ tarjeta.accion }}</span>
+                  }
                   <span class="text-[10px] font-medium uppercase tracking-[0.66px] text-text-muted">Roles: Creador · Evaluador · Aprobador</span>
                 </button>
               </li>
@@ -118,6 +122,7 @@ export function nombreSolicitudFase(fase: FaseCmn): string {
                   <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
                     <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Documento</th>
                     <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Número</th>
+                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Tipo de acción</th>
                     <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Fecha</th>
                     <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Necesidades</th>
                     <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Responsable actual</th>
@@ -130,6 +135,7 @@ export function nombreSolicitudFase(fase: FaseCmn): string {
                     <tr class="border-b border-[var(--sys-color-divider-default)] text-[var(--sys-color-text-neutral-high)]">
                       <td class="px-siaf-md py-siaf-sm">{{ nombre(fila.fase) }}</td>
                       <td class="px-siaf-md py-siaf-sm">{{ fila.numero || '—' }}</td>
+                      <td class="px-siaf-md py-siaf-sm">{{ accion(fila.tipoAccion) }}</td>
                       <td class="whitespace-nowrap px-siaf-md py-siaf-sm">{{ fecha(fila.fecha) }}</td>
                       <td class="px-siaf-md py-siaf-sm">{{ fila.necesidades }} necesidades · {{ fila.areas }} {{ fila.areas === 1 ? 'área' : 'áreas' }}</td>
                       <td class="px-siaf-md py-siaf-sm">{{ fila.responsable ? fila.responsable.nombre + ' (' + fila.responsable.rol + ')' : '—' }}</td>
@@ -174,6 +180,7 @@ export class CmnEscritorioComponent implements OnInit {
 
   readonly breadcrumbs = buildProcessBreadcrumbs(ESCRITORIO_PROCESS_ID, ESCRITORIO_ROUTE);
   readonly filasPorPagina = FILAS_POR_PAGINA;
+  readonly accion = etiquetaTipoAccion;
 
   readonly solicitudes = signal<SolicitudEscritorioCmn[]>([]);
   readonly cargando = signal(true);
@@ -194,6 +201,8 @@ export class CmnEscritorioComponent implements OnInit {
       const aprobadas = deLaFase.filter((s) => s.estado === 'APROBADO').length;
       return {
         fase,
+        tipoAccion: aprobadas ? TIPO_ACCION_MODIFICACION : TIPO_ACCION,
+        accion: aprobadas ? 'Modificar el Anexo 02 vigente' : 'Crear una solicitud nueva',
         titulo: nombreSolicitudFase(fase),
         descripcion: `Cuadro Multianual de Necesidades · Trienio ${ANIOS_CMN[0]}–${ANIOS_CMN[ANIOS_CMN.length - 1]}`,
         resumen: deLaFase.length
@@ -208,7 +217,7 @@ export class CmnEscritorioComponent implements OnInit {
     const texto = this.busqueda().trim().toLowerCase();
     if (!texto) return this.solicitudes();
     return this.solicitudes().filter((s) =>
-      [nombreSolicitudFase(s.fase), s.numero, ETIQUETA_ESTADO[s.estado] ?? s.estado, s.responsable?.nombre ?? '', s.responsable?.rol ?? '']
+      [nombreSolicitudFase(s.fase), s.numero, etiquetaTipoAccion(s.tipoAccion), ETIQUETA_ESTADO[s.estado] ?? s.estado, s.responsable?.nombre ?? '', s.responsable?.rol ?? '']
         .join(' ')
         .toLowerCase()
         .includes(texto),
@@ -237,9 +246,9 @@ export class CmnEscritorioComponent implements OnInit {
   }
 
   /** Tarjeta de una fase: abre una solicitud nueva de esa fase (como «Crear documento»). */
-  crear(fase: FaseCmn): void {
+  crear(fase: FaseCmn, actionType: string): void {
     if (!this.puedeCrear()) return;
-    void this.router.navigate([REQUEST_ROUTE_POR_FASE[fase]], { queryParams: { actionType: 'creacion', ...DESDE_ESCRITORIO } });
+    void this.router.navigate([REQUEST_ROUTE_POR_FASE[fase]], { queryParams: { actionType, ...DESDE_ESCRITORIO } });
   }
 
   ver(id: string): void {

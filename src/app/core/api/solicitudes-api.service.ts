@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../config/app.config';
 import { EstadoDocumento } from '../models/documento.model';
-import type { AreaUsuariaAnexo1 } from '../../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
+import type { AreaUsuariaAnexo1, BaseModificacionAnexo2 } from '../../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import type { ItemEstrategico } from '../../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
 
 // ─────────────────────────────────────────────────────────────
@@ -316,7 +316,14 @@ export interface SolicitudResponse {
   /** Taller: ítems propuestos como estratégicos en la solicitud SIE (CMN). */
   detalleItemsEstrategicos?: { documentoId: string; items: ItemEstrategico[] } | null; // SIE
   /** Taller: áreas usuarias (Anexos 01) incluidas en la solicitud del Anexo 02, Fase 1 (CMN). */
-  detalleAnexo2Fase1?: { documentoId: string; areas: AreaUsuariaAnexo1[]; /** Fase del CMN (1 si falta). */ fase?: 1 | 2 | 3 } | null; // SA2F1
+  detalleAnexo2Fase1?: {
+    documentoId: string;
+    areas: AreaUsuariaAnexo1[];
+    /** Fase del CMN (1 si falta). */
+    fase?: 1 | 2 | 3;
+    /** Solo en una Modificación: el Anexo 02 vigente que cambia. */
+    base?: BaseModificacionAnexo2;
+  } | null; // SA2F1
   detalleConfiguracionMensual?: {
     documentoId: string;
     periodoContableId: string;

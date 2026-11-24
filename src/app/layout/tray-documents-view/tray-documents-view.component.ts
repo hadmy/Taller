@@ -18,7 +18,7 @@ import { respondeSolicitudes } from '../../core/auth/role.model';
 import { TooltipDirective } from '../../shared/ui/tooltip/tooltip.directive';
 import { ESTADO, ESTADOS_RESPUESTA_APROBADOR } from '../../core/models/documento.model';
 import { NOMBRE_PROCESO as NOMBRE_PROCESO_SA2F1, REQUEST_ROUTE as RUTA_SA2F1 } from '../../modules/abastecimiento/anexo-2-fase-1/config/anexo-2-fase-1.rutas';
-import { NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SA2F1 } from '../../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
+import { NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SA2F1, nombreDocumentoFase } from '../../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import { REQUEST_ROUTE as RUTA_SIE } from '../../modules/abastecimiento/items-estrategicos/config/items-estrategicos.rutas';
 import { NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SIE, SISTEMA_NACIONAL } from '../../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
 
@@ -400,7 +400,7 @@ export class TrayDocumentsViewComponent implements OnInit, OnChanges {
     return this.SECTION_STATES[roleKey][this.title] ?? [];
   }
 
-  readonly actionTypeFilterOptions = ['Creación'];
+  readonly actionTypeFilterOptions = ['Creación', 'Modificación'];
 
   /** Pendientes primero: Observado/Rechazado arriba en Recibidos del creador; lo pendiente arriba para el evaluador y el aprobador. */
   private readonly STATUS_PRIORITY_BY_ROLE: Record<string, Record<string, number>> = {
@@ -483,7 +483,7 @@ export class TrayDocumentsViewComponent implements OnInit, OnChanges {
     return {
       id: s.id,
       route: documento?.ruta ?? '',
-      document: s.tipoDocumento,
+      document: s.faseCmn ? nombreDocumentoFase(s.faseCmn) : s.tipoDocumento,
       number: s.numero || '-',
       actionType: ETIQUETAS_TIPO_ACCION[s.tipoAccion] ?? s.tipoAccion,
       status: s.estado as TrayDocumentStatus,

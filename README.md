@@ -34,8 +34,8 @@ OA) y llena el correo y la contraseña con un clic; los demás entran escribiend
 | Carla Mendoza Ríos | `carla.mendoza@taller.pe` | `33333333` | Creador y Aprobador | Lo mismo que Ana y Luis: cambia de perfil desde su menú de usuario |
 | Marta Quispe Vega | `marta.quispe@taller.pe` | `66666666` | Evaluador | Validar (con comentario) u observar lo verificado |
 | Usuario Especialista OA | `especialista-oa@minedu.gob.pe` | `44444444` | Creador (Ministerio de Educación) | Registra las solicitudes del CMN, como el Anexo N.º 02 |
-| Usuario Evaluador OA | `evaluador-oa@minedu.gob.pe` | `77777777` | Evaluador (Ministerio de Educación) | Valida u observa las solicitudes de su entidad, como el Anexo N.º 02 |
-| Usuario Aprobador OA | `aprobador-oa@minedu.gob.pe` | `55555555` | Aprobador (Ministerio de Educación) | Aprueba u observa las solicitudes de su entidad, como el Anexo N.º 02 |
+| Usuario Evaluador OA | `evaluador-oa@minedu.gob.pe` | `77777777` | Evaluador (Ministerio de Educación) | Valida u observa las solicitudes de su entidad, como el Anexo N.º 02; una Modificación también la rechaza |
+| Usuario Aprobador OA | `aprobador-oa@minedu.gob.pe` | `55555555` | Aprobador (Ministerio de Educación) | Aprueba u observa las solicitudes de su entidad, como el Anexo N.º 02; una Modificación también la rechaza |
 
 «Olvidé mi contraseña» también funciona: con el correo de un usuario (por ejemplo `ana.torres@taller.pe`) el código de
 verificación es `123456`.
@@ -44,12 +44,24 @@ verificación es `123456`.
 
 **Flujo del CMN (los tres usuarios del login):**
 
+*Creación (Fase 3, aún sin Anexo 02 aprobado):*
+
 1. Entrar como la **Especialista OA**: en **Procesos**, buscar «CMN Programación» y abrir la Solicitud de CMN - Anexo
-   N.º 02 elaborada (0002) o crear una con **Crear documento**. **Verificar**.
+   N.º 02 elaborada (0003). Marcar sus Anexos 01 como Completo o Incompleto y **Verificar**.
 2. **Cerrar sesión** y entrar como el **Evaluador OA**: la solicitud aparece en **Bandeja → Recibidos** (y en sus
    notificaciones). Abrirla desde el nombre del documento y **Validar** (pide comentario) u **Observar**.
 3. Entrar como el **Aprobador OA**: la solicitud validada aparece en su **Bandeja → Recibidos**. Abrirla y **Aprobar** u
-   **Observar**; al aprobar, sus áreas usuarias pasan a la pestaña Registros.
+   **Observar**; al aprobar, el Anexo 02 de la fase pasa a la pestaña Registros (un registro por fase).
+
+*Modificación (Fases 1 y 2, con Anexo 02 aprobado):*
+
+1. Como la **Especialista OA**, **Crear documento** → Anexo N.º 02 de la Fase 1 o 2 → **Modificación** (o su tarjeta en
+   el Escritorio virtual del CMN). Con el lápiz de un área en plazo, cambiar cantidades o montos; con el tacho, quitar
+   sus necesidades. **Grabar** (solo con cambios) y **Verificar**. Con una modificación en curso no se registra otra.
+2. El **Evaluador OA** la **Valida**, **Observa** o **Rechaza**, y el **Aprobador OA** la **Aprueba**, **Observa** o
+   **Rechaza**. La observada vuelve a la Especialista OA; la rechazada no cambia el Anexo 02 vigente.
+3. Aprobada, la pestaña **Registros** muestra el mismo registro con los montos nuevos; su ícono de historial lista la
+   Creación y la Modificación, y el número abre cada documento.
 
 **Otros recorridos (entrar escribiendo el correo o el DNI):**
 
@@ -82,7 +94,8 @@ Para empezar de cero: **Reiniciar datos** en el login (o borrar el almacenamient
 | `/login/recuperar-contrasena` | Recuperar contraseña con código | — |
 | `/panel` | Escritorio virtual | `siaf-desk-card` |
 | `/procesos/cmn-programacion` | CMN Programación: Documentos y registros | `siaf-documents-records-page` |
-| `/procesos/cmn-programacion/anexo-2-fase-1` y `/:id` | Solicitud de CMN - Anexo N.º 02 | Fase 1 | `siaf-solicitude-page-layout` |
+| `/procesos/cmn-programacion/anexo-2-fase-1` y `/:id` | Solicitud de CMN - Anexo N.º 02, Fase 1: Creación y Modificación (`?actionType=modificacion`) | `siaf-solicitude-page-layout` |
+| `/procesos/cmn-programacion/anexo-2-fase-2` y `anexo-2-fase-3` | La misma solicitud para las Fases 2 y 3 | `siaf-solicitude-page-layout` |
 | `/procesos/cuadro-multianual-necesidades/solicitudes/necesidades-estrategicas` | Necesidades estratégicas: Documentos y registros | `siaf-documents-records-page` |
 | `…/necesidades-estrategicas/solicitud` y `/solicitud/:id` | Solicitud de necesidades estratégicas | `siaf-solicitude-page-layout` |
 | `/ui-kit` | Catálogo de componentes (sin sesión) | — |
@@ -91,7 +104,7 @@ Para empezar de cero: **Reiniciar datos** en el login (o borrar el almacenamient
 
 - **`src/app/mock/mock-backend.interceptor.ts`** hace de backend: responde las llamadas a `/api/v1` con las mismas
   rutas y respuestas que el backend real del SIAF-RP, y aplica sus reglas (quién puede hacer cada cambio de estado,
-  comentario obligatorio al observar (el Evaluador y el Aprobador del CMN no rechazan), datos obligatorios para elaborar, número al elaborar, registro al
+  comentario obligatorio al observar (el Evaluador y el Aprobador del CMN solo rechazan una Modificación), datos obligatorios para elaborar, número al elaborar, registro al
   aprobar, notificaciones para cada rol). Simula 250 ms de latencia. Si una pantalla llama a una ruta que no simula,
   lo avisa en la consola con `[mock] Endpoint no simulado`.
 - **`src/app/mock/mock-db.ts`** guarda los datos en el `localStorage` del navegador (clave `taller-siaf-rp:datos`): lo

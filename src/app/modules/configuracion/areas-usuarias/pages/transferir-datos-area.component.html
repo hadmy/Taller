@@ -1,0 +1,110 @@
+<siaf-page-shell [breadcrumbs]="breadcrumbs()">
+  <siaf-page-header pageHeader title="Configuración del Cuadro Multianual de Necesidades" />
+
+  <siaf-configuracion-tabs activa="areas-usuarias" />
+
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
+    <header class="flex items-center justify-between">
+      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Detalle de necesidades del área</h2>
+      <div class="flex gap-siaf-sm">
+        <siaf-button variant="outline" data-cancelar (click)="cancelar()">Cancelar</siaf-button>
+        <siaf-button variant="filled" icon="save" data-grabar [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="pedirGrabar()">Grabar</siaf-button>
+      </div>
+    </header>
+
+    @if (notFound()) {
+      <p class="m-0 text-sm text-[var(--sys-color-text-neutral-medium)]">No se encontró el área usuaria.</p>
+    } @else {
+      <div class="grid grid-cols-1 gap-siaf-lg md:grid-cols-2">
+        <div class="flex flex-col gap-siaf-xs">
+          <span class="text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Área de origen (inactivo)</span>
+          <siaf-input label="Área de origen" [hideLabel]="true" [value]="origen()?.denominacion ?? ''" [disabled]="true" data-origen />
+        </div>
+        <div class="flex flex-col gap-siaf-xs">
+          <span class="text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Área de destino</span>
+          <siaf-input
+            label="Área de destino"
+            [hideLabel]="true"
+            type="select"
+            placeholder="Seleccione"
+            [options]="opcionesDestino()"
+            [value]="destinoId()"
+            data-destino
+            (valueChange)="elegirDestino($event)"
+          />
+        </div>
+      </div>
+
+      <hr class="m-0 border-0 border-t border-[var(--sys-color-divider-default)]" />
+
+      <div class="flex h-10 items-center">
+        <input
+          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+          type="checkbox"
+          aria-label="Seleccionar todos los registros"
+          data-todas
+          [checked]="todas()"
+          [indeterminate]="algunas()"
+          [disabled]="items().length === 0"
+          (change)="alternarTodas($any($event.target).checked)"
+        />
+      </div>
+
+      <div class="min-h-0 flex-1 overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+        <table class="w-full min-w-[720px] border-collapse text-sm">
+          <thead>
+            <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+              <th class="w-12 p-siaf-sm"></th>
+              <th class="px-siaf-md py-siaf-sm text-center">Commodity</th>
+              <th class="px-siaf-md py-siaf-sm text-left">Descripción commodity</th>
+              <th class="px-siaf-md py-siaf-sm text-left">Item</th>
+              <th class="px-siaf-md py-siaf-sm text-left">Descripción item</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of items(); track item.id) {
+              <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0" [class.bg-[var(--sys-color-bg-states-light-selected)]]="seleccion().has(item.id)" [attr.data-item]="item.id">
+                <td class="p-siaf-sm">
+                  <input
+                    class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                    type="checkbox"
+                    [attr.aria-label]="'Transferir ' + item.descripcionItem"
+                    [checked]="seleccion().has(item.id)"
+                    (change)="alternar(item.id, $any($event.target).checked)"
+                  />
+                </td>
+                <td class="px-siaf-md py-siaf-sm text-center text-[var(--sys-color-text-neutral-medium)]">{{ item.commodity }}</td>
+                <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionCommodity }}</td>
+                <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.item }}</td>
+                <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionItem }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" colspan="5">
+                  @if (cargando()) {
+                    Cargando registros…
+                  } @else {
+                    El área no tiene commodities ni ítems para transferir.
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <siaf-modal
+    [open]="modalGrabar()"
+    variant="save"
+    [showIllustration]="true"
+    title="¿Grabar?"
+    [description]="msjConfirmar"
+    confirmLabel="Aceptar"
+    [confirmDisabled]="guardando()"
+    (canceled)="modalGrabar.set(false)"
+    (closed)="modalGrabar.set(false)"
+    (confirmed)="confirmarGrabar()"
+  />
+</siaf-page-shell>

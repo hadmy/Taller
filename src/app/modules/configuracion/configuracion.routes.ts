@@ -20,6 +20,11 @@ export const CONFIGURACION_ROUTES: Routes = [
       ),
   },
   {
+    path: `${AREAS_USUARIAS_ROUTE.slice(1)}/:areaId/transferir`,
+    loadComponent: () =>
+      import('./areas-usuarias/pages/transferir-datos-area.component').then((m) => m.TransferirDatosAreaComponent),
+  },
+  {
     path: `${AREAS_USUARIAS_ROUTE.slice(1)}/:areaId`,
     loadComponent: () =>
       import('./areas-usuarias/pages/area-usuaria-detalle.component').then(

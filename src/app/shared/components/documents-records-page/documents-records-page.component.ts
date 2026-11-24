@@ -419,6 +419,8 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   @Output() documentsQueryChange = new EventEmitter<DocumentsQuery>();
   /** Igual que `documentsQueryChange`, para la pestaña Registros (`serverRecordsQuery`). */
   @Output() recordsQueryChange = new EventEmitter<DocumentsQuery>();
+  /** Historial de un registro con `recordHistoryKind: 'personalizado'`: el módulo abre su propio panel. */
+  @Output() recordHistoryOpened = new EventEmitter<DocumentsRecordsRow>();
   @Input() loading = false;
 
   // Config efectivo con reglas de rol aplicadas automáticamente
@@ -1156,6 +1158,11 @@ export class DocumentsRecordsPageComponent implements OnChanges {
 
   openHistory(row: DocumentsRecordsRow): void {
     this.closeToolbarMenus();
+
+    if (this.activeTab === 'records' && this.effectiveConfig.recordHistoryKind === 'personalizado') {
+      this.recordHistoryOpened.emit(row);
+      return;
+    }
 
     // Con `recordHistoryKind: 'documento'`, el historial de un registro es el de la solicitud que lo creó (su `linkRoute`).
     if (this.activeTab === 'records' && this.effectiveConfig.recordHistoryKind !== 'documento') {

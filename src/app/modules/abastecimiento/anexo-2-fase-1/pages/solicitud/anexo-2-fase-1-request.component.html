@@ -31,6 +31,16 @@
         </div>
       </div>
     } @else {
+      @if (!elaborado() && vigente(); as v) {
+        <siaf-alert
+          tone="warning"
+          title="La fase ya tiene un Anexo 02 aprobado"
+          [description]="'El Anexo 02 N° ' + v.base.numero + ' está vigente. Para cambiarlo, registre una Modificación.'"
+        />
+        <div>
+          <siaf-button variant="outline" icon="edit_note" data-ir-a-modificar (click)="irAModificar()">Modificar el Anexo 02 vigente</siaf-button>
+        </div>
+      }
       @if (elaborado()) {
         <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
           <siaf-solicitude-info-card [fields]="camposCabecera()" [captureOpenDate]="true" />

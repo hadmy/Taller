@@ -55,9 +55,27 @@ export function faseCmn(valor: unknown): FaseCmn {
   return valor === 2 || valor === 3 ? valor : 1;
 }
 
-/** Única acción del documento: crear el Anexo 02. */
+/** Acciones del documento: crear el Anexo 02 de una fase y modificar el que ya está aprobado. */
 export const TIPO_ACCION = 'creacion';
 export const ETIQUETA_TIPO_ACCION = 'Creación';
+export const TIPO_ACCION_MODIFICACION = 'modificacion';
+export const ETIQUETA_MODIFICACION = 'Modificación';
+
+/** Tipo de acción como lo muestran las pantallas («modificacion» → «Modificación»). */
+export function etiquetaTipoAccion(tipoAccion: string): string {
+  if (tipoAccion === TIPO_ACCION) return ETIQUETA_TIPO_ACCION;
+  return tipoAccion === TIPO_ACCION_MODIFICACION ? ETIQUETA_MODIFICACION : tipoAccion;
+}
+
+/** Documento con su fase, para distinguirlo en Documentos y la bandeja (nombre corto: la fase se ve sin cortarse). */
+export function nombreDocumentoFase(fase: FaseCmn): string {
+  return `Anexo 02 - Consolidado del CMN · Fase ${fase}`;
+}
+
+/** Registro de un Anexo 02 aprobado: «Anexo 02 · Fase 1 - Identificación». */
+export function nombreRegistroFase(fase: FaseCmn): string {
+  return `Anexo 02 · ${FASES_CMN[fase].etiqueta}`;
+}
 
 /** Anexo 01 de un área usuaria: lo que se elige en «Seleccionar registros». */
 export interface AreaUsuariaAnexo1 {
@@ -74,6 +92,62 @@ export interface AreaUsuariaAnexo1 {
   plazoModificacion: string;
   /** Comentario de observación cuando la OA lo marcó «Incompleto» (Figma «Observar registro»). */
   comentarioEvaluacion?: string;
+  /** Solo en un área modificada: monto del Anexo 01 original, del que salen sus ítems antes de los ajustes. */
+  montoBase?: number;
+  /** Solo en un área modificada: monto nuevo de cada necesidad cambiada (por id del ítem). */
+  ajustes?: Record<string, number>;
+}
+
+/** Una necesidad en la Modificación del Anexo 02: lo vigente y lo que quedaría. */
+export interface ItemModificacion {
+  id: string;
+  item: string;
+  descripcion: string;
+  tipo: TipoItemAnexo1;
+  unidadMedida: string;
+  precioUnitario: number | null;
+  montoVigente: number;
+  monto: number;
+}
+
+/** Un área usuaria en la Modificación del Anexo 02. */
+export interface AreaModificacion {
+  id: string;
+  nombre: string;
+  plazoModificacion: string;
+  /** Fuera del plazo de modificación: sus necesidades se ven, pero no se cambian. */
+  soloLectura: boolean;
+  /** Sus necesidades salen del Anexo 02. */
+  quitada: boolean;
+  items: ItemModificacion[];
+}
+
+/** Anexo 02 vigente de una fase y lo que se puede modificar (o lo que ya modificó una solicitud grabada). */
+export interface ModificacionAnexo2 {
+  fase: FaseCmn;
+  base: { documentoId: string; numero: string; fechaAprobacion: string };
+  areas: AreaModificacion[];
+}
+
+/** Respuesta de «vigente»: sin `modificacion` si no hay Anexo 02 aprobado; `enProceso` si otra modificación está en curso. */
+export interface VigenteAnexo2 {
+  modificacion: ModificacionAnexo2 | null;
+  enProceso: { id: string; numero: string; estado: string } | null;
+}
+
+/** Cuerpo para grabar la modificación: por área, si se quita y los montos nuevos de sus necesidades. */
+export interface GuardarModificacionRequest {
+  fase: FaseCmn;
+  baseId: string;
+  areas: { id: string; quitada: boolean; ajustes: Record<string, number> }[];
+}
+
+/** Áreas del Anexo 02 que la modificación toma como base (foto de lo vigente al registrarla). */
+export interface BaseModificacionAnexo2 {
+  documentoId: string;
+  numero: string;
+  fechaAprobacion: string;
+  areas: AreaUsuariaAnexo1[];
 }
 
 /** Evaluación del Anexo 01 por la OA (Figma «3. Detalle items»): «Completo» o «Incompleto» desde su detalle. */
@@ -163,17 +237,40 @@ export interface ConsolidadoAnexo2 {
   totalGeneral: number;
 }
 
-/** Un área usuaria de un Anexo 02 aprobado: la pestaña Registros de CMN Programación. */
-export interface RegistroAnexo2 {
-  id: string;
-  area: string;
-  items: number;
-  montoProgramado: number;
-  /** Solicitud (Anexo 02) que la incluyó. */
+/** Una versión del registro: la solicitud aprobada que lo creó o lo modificó. */
+export interface VersionRegistroAnexo2 {
   documentoId: string;
-  numeroDocumento: string;
+  numero: string;
+  tipoAccion: string;
   /** Fecha de aprobación (ISO). */
   fechaAprobacion: string;
+}
+
+/** Lo programado en un año frente al presupuesto de la fase (APM o PIA). */
+export interface ProgramadoAnio {
+  anio: number;
+  monto: number;
+  techo: number;
+}
+
+/**
+ * Registro de CMN Programación (Figma «B.1-RC-016»): uno por Anexo 02 aprobado de cada fase. Una modificación aprobada
+ * no crea otro: actualiza el mismo registro y suma una versión a su historial.
+ */
+export interface RegistroAnexo2 {
+  id: string;
+  /** Número del registro en la entidad («0001»). */
+  numero: string;
+  fase: FaseCmn;
+  areas: number;
+  necesidades: number;
+  programado: ProgramadoAnio[];
+  /** Solicitud vigente (la última aprobada) y su número. */
+  documentoId: string;
+  numeroDocumento: string;
+  fechaAprobacion: string;
+  /** De la más antigua a la vigente. */
+  versiones: VersionRegistroAnexo2[];
 }
 
 /** Fila de la «Bandeja de solicitudes» del escritorio de CMN Programación: una Solicitud de CMN - Anexo N.º 02. */
@@ -182,6 +279,8 @@ export interface SolicitudEscritorioCmn {
   /** Número del documento («0004»); vacío mientras no se elabora. */
   numero: string;
   fase: FaseCmn;
+  /** `creacion` o `modificacion`. */
+  tipoAccion: string;
   /** Fecha de registro (ISO). */
   fecha: string;
   /** Áreas usuarias incluidas y la suma de sus necesidades. */

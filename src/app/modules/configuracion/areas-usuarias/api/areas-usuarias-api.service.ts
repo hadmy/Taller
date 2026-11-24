@@ -33,6 +33,16 @@ export class AreasUsuariasApiService {
     return this.http.get<AreaUsuaria[]>(`${this.base}/configuracion/areas-usuarias/disponibles`);
   }
 
+  /** «Sincronizar» → «Aceptar»: incorpora las unidades elegidas a la lista (etiqueta «Nuevo»). */
+  incorporar(ids: string[]): Observable<{ incorporadas: number }> {
+    return this.http.post<{ incorporadas: number }>(`${this.base}/configuracion/areas-usuarias/incorporar`, { ids });
+  }
+
+  /** «Transferir datos»: mueve commodities/ítems de un área inactiva a un área de destino activa. */
+  transferir(origenId: string, destinoId: string, itemIds: string[]): Observable<{ transferidos: number }> {
+    return this.http.post<{ transferidos: number }>(`${this.base}/configuracion/areas-usuarias/${origenId}/transferir`, { destinoId, itemIds });
+  }
+
   /** Reemplaza las cuatro banderas de las áreas indicadas; las unidades incorporadas quedan registradas. */
   guardar(cambios: Pick<AreaUsuaria, 'id' | 'generaCmn' | 'esAte' | 'esOa' | 'esMaa'>[]): Observable<{ message: string }> {
     return this.http.put<{ message: string }>(`${this.base}/configuracion/areas-usuarias`, { areas: cambios });

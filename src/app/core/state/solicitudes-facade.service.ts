@@ -20,6 +20,7 @@ import {
   EstadoSolicitudDemo,
 } from './solicitudes-state.service';
 import type { SolicitudeHeaderRole } from '../../shared/components/solicitude-header/solicitude-header.component';
+import { faseCmn } from '../../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import { ESTADO, EstadoDocumento } from '../models/documento.model';
 
 /** Intervalo de refresco automático de la bandeja del aprobador (ms). */
@@ -161,6 +162,7 @@ function mapResponse(r: SolicitudResponse): SolicitudDemo {
     numero: numeroFinal,
     tipoDocumento: tipoNombre,
     tipoAccion: r.tipoAccion,
+    faseCmn: r.detalleAnexo2Fase1 ? faseCmn(r.detalleAnexo2Fase1.fase) : undefined,
     estado: mapEstado(r.estado),
     fecha: new Date(r.createdAt).toLocaleDateString('es-PE'),
     entidad: entidadLabel,

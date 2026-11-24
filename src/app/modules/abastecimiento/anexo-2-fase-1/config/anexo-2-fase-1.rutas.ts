@@ -1,5 +1,5 @@
 import type { CreateDocumentProcessOption } from '../../../../shared/components/create-document/create-document.component';
-import { ETIQUETA_TIPO_ACCION, FASES_CMN, FaseCmn } from '../models/anexo-2-fase-1.model';
+import { ETIQUETA_MODIFICACION, ETIQUETA_TIPO_ACCION, FASES_CMN, FaseCmn } from '../models/anexo-2-fase-1.model';
 
 /**
  * Rutas e ids del proceso. Los ids existen en `DEFAULT_PROCESS_TREE` (shared/utils/process-tree.util.ts).
@@ -49,8 +49,8 @@ export const CREATE_DOCUMENT_OPTIONS: CreateDocumentProcessOption[] = [
     documentOptions: FASES.map((fase) => ({
       label: FASES_CMN[fase].opcionCrear,
       route: REQUEST_ROUTE_POR_FASE[fase],
-      actionTypes: [ETIQUETA_TIPO_ACCION],
+      actionTypes: [ETIQUETA_TIPO_ACCION, ETIQUETA_MODIFICACION],
     })),
-    actionTypes: [ETIQUETA_TIPO_ACCION],
+    actionTypes: [ETIQUETA_TIPO_ACCION, ETIQUETA_MODIFICACION],
   },
 ];

@@ -2,8 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } 
 import { Router } from '@angular/router';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { CheckboxComponent } from '../../../../shared/ui/checkbox/checkbox.component';
+import { IconDropdownMenuComponent, IconDropdownMenuItem } from '../../../../shared/ui/icon-dropdown-menu/icon-dropdown-menu.component';
+import { IconComponent } from '../../../../shared/ui/icon/icon.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { ReadonlyFieldComponent } from '../../../../shared/ui/readonly-field/readonly-field.component';
 import { RecordStatusTagComponent } from '../../../../shared/ui/record-status-tag/record-status-tag.component';
+import { SideNavComponent } from '../../../../shared/ui/side-nav/side-nav.component';
 import { SnackbarComponent } from '../../../../shared/ui/snackbar/snackbar.component';
 import { StatusTagComponent } from '../../../../shared/ui/status-tag/status-tag.component';
 import { TooltipDirective } from '../../../../shared/ui/tooltip/tooltip.directive';
@@ -11,49 +16,55 @@ import { FormTableSearchComponent } from '../../../../shared/components/form-tab
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
-import { SelectionSideNavComponent } from '../../../../shared/components/selection-side-nav/selection-side-nav.component';
+import { TableControlsComponent } from '../../../../shared/components/table-controls/table-controls.component';
+import { RegistrosSincronizarDialogComponent } from '../components/registros-sincronizar-dialog.component';
 import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
-import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../shared/utils/form-snapshot.util';
 import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { AreasUsuariasApiService } from '../api/areas-usuarias-api.service';
 import { AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE } from '../config/areas-usuarias.rutas';
 import { AreaUsuaria, BANDERAS_AREA_USUARIA } from '../models/area-usuaria.model';
 
-/** Texto del modal «¿Grabar?» (HU-01, MSJ-J-109). */
-export const MSJ_CONFIRMAR_GRABAR = 'Se actualizarán los datos de las áreas usuarias';
 /** Aviso al grabar (HU-01, MSJ-J-01). */
 export const MSJ_GRABADO = 'Se actualizó la configuración de la lista de áreas usuarias';
 
+type Bandera = 'generaCmn' | 'esAte' | 'esOa' | 'esMaa';
+
 /**
- * Configuración de áreas usuarias, pestaña de «Configuración del Cuadro Multianual de Necesidades» (Figma «CMN
- * Programación · Configuración», A.1: RC-009, RC-041, RC-045 a RC-050). Sigue el lineamiento gráfico de las listas de
- * configuración:
- * - Abre en **solo lectura**: las banderas (¿Genera CMN?, ¿Es ATE?, ¿Es OA?, ¿Es MAA?) marcadas se ven en azul y no se
- *   pueden cambiar; solo se ve «Editar».
- * - «Editar» pone la grilla en edición y muestra «Sincronizar», «Cancelar» y «Grabar». «Cancelar» descarta los cambios
- *   y vuelve a solo lectura; «Grabar» pide confirmación (MSJ-J-109), graba y vuelve a solo lectura con el aviso MSJ-J-01.
- * - En edición, una casilla en el encabezado de «¿Genera CMN?» la marca o desmarca en todas las áreas editables que
- *   deja ver la búsqueda (todas las páginas); queda en estado intermedio si solo algunas la tienen.
- * - «Sincronizar» abre el panel lateral de unidades organizacionales que todavía no están en la lista: primero en solo
- *   lectura, con «Editar» se eligen y «Aceptar» las incorpora como pendientes de grabar, con «¿Genera CMN?» marcado.
- * - En solo lectura, con un área seleccionada el lápiz abre su detalle y el ícono de lista sus necesidades; con varias,
- *   el lápiz edita en la grilla solo esas áreas.
+ * Configuración de áreas usuarias, pestaña de «Configuración del Cuadro Multianual de Necesidades» (Figma «A.1-RC-043»):
+ * - En **solo lectura** las banderas (¿Genera CMN?, ¿Es ATE?, ¿Es OA?, ¿Es MAA?) se muestran con ✓ si están marcadas y
+ *   con «-» si no. Cada fila se marca con su casilla; la barra de arriba marca toda la página.
+ * - **Lápiz** con un área marcada: abre su detalle. Con varias: pasan a edición (casillas en sus cuatro banderas) y se
+ *   abre «Edición masiva», que aplica «¿Genera CMN?» a todas; «Limpiar» lo devuelve a lo grabado. «Cancelar» descarta y
+ *   «Grabar» (con cambios y confirmación) graba las filas cambiadas y muestra el aviso MSJ-J-01. El servidor aplica las
+ *   reglas de una sola OA y una sola MAA.
+ * - «Sincronizar» abre el diálogo «Registros» (Figma A.1-RC-091 a RC-094) con las unidades del pliego que aún no
+ *   están en la lista; «Aceptar» las incorpora con «¿Genera CMN?» y la etiqueta «Nuevo».
+ * - Un clic en la fila (o Enter) abre el detalle del área para agregar commodities o ítems; la casilla no lo dispara y,
+ *   en edición, ninguna fila abre el detalle.
+ * - Un área **inactiva** no se configura: con ella marcada, «Más opciones» ofrece «Transferir datos» (Figma
+ *   A.1-RC-084 a RC-090), que pasa sus commodities/ítems a un área activa.
  */
 @Component({
   selector: 'siaf-areas-usuarias-configuracion',
   standalone: true,
   imports: [
     ButtonComponent,
+    CheckboxComponent,
     ConfiguracionTabsComponent,
     FormTableSearchComponent,
+    IconComponent,
+    IconDropdownMenuComponent,
     ModalComponent,
     PageHeaderComponent,
     PageShellComponent,
     PaginationComponent,
+    ReadonlyFieldComponent,
     RecordStatusTagComponent,
-    SelectionSideNavComponent,
+    RegistrosSincronizarDialogComponent,
+    SideNavComponent,
     SnackbarComponent,
     StatusTagComponent,
+    TableControlsComponent,
     TooltipDirective,
   ],
   templateUrl: './areas-usuarias-configuracion.component.html',
@@ -64,42 +75,36 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
   private readonly router = inject(Router);
 
   readonly breadcrumbs = buildProcessBreadcrumbs(AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE, 'Configuración del Cuadro Multianual de Necesidades');
-  readonly banderas = BANDERAS_AREA_USUARIA;
-  readonly msjConfirmar = MSJ_CONFIRMAR_GRABAR;
+  readonly banderas = BANDERAS_AREA_USUARIA as { key: Bandera; label: string; descripcion: string }[];
 
   readonly cargando = signal(false);
   readonly guardando = signal(false);
   readonly busqueda = signal('');
-  /** Lo grabado en el servidor. */
   readonly areas = signal<AreaUsuaria[]>([]);
-  /** Copia de trabajo mientras se edita (incluye las unidades incorporadas desde «Sincronizar»). */
-  readonly borrador = signal<AreaUsuaria[]>([]);
-  readonly modo = signal<'lectura' | 'edicion'>('lectura');
-  /** Con el lápiz sobre varias áreas, solo esas se editan; `null` = toda la grilla. */
-  readonly soloEditables = signal<Set<string> | null>(null);
-  readonly seleccionadas = signal<Set<string>>(new Set());
-  private readonly snapshotInicial = signal<string | null>(null);
-
-  readonly modalGrabar = signal(false);
   readonly aviso = signal<string | null>(null);
 
-  // Panel «Sincronizar»
+  /** Filas marcadas (por id) y su copia de trabajo mientras se editan en bloque (`null` = solo lectura). */
+  readonly marcadas = signal<Set<string>>(new Set());
+  readonly borrador = signal<Record<string, AreaUsuaria> | null>(null);
+  readonly editando = computed(() => this.borrador() !== null);
+
+  // Panel «Edición masiva» y confirmación de «Grabar»
+  readonly panelMasivo = signal(false);
+  readonly masivoGeneraCmn = signal(false);
+  readonly modalGrabar = signal(false);
+
+  // Diálogo «Registros» de «Sincronizar»
   readonly panelAbierto = signal(false);
-  readonly panelEditable = signal(false);
   readonly disponibles = signal<AreaUsuaria[]>([]);
-  readonly seleccionPanel = signal<string[]>([]);
 
   readonly page = signal(1);
   readonly rowsPerPage = signal(25);
   readonly rowsPerPageOptions = [10, 25, 50, 100];
 
-  readonly enEdicion = computed(() => this.modo() === 'edicion');
-  readonly filas = computed(() => (this.enEdicion() ? this.borrador() : this.areas()));
-
   readonly areasFiltradas = computed(() => {
     const texto = this.busqueda().trim().toLowerCase();
-    if (!texto) return this.filas();
-    return this.filas().filter((a) => a.codigo.toLowerCase().includes(texto) || a.denominacion.toLowerCase().includes(texto));
+    if (!texto) return this.areas();
+    return this.areas().filter((a) => a.codigo.toLowerCase().includes(texto) || a.denominacion.toLowerCase().includes(texto));
   });
 
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.areasFiltradas().length / this.rowsPerPage())));
@@ -109,56 +114,34 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
     return this.areasFiltradas().slice(inicio, inicio + this.rowsPerPage());
   });
 
-  readonly todasVisiblesSeleccionadas = computed(() => {
-    const visibles = this.areasPaginadas();
-    return visibles.length > 0 && visibles.every((a) => this.seleccionadas().has(a.id));
+  readonly seleccion = computed(() => this.areas().filter((a) => this.marcadas().has(a.id)));
+  readonly paginaMarcada = computed(() => this.areasPaginadas().length > 0 && this.areasPaginadas().every((a) => this.marcadas().has(a.id)));
+  readonly paginaParcial = computed(() => !this.paginaMarcada() && this.areasPaginadas().some((a) => this.marcadas().has(a.id)));
+  /** El lápiz necesita solo áreas activas: las inactivas no se configuran. */
+  readonly puedeEditar = computed(() => this.seleccion().length > 0 && !this.seleccion().some((a) => this.inactiva(a)));
+  /** «Transferir datos»: una sola área inactiva marcada. */
+  readonly areaPorTransferir = computed(() => {
+    const [area, otra] = this.seleccion();
+    return area && !otra && this.inactiva(area) ? area : null;
   });
+  readonly masOpciones = computed<IconDropdownMenuItem[]>(() => [{ label: 'Transferir datos', value: 'transferir', disabled: !this.areaPorTransferir() }]);
 
-  readonly algunasVisiblesSeleccionadas = computed(
-    () => this.areasPaginadas().some((a) => this.seleccionadas().has(a.id)) && !this.todasVisiblesSeleccionadas(),
-  );
-
-  /** Con exactamente un área marcada: su detalle (lápiz) y sus necesidades (ícono de lista). */
-  readonly areaUnica = computed(() => {
-    if (this.seleccionadas().size !== 1) return null;
-    const [id] = this.seleccionadas();
-    return this.areas().find((a) => a.id === id) ?? null;
-  });
-
-  readonly huboCambios = computed(
-    () => this.enEdicion() && hayCambiosRespectoAlSnapshot(this.snapshotInicial(), crearSnapshotFormulario(this.borrador())),
-  );
-
-  /**
-   * Selección masiva de «¿Genera CMN?» (Figma A.1-RC-041 a RC-045): en edición, la casilla del encabezado de la
-   * columna alcanza a todas las áreas editables que deja ver la búsqueda, en todas las páginas.
-   */
-  readonly editablesGeneraCmn = computed(() => this.areasFiltradas().filter((a) => this.editable(a)));
-
-  readonly todasGeneraCmn = computed(() => {
-    const lista = this.editablesGeneraCmn();
-    return lista.length > 0 && lista.every((a) => a.generaCmn);
-  });
-
-  readonly algunasGeneraCmn = computed(() => !this.todasGeneraCmn() && this.editablesGeneraCmn().some((a) => a.generaCmn));
-
-  /** Casilla del encabezado: marca o desmarca «¿Genera CMN?» en todas las áreas editables filtradas. */
-  alternarGeneraCmnMasivo(marcado: boolean): void {
-    const ids = new Set(this.editablesGeneraCmn().map((a) => a.id));
-    this.borrador.update((lista) => lista.map((a) => (ids.has(a.id) ? { ...a, generaCmn: marcado } : a)));
-  }
-
-  /** Ids incorporados desde el panel y todavía no grabados. */
-  readonly incorporadas = computed(() => {
-    const grabadas = new Set(this.areas().map((a) => a.id));
-    return new Set(this.borrador().filter((a) => !grabadas.has(a.id)).map((a) => a.id));
+  /** Áreas cuya copia de trabajo difiere de lo grabado: sin ninguna, «Grabar» queda deshabilitado. */
+  readonly cambiadas = computed(() => {
+    const borrador = this.borrador();
+    if (!borrador) return [];
+    return this.areas()
+      .filter((a) => borrador[a.id] && this.banderas.some((b) => !!borrador[a.id][b.key] !== !!a[b.key]))
+      .map((a) => borrador[a.id]);
   });
 
   ngOnInit(): void {
+    // Al volver de «Transferir datos», el aviso de éxito llega en el estado de la navegación.
+    const aviso = (history.state as { aviso?: string } | null)?.aviso;
+    if (aviso) this.aviso.set(aviso);
     this.cargar();
   }
 
-  /** Trae la lista del servidor y la muestra en solo lectura. */
   cargar(): void {
     this.cargando.set(true);
     this.api.listar().subscribe({
@@ -170,103 +153,144 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
     });
   }
 
-  /** ¿La bandera de esta fila se puede cambiar? Solo en edición, y con el lápiz múltiple solo en las áreas elegidas. */
-  editable(area: AreaUsuaria): boolean {
-    if (!this.enEdicion()) return false;
-    const solo = this.soloEditables();
-    return !solo || solo.has(area.id);
-  }
+  // ─── Selección y edición en bloque ─────────────────────────────
 
-  /** Fila resaltada: elegida para la edición múltiple o incorporada desde el panel. */
-  resaltada(area: AreaUsuaria): boolean {
-    return this.enEdicion() ? !!this.soloEditables()?.has(area.id) || this.incorporadas().has(area.id) : this.seleccionadas().has(area.id);
-  }
-
-  /** «Editar»: toda la grilla en edición, con la copia de lo grabado como punto de partida de «Grabar». */
-  editar(soloIds: Set<string> | null = null): void {
-    const copia = this.areas().map((a) => ({ ...a }));
-    this.borrador.set(copia);
-    this.snapshotInicial.set(crearSnapshotFormulario(copia));
-    this.soloEditables.set(soloIds);
-    this.modo.set('edicion');
-    this.aviso.set(null);
-  }
-
-  /** «Cancelar»: descarta los cambios y vuelve a la lista en solo lectura. */
-  cancelar(): void {
-    this.borrador.set([]);
-    this.soloEditables.set(null);
-    this.modo.set('lectura');
-  }
-
-  /** «Grabar»: pide confirmación (MSJ-J-109). */
-  pedirGrabar(): void {
-    if (this.huboCambios() && !this.guardando()) this.modalGrabar.set(true);
-  }
-
-  /** Confirmación del modal: graba, vuelve a solo lectura y muestra MSJ-J-01. */
-  confirmarGrabar(): void {
-    if (this.guardando()) return;
-    this.guardando.set(true);
-    const cambios = this.borrador().map(({ id, generaCmn, esAte, esOa, esMaa }) => ({ id, generaCmn, esAte, esOa, esMaa }));
-    this.api.guardar(cambios).subscribe({
-      next: () => {
-        this.guardando.set(false);
-        this.modalGrabar.set(false);
-        this.cancelar();
-        this.seleccionadas.set(new Set());
-        this.aviso.set(MSJ_GRABADO);
-        // El servidor aplica reglas al grabar (una sola OA y una sola MAA): se vuelve a leer su resultado.
-        this.cargar();
-      },
-      error: () => {
-        this.guardando.set(false);
-        this.modalGrabar.set(false);
-      },
+  marcar(area: AreaUsuaria, marcada: boolean): void {
+    this.marcadas.update((set) => {
+      const siguiente = new Set(set);
+      if (marcada) siguiente.add(area.id);
+      else siguiente.delete(area.id);
+      return siguiente;
     });
   }
 
-  /** Cambia una bandera en la copia de trabajo. «¿Es OA?» y «¿Es MAA?» son exclusivas; la regla se aplica al grabar. */
-  alternar(areaId: string, bandera: keyof AreaUsuaria, marcado: boolean): void {
-    this.borrador.update((lista) => lista.map((a) => (a.id === areaId ? { ...a, [bandera]: marcado } : a)));
+  marcarPagina(marcada: boolean): void {
+    for (const area of this.areasPaginadas()) this.marcar(area, marcada);
   }
 
-  // ─── Panel «Sincronizar» ───────────────────────────────────────
+  enEdicion(area: AreaUsuaria): boolean {
+    return !!this.borrador()?.[area.id];
+  }
+
+  /** Valor a mostrar de una bandera: el de la copia de trabajo si la fila está en edición. */
+  valor(area: AreaUsuaria, bandera: Bandera): boolean {
+    return !!(this.borrador()?.[area.id] ?? area)[bandera];
+  }
+
+  /** Lápiz de la barra: con un área abre su detalle; con varias, la edición en bloque. */
+  editarSeleccion(): void {
+    if (!this.puedeEditar() || this.guardando()) return;
+    const areas = this.seleccion();
+    if (areas.length === 1) {
+      this.verDetalle(areas[0]);
+      return;
+    }
+    this.aviso.set(null);
+    this.borrador.set(Object.fromEntries(areas.map((a) => [a.id, { ...a }])));
+    this.abrirMasiva();
+  }
+
+  abrirMasiva(): void {
+    this.masivoGeneraCmn.set(Object.values(this.borrador() ?? {}).every((a) => a.generaCmn));
+    this.panelMasivo.set(true);
+  }
+
+  alternar(id: string, bandera: Bandera, marcado: boolean): void {
+    this.borrador.update((b) => (b?.[id] ? { ...b, [id]: { ...b[id], [bandera]: marcado } } : b));
+  }
+
+  /** «Aplicar» de «Edición masiva»: «¿Genera CMN?» en todas las áreas marcadas. */
+  aplicarMasiva(): void {
+    for (const id of Object.keys(this.borrador() ?? {})) this.alternar(id, 'generaCmn', this.masivoGeneraCmn());
+    this.panelMasivo.set(false);
+  }
+
+  /** «Limpiar»: «¿Genera CMN?» vuelve a lo grabado. */
+  limpiarMasiva(): void {
+    for (const area of this.seleccion()) this.alternar(area.id, 'generaCmn', area.generaCmn);
+    this.panelMasivo.set(false);
+  }
+
+  /** «Cancelar»: descarta los cambios y vuelve a solo lectura. */
+  cancelarEdicion(): void {
+    this.borrador.set(null);
+    this.panelMasivo.set(false);
+  }
+
+  /** «Grabar» confirmado: graba las filas cambiadas, vuelve a solo lectura y muestra MSJ-J-01. */
+  grabar(): void {
+    this.modalGrabar.set(false);
+    const cambios = this.cambiadas().map(({ id, generaCmn, esAte, esOa, esMaa }) => ({ id, generaCmn, esAte, esOa, esMaa }));
+    if (!cambios.length || this.guardando()) return;
+    this.guardando.set(true);
+    this.api.guardar(cambios).subscribe({
+      next: () => {
+        this.guardando.set(false);
+        this.cancelarEdicion();
+        this.marcadas.set(new Set());
+        this.aviso.set(MSJ_GRABADO);
+        // El servidor aplica las reglas de una sola OA y una sola MAA: se vuelve a leer su resultado.
+        this.cargar();
+      },
+      error: () => this.guardando.set(false),
+    });
+  }
+
+  /** Área inactiva del pliego: no se configura; sus commodities/ítems se transfieren a otra área. */
+  inactiva(area: AreaUsuaria): boolean {
+    return area.activo === false;
+  }
+
+  /** Clic en la fila: abre el detalle del área (commodities o ítems); en un área inactiva, «Transferir datos». */
+  verDetalle(area: AreaUsuaria): void {
+    if (this.editando()) return;
+    if (this.inactiva(area)) {
+      this.transferir(area);
+      return;
+    }
+    void this.router.navigateByUrl(`${AREAS_USUARIAS_ROUTE}/${area.id}`);
+  }
+
+  /** «Más opciones» de la barra. */
+  onMasOpciones(accion: string): void {
+    const area = this.areaPorTransferir();
+    if (accion === 'transferir' && area) this.transferir(area);
+  }
+
+  transferir(area: AreaUsuaria): void {
+    if (this.editando()) return;
+    void this.router.navigateByUrl(`${AREAS_USUARIAS_ROUTE}/${area.id}/transferir`);
+  }
+
+  // ─── «Sincronizar»: diálogo «Registros» ────────────────────────
 
   sincronizar(): void {
-    this.panelEditable.set(false);
-    this.seleccionPanel.set([]);
+    if (this.editando()) return;
+    this.disponibles.set([]);
     this.panelAbierto.set(true);
-    const ya = new Set(this.borrador().map((a) => a.id));
-    this.api.disponibles().subscribe((lista) => this.disponibles.set(lista.filter((a) => !ya.has(a.id))));
+    this.api.disponibles().subscribe((lista) => this.disponibles.set(lista));
   }
 
-  editarPanel(): void {
-    this.panelEditable.set(true);
-  }
-
-  alternarPanel(id: string, marcada: boolean): void {
-    this.seleccionPanel.update((ids) => (marcada ? [...ids, id] : ids.filter((x) => x !== id)));
-  }
-
-  alternarTodasPanel(marcadas: boolean): void {
-    this.seleccionPanel.set(marcadas ? this.disponibles().map((a) => a.id) : []);
-  }
-
-  /** «Aceptar»: incorpora las unidades elegidas a la grilla, pendientes de grabar y con «¿Genera CMN?» marcado. */
+  /** «Aceptar»: las unidades elegidas pasan a la lista con «¿Genera CMN?» y la etiqueta «Nuevo». */
   aceptarPanel(ids: string[]): void {
-    const elegidas = this.disponibles().filter((a) => ids.includes(a.id));
-    this.borrador.update((lista) => [...lista, ...elegidas.map((a) => ({ ...a, generaCmn: true, nuevo: true }))]);
     this.cerrarPanel();
+    if (!ids.length) return;
+    this.guardando.set(true);
+    this.api.incorporar(ids).subscribe({
+      next: ({ incorporadas }) => {
+        this.guardando.set(false);
+        this.aviso.set(`Se sincronizaron ${incorporadas} áreas usuarias`);
+        this.cargar();
+      },
+      error: () => this.guardando.set(false),
+    });
   }
 
-  /** Cerrar o «Cancelar»: descarta la selección de esa apertura; lo ya incorporado se mantiene. */
   cerrarPanel(): void {
     this.panelAbierto.set(false);
-    this.seleccionPanel.set([]);
   }
 
-  // ─── Búsqueda, paginación y selección ──────────────────────────
+  // ─── Búsqueda y paginación ─────────────────────────────────────
 
   filtrar(texto: string): void {
     this.busqueda.set(texto);
@@ -284,41 +308,5 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
   cambiarFilasPorPagina(valor: number): void {
     this.rowsPerPage.set(valor);
     this.page.set(1);
-  }
-
-  alternarSeleccion(areaId: string, marcada: boolean): void {
-    this.seleccionadas.update((set) => {
-      const next = new Set(set);
-      if (marcada) next.add(areaId);
-      else next.delete(areaId);
-      return next;
-    });
-  }
-
-  alternarSeleccionVisibles(marcadas: boolean): void {
-    this.seleccionadas.update((set) => {
-      const next = new Set(set);
-      for (const a of this.areasPaginadas()) {
-        if (marcadas) next.add(a.id);
-        else next.delete(a.id);
-      }
-      return next;
-    });
-  }
-
-  /** Lápiz: con un área abre su detalle; con varias, edita en la grilla solo esas áreas. */
-  editarSeleccionadas(): void {
-    const unica = this.areaUnica();
-    if (unica) {
-      void this.router.navigateByUrl(`${AREAS_USUARIAS_ROUTE}/${unica.id}`);
-      return;
-    }
-    if (this.seleccionadas().size > 1) this.editar(new Set(this.seleccionadas()));
-  }
-
-  /** Ícono de lista: detalle de necesidades del área seleccionada. */
-  verNecesidades(): void {
-    const unica = this.areaUnica();
-    if (unica) void this.router.navigate([AREAS_USUARIAS_ROUTE, unica.id], { queryParams: { pestana: 'necesidades' } });
   }
 }

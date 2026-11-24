@@ -7,7 +7,7 @@ import {
   NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SIE,
   TIPO_ACCION as TIPO_ACCION_SIE,
 } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
-import { ANIOS_CMN, type AreaUsuariaAnexo1, type ContextoAnexo2, type ItemAnexo1 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
+import { ANIOS_CMN, type AreaUsuariaAnexo1, type ContextoAnexo2, type FaseCmn, type ItemAnexo1 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import {
   CODIGO_DOCUMENTO as CODIGO_DOCUMENTO_SA2F1,
   NOMBRE_DOCUMENTO as NOMBRE_DOCUMENTO_SA2F1,
@@ -27,7 +27,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 40;
+const VERSION = 42;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol en la entidad de la solicitud. */
@@ -223,12 +223,14 @@ const redondear = (n: number): number => Math.round(n * 100) / 100;
  * suma lo absorbe el último servicio del área, así la suma de los ítems es siempre el monto del Anexo 01.
  */
 export function itemsAnexo1(area: AreaUsuariaAnexo1): ItemAnexo1[] {
-  const base = Math.floor((area.montoProgramado / area.items) * 100) / 100;
+  // Un área modificada parte de su monto original; los ajustes de la modificación se aplican al final.
+  const montoArea = area.montoBase ?? area.montoProgramado;
+  const base = Math.floor((montoArea / area.items) * 100) / 100;
   const presupuesto = PRESUPUESTO_AREA_ANEXO_1[area.id] ?? { actividad: 'CP-GEN-000 - Gestión institucional', meta: '0001' };
   const items: ItemAnexo1[] = Array.from({ length: area.items }, (_, i) => {
     const catalogo = ITEMS_CATALOGO_ANEXO_1[((presupuesto.desde ?? 0) + i) % ITEMS_CATALOGO_ANEXO_1.length];
     // El último ítem se lleva el redondeo del reparto en partes iguales; lo mismo el último año.
-    const montoBase = i === area.items - 1 ? redondear(area.montoProgramado - base * (area.items - 1)) : base;
+    const montoBase = i === area.items - 1 ? redondear(montoArea - base * (area.items - 1)) : base;
     const montosPorAnio: Record<number, number> = {};
     let repartido = 0;
     ANIOS_CMN.forEach((anio, k) => {
@@ -252,14 +254,31 @@ export function itemsAnexo1(area: AreaUsuariaAnexo1): ItemAnexo1[] {
   });
 
   // El último servicio absorbe la diferencia (en su último año) para que la suma sea el monto del Anexo 01.
-  const diferencia = redondear(area.montoProgramado - items.reduce((suma, item) => suma + item.montoProgramado, 0));
+  const diferencia = redondear(montoArea - items.reduce((suma, item) => suma + item.montoProgramado, 0));
   const servicio = [...items].reverse().find((item) => item.tipo === 'Servicio');
   if (servicio && diferencia !== 0) {
     const ultimoAnio = ANIOS_CMN[ANIOS_CMN.length - 1];
     servicio.montosPorAnio[ultimoAnio] = redondear(servicio.montosPorAnio[ultimoAnio] + diferencia);
     servicio.montoProgramado = redondear(servicio.montoProgramado + diferencia);
   }
-  return items;
+  return items.map((item) => {
+    const monto = area.ajustes?.[item.id];
+    return monto === undefined ? item : { ...item, montoProgramado: monto, montosPorAnio: repartirPorAnio(item, monto) };
+  });
+}
+
+/** Reparte entre los años del CMN el monto nuevo de una necesidad; en un bien, en unidades enteras. */
+function repartirPorAnio(item: ItemAnexo1, monto: number): Record<number, number> {
+  const unidad = item.tipo === 'Bien' && item.precioUnitario ? item.precioUnitario : 0.01;
+  const total = Math.round(monto / unidad);
+  let repartido = 0;
+  return Object.fromEntries(
+    ANIOS_CMN.map((anio, k) => {
+      const unidades = k === ANIOS_CMN.length - 1 ? total - repartido : Math.round(total * REPARTO_ANIOS_CMN[k]);
+      repartido += unidades;
+      return [anio, redondear(unidades * unidad)];
+    }),
+  );
 }
 
 // «Consolidado Anexo 01» del marco presupuestario: lo programado por todas las áreas usuarias en cada año del CMN, así
@@ -327,29 +346,43 @@ const ROL_APROBADOR = { codigo: 'APROBADOR', nombre: 'Aprobador' };
 type EstadoSemilla = 'ELABORADO' | 'VERIFICADO' | 'VALIDADO' | 'APROBADO' | 'OBSERVADO' | 'RECHAZADO';
 
 /** Áreas usuarias del pliego demo: jerarquía corta por código (`01`, `01.01`, `01.01.01`…). */
-const AREAS_USUARIAS_SEMILLA: Omit<AreaUsuaria, 'id'>[] = [
-  ['01', 'ALTA DIRECCIÓN'],
-  ['01.01', 'RECTORADO'],
-  ['01.01.01', 'SECRETARÍA GENERAL'],
-  ['01.01.01.01', 'OFICINA ADMINISTRATIVA'],
-  ['01.01.01.01.01', 'MESA DE PARTES'],
-  ['01.01.01.01.01.02', 'UNIDAD DE GRADOS Y TÍTULOS'],
-  ['01.01.01.02.01', 'REGISTRO DE DIPLOMAS'],
-  ['01.01.01.01.01.02', 'UNIDAD DE GRADOS Y TÍTULOS'],
-  ['01.01.02', 'OFICINA DE IMAGEN INSTITUCIONAL'],
-  ['01.01.02.01', 'UNIDAD DE COMUNICACIONES'],
-  ['01.01.02.02', 'UNIDAD DE PROTOCOLO Y EVENTOS'],
-  ['01.02', 'VICERRECTORADO ACADÉMICO'],
-  // «Mesa de partes» y «Vicerrectorado académico» están en el pliego pero la lista los recibe al pulsar «Sincronizar».
-].map(([codigo, denominacion]) => ({
+/**
+ * Áreas usuarias del pliego (Figma «A.1 Configuración de Áreas Usuarias»). «Mesa de partes» está inactiva y tiene
+ * commodities/ítems para el ejemplo de «Transferir datos»; «Unidad de desarrollo de software» y «Oficina de imagen
+ * institucional» están en el pliego pero la lista las recibe recién con «Sincronizar».
+ */
+const AREAS_USUARIAS_SEMILLA: Omit<AreaUsuaria, 'id'>[] = (
+  [
+    ['01', 'ALTA DIRECCIÓN', {}],
+    ['01.01', 'RECTORADO', { esMaa: true }],
+    ['01.01.01', 'SECRETARÍA GENERAL', {}],
+    ['01.01.01.01', 'OFICINA ADMINISTRATIVA', { esOa: true }],
+    ['01.01.02', 'UNIDAD DE DESARROLLO DE SOFTWARE', { pendiente: true }],
+    ['01.01.02.02', 'UNIDAD DE PROTOCOLO Y EVENTOS', { esAte: true }],
+    ['01.01.02.03', 'UNIDAD DE COMUNICACIONES', {}],
+    ['01.01.02.03.04', 'MESA DE PARTES', { activo: false }],
+    ['01.01.02.04', 'OFICINA DE IMAGEN INSTITUCIONAL', { pendiente: true }],
+    ['01.01.02.03.04.05', 'UNIDAD DE GRADOS Y TÍTULOS', {}],
+  ] as [string, string, Partial<AreaUsuaria>][]
+).map(([codigo, denominacion, extra]) => ({
   codigo,
   denominacion,
   generaCmn: true,
   esAte: false,
   esOa: false,
   esMaa: false,
-  pendiente: ['01.01.01.01.01', '01.02'].includes(codigo),
+  activo: true,
+  ...extra,
 }));
+
+/** Commodities/ítems de «Mesa de partes» (inactiva): los que se transfieren en el ejemplo de «Transferir datos». */
+const ITEMS_MESA_DE_PARTES: [string, string, string, string][] = [
+  ['43211500', 'Equipos de cómputo', '43211502', 'Monitor LED 24 pulgadas'],
+  ['46181500', 'Equipos de protección personal', '46181501', 'Guantes de seguridad industrial'],
+  ['81112200', 'Servicios de soporte informático', '81112201', 'Servicio de soporte técnico de computadoras'],
+  ['81112501', 'Servicios de mantenimiento', '73152108', 'Servicio de mantenimiento de equipos'],
+  ['81112502', 'Servicios de publicación', '84131600', 'Servicio de fotocopiado externo'],
+];
 
 interface SemillaItems {
   /** Posiciones en `CATALOGO_ITEMS_ESTRATEGICOS`. */
@@ -374,14 +407,15 @@ const SEMILLAS_ITEMS: SemillaItems[] = [
 ];
 
 /**
- * Anexos 02 sembrados: los del Figma «A.2-OA-EV-009» del Ministerio de Educación (0001 aprobado en 2025, 0002 elaborado
- * en 2026) y uno aprobado del MEF (0003), para que la pestaña Registros de CMN Programación también tenga datos con los
- * usuarios del MEF (Ana, Luis, Carla y Marta).
+ * Anexos 02 sembrados, en el orden de las fases del CMN. El Ministerio de Educación ya aprobó las Fases 1 y 2 (0001 y
+ * 0002: se pueden modificar) y tiene la Fase 3 elaborada (0003: la recorren evaluador y aprobador). El MEF tiene aprobada
+ * la Fase 1 (0004), para que Registros también tenga datos con sus usuarios (Ana, Luis, Carla y Marta).
  */
-const SEMILLAS_ANEXO_2: { creada: string; estado: EstadoSemilla; entidad: 'MINEDU' | 'MEF' }[] = [
-  // MINEDU tiene un único Anexo 02 (Fase 1: Identificación), elaborado: es el que recorre evaluador y aprobador.
-  { creada: '2026-08-19', estado: 'ELABORADO', entidad: 'MINEDU' },
-  { creada: '2025-02-10', estado: 'APROBADO', entidad: 'MEF' },
+const SEMILLAS_ANEXO_2: { creada: string; estado: EstadoSemilla; entidad: 'MINEDU' | 'MEF'; fase: FaseCmn }[] = [
+  { creada: '2026-03-16', estado: 'APROBADO', entidad: 'MINEDU', fase: 1 },
+  { creada: '2026-06-15', estado: 'APROBADO', entidad: 'MINEDU', fase: 2 },
+  { creada: '2026-08-19', estado: 'ELABORADO', entidad: 'MINEDU', fase: 3 },
+  { creada: '2025-02-10', estado: 'APROBADO', entidad: 'MEF', fase: 1 },
 ];
 
 function enFecha(dia: string, horas: number, dias = 0): string {
@@ -427,6 +461,20 @@ function crearDatosIniciales(): DatosTaller {
     secuencia: 0,
   };
   datos.areasUsuarias = AREAS_USUARIAS_SEMILLA.map((area) => ({ id: nuevoId(datos, 'au'), ...area }));
+  const mesaDePartes = datos.areasUsuarias.find((a) => a.codigo === '01.01.02.03.04');
+  if (mesaDePartes) {
+    datos.itemsAreaUsuaria = ITEMS_MESA_DE_PARTES.map(([commodity, descripcionCommodity, item, descripcionItem]) => ({
+      id: nuevoId(datos, 'aui'),
+      areaUsuariaId: mesaDePartes.id,
+      tipo: 'puede-pedir' as const,
+      commodity,
+      descripcionCommodity,
+      item,
+      descripcionItem,
+      vigente: true,
+      especialidad: 'General' as const,
+    }));
+  }
   datos.fechasFaseCmnEntidad = [
     {
       id: nuevoId(datos, 'ffce'),
@@ -611,7 +659,12 @@ function crearDatosIniciales(): DatosTaller {
       updatedAt: historial[historial.length - 1].createdAt,
       ...(semilla.estado === 'APROBADO' ? { fechaAprobacion: historial[historial.length - 1].createdAt } : {}),
       itemsCuenta: [],
-      detalleAnexo2Fase1: { documentoId: id, areas: CONTEXTO_ANEXO_2_FASE_1.areas.map((a) => ({ ...a })) },
+      detalleAnexo2Fase1: {
+        documentoId: id,
+        fase: semilla.fase,
+        // Un Anexo 02 aprobado ya tiene evaluados todos sus Anexos 01.
+        areas: CONTEXTO_ANEXO_2_FASE_1.areas.map((a) => ({ ...a, estadoEvaluacion: semilla.estado === 'APROBADO' ? ('Completo' as const) : a.estadoEvaluacion })),
+      },
       sustentos: [],
       historialEstados: historial,
     });

@@ -43,7 +43,7 @@ import { Anexo2Fase1ApiService } from '../../api/anexo-2-fase-1-api.service';
 import { Anexo1PanelComponent } from '../../components/anexo-1-panel.component';
 import { ConsolidadoAnexo2TablaComponent } from '../../components/consolidado-anexo-2-tabla.component';
 import { DetalleResumen, ResumenDetallePanelComponent } from '../../components/resumen-detalle-panel.component';
-import { DESDE_ESCRITORIO, ESCRITORIO_ROUTE, PROCESS_ID, PROCESS_ROUTE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
+import { DESDE_ESCRITORIO, ESCRITORIO_ROUTE, PROCESS_ID, PROCESS_ROUTE, REQUEST_ROUTE_POR_FASE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
 import {
   AreaUsuariaAnexo1,
   CODIGO_DOCUMENTO,
@@ -52,7 +52,9 @@ import {
   ETIQUETA_TIPO_ACCION,
   FASES_CMN,
   FaseCmn,
+  ModificacionAnexo2,
   TIPO_ACCION,
+  TIPO_ACCION_MODIFICACION,
   faseCmn,
 } from '../../models/anexo-2-fase-1.model';
 import { ESTILO_EVALUACION_ANEXO_1 } from '../../utils/evaluacion-anexo-1.util';
@@ -141,6 +143,13 @@ export class Anexo2Fase1RequestComponent implements OnInit {
     return this.desdeEscritorio ? { ...DESDE_ESCRITORIO } : undefined;
   }
   private tiposDocumento: TipoDocumentoResponse[] = [];
+
+  /** Anexo 02 aprobado de la fase al crear: ya no se crea otro, se modifica ese. */
+  readonly vigente = signal<ModificacionAnexo2 | null>(null);
+
+  irAModificar(): void {
+    void this.router.navigate([REQUEST_ROUTE_POR_FASE[this.fase()]], { queryParams: { actionType: TIPO_ACCION_MODIFICACION, ...this.paramsOrigen() } });
+  }
 
   // ── Pestañas de la tarjeta de registros ───────────────────────────
   readonly pestanasRegistros: TabItem[] = [
@@ -384,7 +393,7 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   private readonly fotoActual = computed(() => crearSnapshotFormulario({ areas: this.areas().map((a) => a.id) }));
   private readonly hayCambios = computed(() => hayCambiosRespectoAlSnapshot(this.fotoEdicion(), this.fotoActual()));
 
-  readonly formValido = computed(() => !this.soloLectura() && this.areas().length > 0 && this.hayCambios());
+  readonly formValido = computed(() => !this.soloLectura() && !this.vigente() && this.areas().length > 0 && this.hayCambios());
 
   // ── Historial y trazabilidad (del historial de estados) ───────────
   private readonly fuentesHistorial = computed<HistorialSource[]>(() =>
@@ -435,6 +444,7 @@ export class Anexo2Fase1RequestComponent implements OnInit {
     this.desdeEscritorio = this.route.snapshot.queryParamMap.get('desde') === DESDE_ESCRITORIO.desde;
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.cargar(id);
+    else this.anexoApi.obtenerVigente(this.fase()).subscribe((v) => this.vigente.set(v.modificacion));
 
     const estadoNavegacion = history.state as { fromSave?: boolean } | null;
     if (estadoNavegacion?.fromSave) this.mostrarAviso('creation-elaborated');

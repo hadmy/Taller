@@ -1,0 +1,243 @@
+<div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
+  <siaf-solicitude-page-layout
+    [breadcrumbs]="breadcrumbs()"
+    [role]="headerRole()"
+    [state]="headerState()"
+    [loading]="cargando()"
+    [heading]="heading()"
+    [secondaryText]="tipoAccion"
+    [showReturn]="true"
+    [showButtonGroup]="!bloqueo()"
+    [saveDisabled]="!formValido() || saving()"
+    [verifyDisabled]="!puedeVerificar() || cargando()"
+    (returned)="regresar()"
+    (canceled)="regresar()"
+    (saved)="modalGrabar.set(true)"
+    (edited)="editar()"
+    (verified)="modalVerificar.set(true)"
+    (deleted)="modalEliminar.set(true)"
+    (validated)="abrir(modalValidar)"
+    (approved)="abrir(modalAprobar)"
+    (observed)="abrir(modalObservar)"
+    (rejected)="abrir(modalRechazar)"
+  >
+    @if (cargando()) {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl">
+        <div class="siaf-skeleton-pulse h-4 w-64 rounded bg-[var(--sys-color-bg-surfaces-surface-low)]"></div>
+      </div>
+    } @else if (bloqueo(); as b) {
+      <siaf-alert tone="warning" [title]="b.titulo" [description]="b.descripcion" />
+      @if (b.solicitudId; as id) {
+        <div>
+          <siaf-button variant="outline" icon="visibility" data-ver-en-curso (click)="verEnCurso(id)">Ver la modificación en curso</siaf-button>
+        </div>
+      }
+    } @else if (modificacion()) {
+      <siaf-alert [tone]="avisoDocumento().tono" [title]="avisoDocumento().titulo" [description]="avisoDocumento().texto" />
+
+      @if (elaborado()) {
+        <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
+          <siaf-solicitude-info-card [fields]="camposCabecera()" [captureOpenDate]="true" />
+          <siaf-document-summary-card [documentNumber]="numeroDocumento()" [status]="estadoDocumento()" />
+        </section>
+      } @else {
+        <siaf-solicitude-info-card [fields]="camposCabecera()" [captureOpenDate]="true" />
+      }
+
+      <siaf-solicitude-form-card [title]="estado() === 'APROBADO' ? 'Anexo 02 antes de la modificación' : 'Anexo 02 vigente'">
+        <div class="grid gap-x-siaf-lg gap-y-siaf-lg pt-siaf-sm sm:grid-cols-2 lg:grid-cols-3">
+          @for (campo of camposVigente(); track campo.caption) {
+            <readonly-field [caption]="campo.caption" [value]="campo.value" />
+          }
+        </div>
+      </siaf-solicitude-form-card>
+
+      <siaf-solicitude-form-card title="Resumen de la modificación">
+        <ul class="m-0 grid list-none gap-siaf-sm p-0 sm:grid-cols-2 lg:grid-cols-5">
+          @for (tarjeta of tarjetas(); track tarjeta.titulo) {
+            <li class="flex flex-col gap-siaf-xs rounded-siaf-md border border-[var(--sys-color-divider-strong)] bg-surface px-siaf-md py-siaf-sm">
+              <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.titulo }}</span>
+              <strong class="text-base font-bold leading-6 text-[var(--sys-color-text-neutral-high)]">{{ tarjeta.valor }}</strong>
+              <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ tarjeta.detalle }}</span>
+            </li>
+          }
+        </ul>
+      </siaf-solicitude-form-card>
+
+      <siaf-solicitude-form-card title="Necesidades consolidadas del Anexo 02">
+        @if (elaborado()) {
+          <siaf-tabs
+            class="mb-siaf-md block"
+            [tabs]="pestanas"
+            [activeId]="pestana()"
+            [border]="false"
+            ariaLabel="Necesidades consolidadas"
+            idBase="modificacion"
+            (activeIdChange)="cambiarPestana($event)"
+          />
+        }
+        @if (pestana() === 'consolidado') {
+          @if (editando()) {
+            <siaf-alert class="mb-siaf-md block" tone="info" title="Consolidado de lo grabado" description="Los cambios que aún no graba no se incluyen." />
+          }
+          <siaf-consolidado-anexo-2-tabla [consolidado]="consolidado()" [cargando]="cargandoConsolidado()" />
+        } @else {
+          <siaf-form-table-search
+            [value]="busqueda()"
+            placeholder="Buscar"
+            ariaLabel="Buscar áreas usuarias"
+            [showActions]="false"
+            (typing)="busqueda.set($event)"
+            (valueChange)="busqueda.set($event)"
+          />
+          <div class="mt-siaf-md overflow-auto">
+            <table class="w-full min-w-[1040px] border-collapse text-sm text-[var(--sys-color-text-neutral-medium)]">
+              <thead>
+                <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Áreas usuarias</th>
+                  <th class="w-28 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Necesidades</th>
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-right">Monto vigente</th>
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-right">Monto modificado</th>
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Plazo de modificación</th>
+                  <th class="w-36 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Estado</th>
+                  <th class="w-40 border-b border-[var(--sys-color-divider-strong)] px-siaf-sm py-siaf-sm"><span class="sr-only">Acciones</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (area of areasFiltradas(); track area.id) {
+                  <tr class="border-b border-[var(--sys-color-divider-default)]" [attr.data-area]="area.id">
+                    <td class="px-siaf-md py-siaf-sm">
+                      <span class="flex items-center gap-siaf-xs" [class.line-through]="area.quitada">
+                        @if (!area.quitada && modificada(area)) {
+                          <siaf-icon name="edit_note" [size]="20" [decorative]="false" label="Área modificada" />
+                        }
+                        {{ area.nombre }}
+                      </span>
+                    </td>
+                    <td class="px-siaf-md py-siaf-sm">{{ area.items.length }}</td>
+                    <td class="whitespace-nowrap px-siaf-md py-siaf-sm text-right">{{ soles(montoVigente(area)) }}</td>
+                    <td class="whitespace-nowrap px-siaf-md py-siaf-sm text-right font-medium text-[var(--sys-color-text-neutral-high)]">{{ soles(montoNuevo(area)) }}</td>
+                    <td class="px-siaf-md py-siaf-sm">Hasta {{ fechaCorta(area.plazoModificacion) }}</td>
+                    <td class="px-siaf-md py-siaf-sm">
+                      <siaf-status-tag appearance="soft" size="small" [tone]="estiloArea[estadoArea(area)]">{{ estadoArea(area) }}</siaf-status-tag>
+                    </td>
+                    <td class="px-siaf-xs py-siaf-xs text-right">
+                      <span class="inline-flex items-center">
+                        @if (!area.quitada) {
+                          <siaf-button
+                            variant="text"
+                            size="sm"
+                            [icon]="puedeCambiar(area) ? 'edit' : 'description'"
+                            [iconOnly]="true"
+                            [ariaLabel]="(puedeCambiar(area) ? 'Modificar' : 'Ver') + ' las necesidades de ' + area.nombre"
+                            [siafTooltip]="puedeCambiar(area) ? 'Modificar necesidades' : 'Ver necesidades'"
+                            tooltipMode="always"
+                            data-abrir-area
+                            (click)="abrirArea(area)"
+                          />
+                        }
+                        @if (puedeCambiar(area)) {
+                          @if (area.quitada || modificada(area)) {
+                            <siaf-button variant="text" size="sm" icon="undo" [iconOnly]="true" [ariaLabel]="'Deshacer los cambios de ' + area.nombre" siafTooltip="Deshacer cambios" tooltipMode="always" data-deshacer (click)="deshacer(area)" />
+                          }
+                          @if (!area.quitada) {
+                            <siaf-button
+                              variant="text"
+                              size="sm"
+                              icon="delete"
+                              [iconOnly]="true"
+                              [disabled]="areasQueQuedan() === 1"
+                              [ariaLabel]="'Quitar las necesidades de ' + area.nombre"
+                              siafTooltip="Quitar necesidades"
+                              tooltipMode="always"
+                              data-quitar
+                              (click)="pedirQuitar(area)"
+                            />
+                          }
+                        }
+                      </span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td class="px-siaf-md py-siaf-sm" colspan="7">No hay áreas usuarias que coincidan con la búsqueda.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </siaf-solicitude-form-card>
+
+      @if (historial().length > 0 || comentarioActual()) {
+        <siaf-detail-history-tabs [comentario]="comentarioActual()" [entries]="historial()" />
+      }
+      @if (numeroDocumento()) {
+        <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
+      }
+    } @else {
+      <siaf-alert tone="error" title="No se encontró la modificación" description="La solicitud no existe o no pertenece a su entidad." />
+    }
+  </siaf-solicitude-page-layout>
+
+  <siaf-necesidades-area-panel
+    [editable]="!!areaAbierta() && puedeCambiar(areaAbierta()!)"
+    [abierta]="areaAbierta()"
+    (aceptada)="aceptarArea($event)"
+    (closed)="areaAbierta.set(null)"
+  />
+
+  <siaf-modal
+    [open]="!!areaPorQuitar()"
+    variant="custom"
+    title="¿Quitar necesidades del área?"
+    [description]="'Las necesidades de ' + (areaPorQuitar()?.nombre ?? '') + ' saldrán del Anexo 02 cuando se apruebe la modificación.'"
+    confirmLabel="Aceptar"
+    (canceled)="areaPorQuitar.set(null)"
+    (closed)="areaPorQuitar.set(null)"
+    (confirmed)="confirmarQuitar()"
+  />
+
+  <siaf-modal
+    [open]="modalCancelar()"
+    variant="custom"
+    title="¿Cancelar registro?"
+    description="Se perderán los cambios no grabados de la modificación."
+    confirmLabel="Aceptar"
+    (canceled)="modalCancelar.set(false)"
+    (closed)="modalCancelar.set(false)"
+    (confirmed)="confirmarCancelar()"
+  />
+
+  <siaf-request-approval-modals
+    [saveOpen]="modalGrabar()"
+    [verifyOpen]="modalVerificar()"
+    [deleteOpen]="modalEliminar()"
+    [validateOpen]="modalValidar()"
+    [approveOpen]="modalAprobar()"
+    [observeOpen]="modalObservar()"
+    [rejectOpen]="modalRechazar()"
+    [saving]="saving()"
+    [reason]="comentario()"
+    [rejectReasonType]="motivoRechazo()"
+    [rejectReasonTypeOptions]="motivosRechazo"
+    [snackbarVariant]="aviso()"
+    [snackbarTone]="avisoTono()"
+    [snackbarMessage]="avisoMensaje()"
+    [snackbarOpen]="avisoAbierto()"
+    requestType="modificación"
+    [requestNumber]="numeroDocumento()"
+    (saveConfirmed)="onConfirmarGrabar()"
+    (verifyConfirmed)="onConfirmarVerificar()"
+    (deleteConfirmed)="onConfirmarEliminar()"
+    (validateConfirmed)="onConfirmarValidar()"
+    (approveConfirmed)="onConfirmarAprobar()"
+    (observeConfirmed)="onConfirmarObservar()"
+    (rejectConfirmed)="onConfirmarRechazar()"
+    (saveClosed)="modalGrabar.set(false)"
+    (verifyClosed)="modalVerificar.set(false)"
+    (deleteClosed)="modalEliminar.set(false)"
+    (approvalClosed)="cerrarModalesRespuesta()"
+    (reasonChange)="comentario.set($event)"
+    (rejectReasonTypeChange)="motivoRechazo.set($event)"
+    (snackbarClosed)="avisoAbierto.set(false)"
+  />
+</div>

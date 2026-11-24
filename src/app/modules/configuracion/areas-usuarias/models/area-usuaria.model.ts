@@ -10,7 +10,9 @@ export interface AreaUsuaria {
   esAte: boolean;
   esOa: boolean;
   esMaa: boolean;
-  /** Área traída por «Sincronizar» que todavía no se grabó: la tabla la marca con la etiqueta «Nuevo». */
+  /** `false` = área inactiva del pliego: no se configura, pero sus commodities/ítems se pueden transferir. */
+  activo?: boolean;
+  /** Área incorporada con «Sincronizar»: la tabla la marca con la etiqueta «Nuevo» hasta que se graben sus condiciones. */
   nuevo?: boolean;
   /** Su configuración ya se grabó: en la lista sus cuatro banderas pasan de inactivas a activas. */
   configurada?: boolean;

@@ -6,12 +6,23 @@ import { ESTADO } from '../../../../../core/models/documento.model';
 import { SolicitudesFacadeService } from '../../../../../core/state/solicitudes-facade.service';
 import { SolicitudesStateService } from '../../../../../core/state/solicitudes-state.service';
 import { DocumentsRecordsPageComponent } from '../../../../../shared/components/documents-records-page/documents-records-page.component';
+import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
 import type { DocumentsQuery, DocumentsRecordsConfig, DocumentsRecordsRow } from '../../../../../shared/types/documents-records.types';
 import { createNewDocumentIdsSignal } from '../../../../../shared/utils/new-document-ids.util';
 import { Anexo2Fase1ApiService } from '../../api/anexo-2-fase-1-api.service';
+import { HistorialRegistroPanelComponent } from '../../components/historial-registro-panel.component';
 import { NOMBRE_PROCESO, REQUEST_ROUTE } from '../../config/anexo-2-fase-1.rutas';
 import { CMN_PROGRAMACION_DOCUMENTS_CONFIG } from '../../config/cmn-programacion-documents.config';
-import { CODIGO_DOCUMENTO, ETIQUETA_TIPO_ACCION, NOMBRE_DOCUMENTO, RegistroAnexo2, TIPO_ACCION } from '../../models/anexo-2-fase-1.model';
+import {
+  CODIGO_DOCUMENTO,
+  FASES_CMN,
+  NOMBRE_DOCUMENTO,
+  ProgramadoAnio,
+  RegistroAnexo2,
+  etiquetaTipoAccion,
+  nombreDocumentoFase,
+  nombreRegistroFase,
+} from '../../models/anexo-2-fase-1.model';
 import { formatearSoles } from '../../utils/formato.util';
 
 /** Entidad como en el Figma: «011 - Ministerio de Educación» (el estado la trae como «siglas nombre»). */
@@ -26,21 +37,43 @@ function fechaDosDigitos(fecha: string): string {
   return fecha.split('/').map((parte) => parte.padStart(2, '0')).join('/');
 }
 
+/** Celda «Programado» de un año: el monto, el presupuesto de la fase (APM o PIA), el avance y el saldo. */
+function filaProgramado(registro: RegistroAnexo2, p: ProgramadoAnio): [string, string][] {
+  const clave = `programado${p.anio}`;
+  const referencia = FASES_CMN[registro.fase].referenciaPresupuestaria.split(' ')[0];
+  return [
+    [clave, formatearSoles(p.monto)],
+    [`${clave}Techo`, `${referencia}: ${formatearSoles(p.techo)}`],
+    [`${clave}Avance`, String(p.techo ? (p.monto / p.techo) * 100 : 0)],
+    [`${clave}Saldo`, `Saldo: ${formatearSoles(p.techo - p.monto)}`],
+  ];
+}
+
 /**
  * «Documentos y registros» de CMN Programación (Figma «A.2-OA-EV-009»). La pantalla entera la arma
- * `siaf-documents-records-page`: esta página carga la bandeja (solicitudes del Anexo N.º 02) y las áreas usuarias de
- * los anexos aprobados (registros) y los pasa como filas.
+ * `siaf-documents-records-page`: esta página carga la bandeja (solicitudes del Anexo N.º 02) y los registros (uno por
+ * fase con Anexo 02 aprobado) y los pasa como filas. El reloj de un registro abre sus versiones aprobadas.
  */
 @Component({
   selector: 'siaf-cmn-programacion-documents',
   standalone: true,
-  imports: [DocumentsRecordsPageComponent],
+  imports: [AlertComponent, DocumentsRecordsPageComponent, HistorialRegistroPanelComponent],
   template: `
     <siaf-documents-records-page
       [config]="pageConfig()"
       [loading]="cargando()"
       (documentsQueryChange)="onDocumentsQuery($event)"
-    />
+      (recordHistoryOpened)="abrirHistorial($event)"
+    >
+      <siaf-alert
+        records-header
+        class="mb-siaf-md block"
+        tone="info"
+        title="Un registro por fase"
+        description="Cada Anexo 02 aprobado es un registro. Una modificación aprobada actualiza ese mismo registro y queda en su historial."
+      />
+    </siaf-documents-records-page>
+    <siaf-historial-registro-panel [registro]="registroAbierto()" (closed)="registroAbierto.set(null)" />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -54,6 +87,7 @@ export class CmnProgramacionDocumentsComponent implements OnInit {
 
   private readonly registros = signal<RegistroAnexo2[]>([]);
   readonly cargando = signal(true);
+  readonly registroAbierto = signal<RegistroAnexo2 | null>(null);
 
   ngOnInit(): void {
     // Bandeja según el rol (el aprobador además refresca cada 30 s), solo con las solicitudes del Anexo N.º 02.
@@ -71,6 +105,10 @@ export class CmnProgramacionDocumentsComponent implements OnInit {
     else this.solicitudesFacade.cargarBandejaCreador([CODIGO_DOCUMENTO], query);
   }
 
+  abrirHistorial(fila: DocumentsRecordsRow): void {
+    this.registroAbierto.set(this.registros().find((r) => r.id === fila['recordId']) ?? null);
+  }
+
   readonly pageConfig = computed((): DocumentsRecordsConfig => {
     const solicitudes = respondeSolicitudes(this.permissions.currentRole())
       ? this.solicitudesState.bandejaAprobador()
@@ -81,11 +119,11 @@ export class CmnProgramacionDocumentsComponent implements OnInit {
       const validado = [...s.historial].reverse().find((h) => h.estado === ESTADO.VALIDADO);
       const aprobado = [...s.historial].reverse().find((h) => h.estado === ESTADO.APROBADO);
       return {
-        document: s.tipoDocumento,
+        document: s.faseCmn ? nombreDocumentoFase(s.faseCmn) : s.tipoDocumento,
         documentId: s.id,
         isNew: nuevos.has(s.id),
         number: s.numero || '—',
-        actionType: s.tipoAccion === TIPO_ACCION ? ETIQUETA_TIPO_ACCION : s.tipoAccion,
+        actionType: etiquetaTipoAccion(s.tipoAccion),
         status: s.estado,
         system: NOMBRE_PROCESO,
         date: fechaDosDigitos(s.fecha),
@@ -102,16 +140,16 @@ export class CmnProgramacionDocumentsComponent implements OnInit {
 
     const recordRows: DocumentsRecordsRow[] = this.registros().map((r) => ({
       recordId: r.id,
-      area: r.area,
-      items: String(r.items),
-      monto: formatearSoles(r.montoProgramado),
+      numeroRegistro: r.numero,
+      registro: nombreRegistroFase(r.fase),
+      fase: FASES_CMN[r.fase].etiqueta,
+      necesidades: `${r.necesidades} consolidadas`,
+      areas: String(r.areas),
+      estado: 'Activo',
+      ...Object.fromEntries(r.programado.flatMap((p) => filaProgramado(r, p))),
       fechaRegistro: fechaDosDigitos(new Date(r.fechaAprobacion).toLocaleDateString('es-PE')),
-      // Para el historial del registro: la solicitud que lo incluyó.
       document: NOMBRE_DOCUMENTO,
       documentId: r.documentoId,
-      number: r.numeroDocumento,
-      actionType: ETIQUETA_TIPO_ACCION,
-      linkRoute: `${REQUEST_ROUTE}/${r.documentoId}`,
     }));
 
     return {

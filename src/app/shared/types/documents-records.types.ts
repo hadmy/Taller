@@ -36,7 +36,11 @@ export type DocumentsRecordsColumn = {
   group: ColumnGroup;
   widthClass?: string;
   align?: 'left' | 'right' | 'center';
-  kind?: 'text' | 'document-link' | 'flow-status' | 'record-status';
+  /**
+   * `budget`: monto programado frente a su presupuesto. La fila trae el monto en `key` y, con el sufijo, `Techo`
+   * (con su referencia), `Saldo` y `Avance` (0 a 100, como texto).
+   */
+  kind?: 'text' | 'document-link' | 'flow-status' | 'record-status' | 'budget';
 };
 
 export type DocumentsRecordsFilterOption = {
@@ -83,8 +87,9 @@ export type DocumentsRecordsConfig = {
   recordTrackKey: string;
   recordHistoryDocumentLabel: string;
   /** Variante del panel "Historial del registro" de la pestaña Registros:
-   *  'cuenta' (default, plan de cuentas) o 'asiento' (asiento de ajuste). */
-  recordHistoryKind?: 'cuenta' | 'asiento' | 'documento';
+   *  'cuenta' (default, plan de cuentas), 'asiento' (asiento de ajuste), 'documento' (el de la solicitud que creó el
+   *  registro) o 'personalizado' (la página emite `recordHistoryOpened` y el módulo abre su propio panel). */
+  recordHistoryKind?: 'cuenta' | 'asiento' | 'documento' | 'personalizado';
   // Filtros para tab Documentos
   statusFilterOptions: string[];
   actionTypeFilterOptions: string[];

@@ -13,8 +13,12 @@ import {
   type ContextoAnexo2,
   type DetalleAnexo1,
   type EvaluacionAnexo1Request,
-  type RegistroAnexo2,
+  FASES_CMN,
+  faseCmn,
+  nombreDocumentoFase,
+  type GuardarModificacionRequest,
   type SolicitudEscritorioCmn,
+  type VigenteAnexo2,
 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import { armarConsolidado } from '../modules/abastecimiento/anexo-2-fase-1/utils/consolidado-anexo-2.util';
 import type { ItemEstrategico } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
@@ -37,6 +41,16 @@ import {
   numeroDocumentoItemsEstrategicos,
   tipoDocumentoDe,
 } from './mock-db';
+import {
+  aplicarCambios,
+  armarModificacion,
+  baseDe,
+  esModificacion,
+  faseDe,
+  modificacionEnCurso,
+  registrosDeEntidad,
+  vigenteDeFase,
+} from './anexo-2-registros';
 import { filtrarFilasDashboard } from './dashboard-cmn';
 import { seguimientoEntidad } from './seguimiento-entidad-cmn';
 import { seguimientoNacional } from './seguimiento-nacional-cmn';
@@ -167,7 +181,7 @@ const tiposDocumento: Manejador = () => ok([
     ...TIPO_DOCUMENTO_SA2F1,
     modulo: 'abastecimiento',
     esActivo: true,
-    accionesPermitidas: [{ tipoAccion: 'creacion' }],
+    accionesPermitidas: [{ tipoAccion: 'creacion' }, { tipoAccion: 'modificacion' }],
     proceso: { codigo: 'cmn-anexo-2-fase-1', nombre: 'CMN Programación', modulo: 'abastecimiento' },
   },
 ]);
@@ -255,7 +269,7 @@ function bandeja(ctx: Contexto, estados?: EstadoDocumento[]): Respuesta {
   if (tipos.length) lista = lista.filter((s) => tipos.includes(s.catDocumento?.codigo ?? ''));
   if (busqueda) {
     lista = lista.filter((s) =>
-      [s.numero, s.asuntoMotivo, s.catDocumento?.nombre, s.creador ? nombreCompleto(s.creador) : '']
+      [s.numero, s.asuntoMotivo, s.catDocumento?.nombre, esAnexo2Fase1(s) ? nombreDocumentoFase(faseDe(s)) : '', s.creador ? nombreCompleto(s.creador) : '']
         .some((valor) => (valor ?? '').toLowerCase().includes(busqueda)),
     );
   }
@@ -350,7 +364,7 @@ const guardarItemsEstrategicos: Manejador = ({ req, datos, params, sesion }) => 
 const guardarAnexo2Fase1: Manejador = ({ req, datos, params, sesion }) => {
   const s = buscarSolicitud(datos, params[0], sesion);
   if (!s) return error(404, 'La solicitud no existe.');
-  if (!esAnexo2Fase1(s)) return error(400, 'La solicitud no es del Anexo N.º 02.');
+  if (!esAnexo2Fase1(s) || esModificacion(s)) return error(400, 'La solicitud no es una Creación del Anexo N.º 02.');
   if (!['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'La solicitud ya no admite cambios.');
   const cuerpo = (req.body ?? {}) as { areas?: AreaUsuariaAnexo1[]; fase?: unknown };
   const areas = cuerpo.areas ?? [];
@@ -404,7 +418,7 @@ const consolidadoAnexo2: Manejador = ({ datos, params, sesion }) => {
     solicitudId: s.id,
     numeroDocumento: s.numero ?? '',
     entidad: s.entidadCreadora ? `${s.entidadCreadora.codMef} - ${s.entidadCreadora.nombre}` : CONTEXTO_ANEXO_2_FASE_1.datos.entidad,
-    fase: CONTEXTO_ANEXO_2_FASE_1.datos.fase,
+    fase: FASES_CMN[faseDe(s)].etiqueta,
     ...armarConsolidado(areas.map((area) => ({ area, items: itemsAnexo1(area) })), ANIOS_CMN),
   };
   return ok(consolidado);
@@ -490,7 +504,9 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
   const dto = (req.body ?? {}) as { estadoNuevo?: EstadoDocumento; comentario?: string; motivo?: string };
   const nuevo = dto.estadoNuevo;
   const rol = sesion.perfil.rolCodigo as 'CREADOR' | 'EVALUADOR' | 'APROBADOR';
-  const permitidos = TRANSICIONES[rol]?.[s.estado] ?? [];
+  const permitidos = [...(TRANSICIONES[rol]?.[s.estado] ?? [])];
+  // En la Modificación del Anexo 02 sí se rechaza: el vigente queda como estaba.
+  if (esModificacion(s) && ((rol === 'EVALUADOR' && s.estado === 'VERIFICADO') || (rol === 'APROBADOR' && s.estado === 'VALIDADO'))) permitidos.push('RECHAZADO');
   if (!nuevo || !permitidos.includes(nuevo)) {
     return error(409, `No se puede pasar de ${s.estado} a ${nuevo ?? '—'} con el perfil ${sesion.perfil.rol}.`);
   }
@@ -504,6 +520,16 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
   if (nuevo === 'ELABORADO') {
     if (items && !s.detalleItemsEstrategicos?.items.length) return error(400, 'Seleccione al menos una necesidad estratégica.');
     if (anexo2 && !s.detalleAnexo2Fase1?.areas.length) return error(400, 'Seleccione al menos un área usuaria.');
+  }
+  // Un solo registro por fase: con un Anexo 02 aprobado ya no se crea otro, se modifica el vigente.
+  if (anexo2 && (nuevo === 'ELABORADO' || nuevo === 'APROBADO')) {
+    const entidadId = s.entidadCreadora?.id;
+    const vigente = vigenteDeFase(datos, entidadId, faseDe(s));
+    if (!esModificacion(s) && vigente) {
+      return error(409, `Ya existe el Anexo 02 ${vigente.numero} aprobado de la ${FASES_CMN[faseDe(s)].etiqueta}. Regístrelo como Modificación.`);
+    }
+    if (esModificacion(s) && vigente?.id !== s.detalleAnexo2Fase1?.base?.documentoId) return error(409, 'El Anexo 02 vigente cambió desde que se registró la modificación.');
+    if (esModificacion(s) && modificacionEnCurso(datos, entidadId, faseDe(s), s.id)) return error(409, 'Ya hay una modificación en curso de esta fase.');
   }
   // Anexo N.º 02: la OA evalúa cada Anexo 01 (Completo o Incompleto) antes de verificar; ninguno puede quedar pendiente.
   if (nuevo === 'VERIFICADO' && anexo2) {
@@ -582,20 +608,51 @@ const contextoAnexo2Fase1: Manejador = ({ sesion }) => {
   return ok(contexto);
 };
 
-/** Registros de CMN Programación: las áreas usuarias de los Anexos 02 aprobados de la entidad. */
-const registrosAnexo2Fase1: Manejador = ({ datos, sesion }) => {
-  const registros: RegistroAnexo2[] = datos.solicitudes
-    .filter((s) => esAnexo2Fase1(s) && s.estado === 'APROBADO' && (!sesion || s.entidadCreadora?.id === sesion.perfil.entidadId))
-    .flatMap((s) => (s.detalleAnexo2Fase1?.areas ?? []).map((area) => ({
-      id: `${s.id}-${area.id}`,
-      area: area.nombre,
-      items: area.items,
-      montoProgramado: area.montoProgramado,
-      documentoId: s.id,
-      numeroDocumento: s.numero ?? '',
-      fechaAprobacion: s.fechaAprobacion ?? s.updatedAt ?? s.createdAt,
-    })));
-  return ok(registros);
+/** Registros de CMN Programación: uno por fase con Anexo 02 aprobado de la entidad, con su historial de versiones. */
+const registrosAnexo2Fase1: Manejador = ({ datos, sesion }) => ok(registrosDeEntidad(datos, sesion?.perfil.entidadId));
+
+// ─── Modificación del Anexo N.º 02 ─────────────────────────────────
+
+/** Anexo 02 vigente de la fase pedida: lo que se puede modificar y si ya hay otra modificación en curso. */
+const vigenteAnexo2: Manejador = ({ datos, sesion, query }) => {
+  if (!sesion) return error(401, 'Sesión expirada.');
+  const fase = faseCmn(Number(query.get('fase')));
+  const vigente = vigenteDeFase(datos, sesion.perfil.entidadId, fase);
+  const enCurso = modificacionEnCurso(datos, sesion.perfil.entidadId, fase);
+  const respuesta: VigenteAnexo2 = {
+    modificacion: vigente ? armarModificacion(fase, baseDe(vigente)) : null,
+    enProceso: enCurso ? { id: enCurso.id, numero: enCurso.numero ?? '', estado: enCurso.estado } : null,
+  };
+  return ok(respuesta);
+};
+
+const obtenerModificacion: Manejador = ({ datos, params, sesion }) => {
+  const s = buscarSolicitud(datos, params[0], sesion);
+  const detalle = s?.detalleAnexo2Fase1;
+  if (!s || !detalle?.base) return error(404, 'La solicitud no tiene una modificación.');
+  return ok(armarModificacion(faseDe(s), detalle.base, detalle.areas));
+};
+
+const guardarModificacion: Manejador = ({ req, datos, params, sesion }) => {
+  const s = buscarSolicitud(datos, params[0], sesion);
+  if (!s || !sesion) return error(404, 'La solicitud no existe.');
+  if (sesion.perfil.rolCodigo !== 'CREADOR') return error(403, 'Solo un creador puede modificar el Anexo 02.');
+  if (!esAnexo2Fase1(s) || !esModificacion(s)) return error(400, 'La solicitud no es una Modificación del Anexo N.º 02.');
+  if (!['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) return error(409, 'La solicitud ya no admite cambios.');
+  const cuerpo = (req.body ?? {}) as Partial<GuardarModificacionRequest>;
+  const fase = s.detalleAnexo2Fase1 ? faseDe(s) : faseCmn(cuerpo.fase);
+  const entidadId = sesion.perfil.entidadId;
+  const vigente = vigenteDeFase(datos, entidadId, fase);
+  if (!vigente) return error(409, 'No hay un Anexo 02 aprobado de esta fase para modificar.');
+  if (modificacionEnCurso(datos, entidadId, fase, s.id)) return error(409, 'Ya hay una modificación en curso de esta fase.');
+  if (cuerpo.baseId !== vigente.id) return error(409, 'El Anexo 02 vigente cambió desde que se abrió la modificación.');
+  const base = baseDe(vigente);
+  const resultado = aplicarCambios(base, cuerpo.areas ?? []);
+  if ('error' in resultado) return error(400, resultado.error);
+  s.detalleAnexo2Fase1 = { documentoId: s.id, fase, areas: resultado.areas, base };
+  s.updatedAt = new Date().toISOString();
+  guardarDatos(datos);
+  return ok({ message: 'Modificación guardada' });
 };
 
 /**
@@ -622,7 +679,8 @@ const escritorioCmn: Manejador = ({ datos, sesion }) => {
       return {
         id: s.id,
         numero: s.numero ?? '',
-        fase: s.detalleAnexo2Fase1?.fase ?? 1,
+        fase: faseDe(s),
+        tipoAccion: s.tipoAccion,
         fecha: s.createdAt,
         areas: areas.length,
         necesidades: areas.reduce((suma, a) => suma + a.items, 0),
@@ -750,6 +808,45 @@ const sincronizarAreasUsuarias: Manejador = ({ datos }) => {
  * No cambia nada: las elegidas se incorporan en pantalla y quedan registradas recién al grabar.
  */
 const disponiblesAreasUsuarias: Manejador = ({ datos }) => ok(datos.areasUsuarias.filter((a) => a.pendiente));
+
+/** «Sincronizar» → «Aceptar»: las unidades elegidas pasan a la lista con «¿Genera CMN?» y la etiqueta «Nuevo». */
+const incorporarAreasUsuarias: Manejador = ({ req, datos }) => {
+  const { ids } = (req.body ?? {}) as { ids?: string[] };
+  let n = 0;
+  for (const area of datos.areasUsuarias) {
+    if (!area.pendiente || !ids?.includes(area.id)) continue;
+    Object.assign(area, { pendiente: false, nuevo: true, generaCmn: true, activo: true });
+    n++;
+  }
+  guardarDatos(datos);
+  return ok({ incorporadas: n });
+};
+
+/**
+ * «Transferir datos»: los commodities/ítems elegidos de un área inactiva pasan al área de destino (activa). Los que
+ * el destino ya tiene (mismo commodity e ítem en la misma pestaña) no se duplican.
+ */
+const transferirAreaUsuaria: Manejador = ({ req, datos, params }) => {
+  const origen = datos.areasUsuarias.find((a) => a.id === params[0]);
+  const { destinoId, itemIds } = (req.body ?? {}) as { destinoId?: string; itemIds?: string[] };
+  const destino = datos.areasUsuarias.find((a) => a.id === destinoId);
+  if (!origen) return error(404, 'El área de origen no existe.');
+  if (origen.activo !== false) return error(400, 'Solo se transfieren datos de un área inactiva.');
+  if (!destino || destino.activo === false || destino.id === origen.id) return error(400, 'Seleccione un área de destino activa.');
+  if (!itemIds?.length) return error(400, 'Seleccione al menos un registro.');
+  const clave = (i: { tipo: string; commodity: string; item: string }) => `${i.tipo}|${i.commodity}|${i.item}`;
+  const yaEnDestino = new Set(datos.itemsAreaUsuaria.filter((i) => i.areaUsuariaId === destino.id).map(clave));
+  let transferidos = 0;
+  datos.itemsAreaUsuaria = datos.itemsAreaUsuaria.filter((i) => {
+    if (i.areaUsuariaId !== origen.id || !itemIds.includes(i.id)) return true;
+    if (yaEnDestino.has(clave(i))) return false;
+    i.areaUsuariaId = destino.id;
+    transferidos++;
+    return true;
+  });
+  guardarDatos(datos);
+  return ok({ transferidos });
+};
 
 const detalleAreaUsuaria: Manejador = ({ datos, params }) => {
   const area = datos.areasUsuarias.find((a) => a.id === params[0]);
@@ -1106,11 +1203,16 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1\/consolidado$/, consolidadoAnexo2],
   ['GET', /^\/cmn\/anexo-2-fase-1\/contexto$/, contextoAnexo2Fase1],
   ['GET', /^\/cmn\/anexo-2-fase-1\/registros$/, registrosAnexo2Fase1],
+  ['GET', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1\/modificacion$/, obtenerModificacion],
+  ['POST', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1\/modificacion$/, guardarModificacion],
+  ['GET', /^\/cmn\/anexo-2\/vigente$/, vigenteAnexo2],
   ['GET', /^\/cmn\/anexo-2\/escritorio$/, escritorioCmn],
   ['GET', /^\/configuracion\/areas-usuarias$/, listarAreasUsuarias],
   ['PUT', /^\/configuracion\/areas-usuarias$/, guardarAreasUsuarias],
   ['POST', /^\/configuracion\/areas-usuarias\/sincronizar$/, sincronizarAreasUsuarias],
   ['GET', /^\/configuracion\/areas-usuarias\/disponibles$/, disponiblesAreasUsuarias],
+  ['POST', /^\/configuracion\/areas-usuarias\/incorporar$/, incorporarAreasUsuarias],
+  ['POST', /^\/configuracion\/areas-usuarias\/([^/]+)\/transferir$/, transferirAreaUsuaria],
   ['GET', /^\/configuracion\/servicios-basicos-excluidos$/, listarServiciosBasicosExcluidos],
   ['GET', /^\/configuracion\/servicios-basicos-excluidos\/catalogo$/, catalogoServiciosBasicos],
   ['GET', /^\/configuracion\/servicios-basicos-excluidos\/entidades$/, entidadesServiciosBasicos],

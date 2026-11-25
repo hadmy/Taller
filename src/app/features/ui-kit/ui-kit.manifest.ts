@@ -585,6 +585,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
           "gap-siaf-md",
           "gap-y-siaf-md",
           "mb-siaf-md",
+          "pb-siaf-md",
           "px-siaf-md",
           "py-siaf-md",
           "top-siaf-md"
@@ -611,6 +612,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-gap-base-xs",
         "via": [
           "gap-siaf-xs",
+          "mr-siaf-xs",
           "mt-siaf-xs",
           "py-siaf-xs"
         ]
@@ -1390,6 +1392,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-gap-base-xs",
         "via": [
           "gap-siaf-xs",
+          "mr-siaf-xs",
           "mt-siaf-xs",
           "py-siaf-xs"
         ]
@@ -3092,15 +3095,10 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
-        "token": "--sys-gap-base-xl",
-        "via": [
-          "px-siaf-xl"
-        ]
-      },
-      {
         "token": "--sys-gap-base-xs",
         "via": [
           "gap-siaf-xs",
+          "mr-siaf-xs",
           "py-siaf-xs"
         ]
       },
@@ -8397,13 +8395,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-lg",
         "via": [
-          "gap-siaf-lg",
-          "px-siaf-lg"
+          "gap-siaf-lg"
         ]
       },
       {
         "token": "--sys-gap-base-md",
         "via": [
+          "px-siaf-md",
           "py-siaf-md"
         ]
       },
@@ -9359,7 +9357,8 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-xs",
         "via": [
-          "gap-siaf-xs"
+          "gap-siaf-xs",
+          "mr-siaf-xs"
         ]
       },
       {
@@ -11051,7 +11050,8 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-xs",
         "via": [
-          "gap-siaf-xs"
+          "gap-siaf-xs",
+          "mr-siaf-xs"
         ]
       },
       {
@@ -11277,7 +11277,9 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-xs",
         "via": [
-          "gap-siaf-xs"
+          "gap-siaf-xs",
+          "ml-siaf-xs",
+          "mr-siaf-xs"
         ]
       },
       {
@@ -11518,7 +11520,9 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-xs",
         "via": [
-          "gap-siaf-xs"
+          "gap-siaf-xs",
+          "ml-siaf-xs",
+          "mr-siaf-xs"
         ]
       },
       {
@@ -12365,14 +12369,14 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-lg",
         "via": [
-          "gap-siaf-lg",
-          "px-siaf-lg"
+          "gap-siaf-lg"
         ]
       },
       {
         "token": "--sys-gap-base-md",
         "via": [
           "p-siaf-md",
+          "px-siaf-md",
           "py-siaf-md"
         ]
       },
@@ -12386,6 +12390,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-gap-base-xs",
         "via": [
           "gap-siaf-xs",
+          "ml-siaf-xs",
           "px-siaf-xs"
         ]
       },
@@ -13343,7 +13348,6 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
           "gap-siaf-md",
           "p-siaf-md",
           "pl-siaf-md",
-          "px-siaf-md",
           "var()"
         ]
       },
@@ -15488,6 +15492,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-gap-base-xs",
         "via": [
           "gap-siaf-xs",
+          "mr-siaf-xs",
           "py-siaf-xs"
         ]
       },

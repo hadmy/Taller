@@ -33,7 +33,7 @@ type Bandera = 'generaCmn' | 'esAte' | 'esOa' | 'esMaa';
         >
           <header class="flex items-center justify-between border-b border-[var(--sys-color-divider-default)] px-siaf-md py-siaf-sm">
             <h2 id="registros-sincronizar-titulo" class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Registros</h2>
-            <siaf-button variant="text" size="sm" icon="close" [iconOnly]="true" ariaLabel="Cerrar" (click)="cerrar()" />
+            <siaf-button class="-mr-1.5" variant="text" size="sm" icon="close" [iconOnly]="true" ariaLabel="Cerrar" (click)="cerrar()" />
           </header>
 
           <div class="flex min-h-[320px] flex-1 flex-col gap-siaf-md overflow-auto p-siaf-md">

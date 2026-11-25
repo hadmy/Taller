@@ -46,7 +46,7 @@ import { TooltipDirective } from '../../ui/tooltip/tooltip.directive';
   standalone: true,
   imports: [TooltipDirective],
   template: `
-    <header class="flex items-center justify-between gap-siaf-lg bg-surface px-siaf-lg py-siaf-md">
+    <header class="flex items-center justify-between gap-siaf-lg bg-surface px-siaf-md py-siaf-md">
       <div class="flex min-w-0 flex-1 flex-col gap-siaf-xxs">
         <h1 class="m-0 min-h-6 text-base font-bold uppercase tracking-[0.02px] text-[var(--sys-color-text-neutral-high)] sm:truncate" siafTooltip>
           {{ title }}

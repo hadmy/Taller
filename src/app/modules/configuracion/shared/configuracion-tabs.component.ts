@@ -56,9 +56,9 @@ const PASO = 320;
   // La fila de pestañas y la tarjeta de debajo forman un solo bloque blanco.
   host: { class: 'block shrink-0 overflow-hidden rounded-t-siaf-md bg-surface' },
   template: `
-    <div class="flex items-center">
+    <div class="flex items-stretch">
       @if (desborda()) {
-        <siaf-button class="shrink-0" variant="text" size="sm" icon="chevron_left" [iconOnly]="true" ariaLabel="Ver configuraciones anteriores" [disabled]="!hayAntes()" (click)="mover(-1)" data-tabs-antes />
+        <siaf-button class="flecha" variant="text" size="sm" icon="chevron_left" [iconOnly]="true" ariaLabel="Ver configuraciones anteriores" [disabled]="!hayAntes()" (click)="mover(-1)" data-tabs-antes />
       }
       <siaf-tabs
         class="min-w-0 flex-1"
@@ -71,11 +71,24 @@ const PASO = 320;
         (selected)="ir($event)"
       />
       @if (desborda()) {
-        <siaf-button class="shrink-0" variant="text" size="sm" icon="chevron_right" [iconOnly]="true" ariaLabel="Ver más configuraciones" [disabled]="!hayDespues()" (click)="mover(1)" data-tabs-despues />
+        <siaf-button class="flecha" variant="text" size="sm" icon="chevron_right" [iconOnly]="true" ariaLabel="Ver más configuraciones" [disabled]="!hayDespues()" (click)="mover(1)" data-tabs-despues />
       }
     </div>
   `,
   styles: `
+    /* Las flechas continúan la franja gris de las pestañas, con su línea inferior. */
+    .flecha {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      background-color: var(--sys-color-bg-states-light-disabled);
+      box-shadow: inset 0 -2px 0 var(--sys-color-divider-strong);
+    }
+    :host ::ng-deep .flecha .siaf-button:disabled,
+    :host ::ng-deep .flecha .siaf-button:disabled::before {
+      border-color: transparent !important;
+      background-color: transparent !important;
+    }
     :host ::ng-deep [role='tablist'] {
       scrollbar-width: none;
     }

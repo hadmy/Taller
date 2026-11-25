@@ -76,7 +76,7 @@ import { AlertaCmn } from '../models/alerta-cmn.model';
 
         <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar alerta" (valueChange)="buscar($event)" />
 
-        <div class="flex min-h-10 items-center gap-siaf-xs">
+        <div class="flex min-h-10 items-center gap-siaf-xs border-l border-transparent pl-siaf-sm">
           <input
             class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
             type="checkbox"

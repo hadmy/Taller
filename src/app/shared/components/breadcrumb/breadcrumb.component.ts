@@ -67,7 +67,7 @@ let siguienteId = 0;
       <ol class="flex w-full min-w-0 items-center gap-siaf-xxs overflow-visible text-xs leading-none">
         <li class="flex shrink-0 items-center gap-siaf-xxs">
           <a
-            class="inline-flex size-8 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+            class="-ml-1.5 inline-flex size-8 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
             [routerLink]="resolvedHomeHref"
             aria-label="Inicio"
           >

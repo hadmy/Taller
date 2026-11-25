@@ -81,7 +81,7 @@ function nivelesDe(codigo: string): Record<CampoFiltro, string> {
           </p>
         } @else {
           <div class="flex flex-col gap-siaf-md">
-            <div class="flex items-center justify-between px-siaf-sm">
+            <div class="flex min-h-10 items-center justify-between pl-siaf-sm">
               <input
                 class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
                 type="checkbox"

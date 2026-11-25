@@ -124,7 +124,7 @@ export type SelectionMode = 'single' | 'multiple';
               {{ title }}
             </h2>
             <button
-              class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted"
+              class="-mr-siaf-xs inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted"
               type="button"
               [attr.aria-label]="'Cerrar ' + title"
               (click)="onCloseRequested()"

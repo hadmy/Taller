@@ -122,7 +122,7 @@ const ETIQUETA_CAMPO: Record<CampoFiltro, string> = {
                     class="h-12 border-b border-[var(--sys-color-divider-default)] text-[var(--sys-color-text-neutral-high)]"
                     [class.bg-[var(--sys-color-bg-states-light-selected)]]="seleccionados().has(fila.id)"
                   >
-                    <td class="p-siaf-sm text-center">
+                    <td class="p-siaf-sm">
                       <input
                         class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
                         type="checkbox"

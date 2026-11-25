@@ -52,32 +52,32 @@ import { FocoDirective } from '../foco/foco.directive';
       <section class="fixed inset-y-0 left-0 right-0 z-50 bg-black/55 pl-0 lg:pl-[65px]" aria-modal="true" role="dialog" aria-labelledby="columns-panel-title" (click)="closed.emit()">
         <aside class="absolute bottom-0 right-0 top-0 flex w-full max-w-[420px] flex-col overflow-hidden bg-surface shadow-siaf-lg" [siafFoco]="open" (siafFocoEscape)="closed.emit()" (click)="$event.stopPropagation()">
           <!-- Sin líneas entre título, contenido y botones, como el resto de los side panels. -->
-          <header class="flex h-14 shrink-0 items-center gap-siaf-xs px-siaf-xl">
+          <header class="flex h-14 shrink-0 items-center gap-siaf-xs px-siaf-md">
             <h2 id="columns-panel-title" class="m-0 flex-1 text-base font-bold uppercase tracking-[0.02px] text-text">Ocultar o mostrar columnas</h2>
-            <button class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)]" type="button" aria-label="Cerrar" (click)="closed.emit()">
+            <button class="-mr-siaf-xs inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)]" type="button" aria-label="Cerrar" (click)="closed.emit()">
               <siaf-icon name="close" [size]="24" />
             </button>
           </header>
 
-          <div class="min-h-0 flex-1 overflow-y-auto bg-[var(--sys-color-bg-surfaces-surface-highest)] px-siaf-xl py-siaf-md">
+          <div class="min-h-0 flex-1 overflow-y-auto bg-[var(--sys-color-bg-surfaces-surface-highest)] px-siaf-md py-siaf-md">
             <div class="flex flex-col gap-siaf-lg">
-              <label class="flex min-h-12 cursor-pointer items-center gap-siaf-md px-siaf-md py-siaf-sm text-sm uppercase text-[var(--sys-color-text-neutral-medium)]">
+              <label class="flex min-h-12 cursor-pointer items-center gap-siaf-md rounded-siaf-md py-siaf-sm text-sm uppercase text-[var(--sys-color-text-neutral-medium)]">
                 <input class="size-4 accent-[var(--sys-color-icon-states-enabled)]" type="checkbox" [checked]="allSelected" (change)="toggleAll.emit($event)" />
                 Seleccionar todo
               </label>
               <section class="grid gap-siaf-xs">
-                <h3 class="m-0 px-[18px] text-xs font-normal uppercase text-[var(--sys-color-text-neutral-medium)]">Predeterminado</h3>
+                <h3 class="m-0 text-xs font-normal uppercase text-[var(--sys-color-text-neutral-medium)]">Predeterminado</h3>
                 @for (column of defaultColumns; track column.key) {
-                  <label class="flex min-h-12 cursor-pointer items-center gap-siaf-md px-siaf-md py-siaf-sm text-sm text-[var(--sys-color-text-neutral-medium)] transition hover:bg-surface-muted">
+                  <label class="flex min-h-12 cursor-pointer items-center gap-siaf-md rounded-siaf-md py-siaf-sm text-sm text-[var(--sys-color-text-neutral-medium)] transition hover:bg-surface-muted">
                     <input class="size-4 accent-[var(--sys-color-icon-states-enabled)]" type="checkbox" [checked]="isColumnVisible(column.key)" (change)="toggleColumn.emit({ key: column.key, event: $event })" />
                     {{ column.label }}
                   </label>
                 }
               </section>
               <section class="grid gap-siaf-xs">
-                <h3 class="m-0 px-[18px] text-xs font-normal uppercase text-[var(--sys-color-text-neutral-medium)]">Más columnas</h3>
+                <h3 class="m-0 text-xs font-normal uppercase text-[var(--sys-color-text-neutral-medium)]">Más columnas</h3>
                 @for (column of moreColumns; track column.key) {
-                  <label class="flex min-h-12 cursor-pointer items-center gap-siaf-md px-siaf-md py-siaf-sm text-sm text-[var(--sys-color-text-neutral-medium)] transition hover:bg-surface-muted">
+                  <label class="flex min-h-12 cursor-pointer items-center gap-siaf-md rounded-siaf-md py-siaf-sm text-sm text-[var(--sys-color-text-neutral-medium)] transition hover:bg-surface-muted">
                     <input class="size-4 accent-[var(--sys-color-icon-states-enabled)]" type="checkbox" [checked]="isColumnVisible(column.key)" (change)="toggleColumn.emit({ key: column.key, event: $event })" />
                     {{ column.label }}
                   </label>
@@ -85,9 +85,9 @@ import { FocoDirective } from '../foco/foco.directive';
               </section>
               @if (internalColumns.length) {
                 <section class="grid gap-siaf-xs">
-                  <h3 class="m-0 px-[18px] text-xs font-normal uppercase text-[var(--sys-color-text-neutral-medium)]">Interno</h3>
+                  <h3 class="m-0 text-xs font-normal uppercase text-[var(--sys-color-text-neutral-medium)]">Interno</h3>
                   @for (column of internalColumns; track column.key) {
-                    <label class="flex min-h-12 items-center gap-siaf-md px-siaf-md py-siaf-sm text-sm text-text-muted">
+                    <label class="flex min-h-12 items-center gap-siaf-md rounded-siaf-md py-siaf-sm text-sm text-text-muted">
                       <input class="size-4" type="checkbox" disabled />
                       {{ column.label }}
                     </label>

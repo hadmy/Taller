@@ -67,7 +67,7 @@ export interface SummaryCardField {
         <span class="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r bg-brand-primary" aria-hidden="true"></span>
       }
 
-      <div class="flex min-w-0 flex-1 flex-wrap items-center gap-siaf-md px-siaf-md">
+      <div class="flex min-w-0 flex-1 flex-wrap items-center gap-siaf-md">
         @for (field of fields; track field.label) {
           <div class="flex min-w-[160px] flex-1 basis-full flex-col gap-siaf-xxs sm:basis-[calc(50%-var(--sys-gap-base-md))] lg:basis-0">
             <span class="min-h-4 text-[11px] font-medium uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)] sm:truncate" siafTooltip>

@@ -60,7 +60,7 @@ import { fechaCorta, formatearSoles } from '../utils/formato.util';
             <table class="w-full min-w-[720px] border-collapse text-sm">
               <thead>
                 <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-                  <th class="w-64 border-b border-[var(--sys-color-divider-strong)] px-siaf-xl py-siaf-sm text-left">Ítems</th>
+                  <th class="w-64 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Ítems</th>
                   <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
                   <th class="w-80 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Monto programado A01</th>
                 </tr>
@@ -68,7 +68,7 @@ import { fechaCorta, formatearSoles } from '../utils/formato.util';
               <tbody>
                 @for (item of itemsPaginados(); track item.id) {
                   <tr class="border-b border-[var(--sys-color-divider-default)]">
-                    <td class="px-siaf-xl py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.item }}</td>
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.item }}</td>
                     <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcion }}</td>
                     <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ soles(item.montoProgramado) }}</td>
                   </tr>

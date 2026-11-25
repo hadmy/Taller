@@ -14,11 +14,11 @@
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
   <siaf-page-header pageHeader [title]="titulo" />
 
-  <!-- Como el diseño: pestañas y tarjeta se desplazan juntas bajo la cabecera. -->
-  <div class="min-h-0 flex-1 overflow-auto">
-    <siaf-configuracion-tabs activa="distribucion-interna" />
+  <!-- Solo se desplaza la tarjeta: pestañas y tarjeta miden lo mismo que en las demás configuraciones. -->
+  <siaf-configuracion-tabs activa="distribucion-interna" />
 
-    <div class="flex flex-col gap-siaf-lg rounded-b-siaf-md bg-surface p-siaf-lg">
+  <div class="min-h-0 flex-1 overflow-auto rounded-b-siaf-md bg-surface">
+    <div class="flex flex-col gap-siaf-lg p-siaf-lg">
       <header class="flex items-center justify-between">
         <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
           {{ editando() ? 'Editar distribución interna de presupuesto' : 'Configurar distribución interna del techo presupuestal por genérica' }}

@@ -21,7 +21,7 @@ import { ETIQUETA_TIPO_ACCION, ItemEstrategicoRegistro, NOMBRE_DOCUMENTO } from 
   template: `
     <siaf-side-panel [open]="!!datos()" title="Historial del registro" [showFooter]="false" (closed)="closed.emit()">
       @if (datos(); as r) {
-        <div class="mx-auto grid w-full max-w-[1160px] grid-cols-1 gap-siaf-xl lg:grid-cols-[246px_minmax(0,1fr)]">
+        <div class="grid w-full grid-cols-1 gap-siaf-xl lg:grid-cols-[246px_minmax(0,1fr)]">
           <siaf-steps variant="cards" [steps]="versiones()" [activeStep]="1" />
 
           <div class="flex min-w-0 flex-col gap-siaf-sm">

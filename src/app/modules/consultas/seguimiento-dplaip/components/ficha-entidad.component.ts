@@ -17,8 +17,8 @@ import { estadoAmpliacion, estadoAnexo, etiquetaAnio, faseDe } from '../utils/se
   imports: [ButtonComponent, KpiCardComponent, PageShellComponent],
   template: `
     <siaf-page-shell [breadcrumbs]="migas">
-      <header pageHeader class="flex items-center gap-siaf-xs bg-surface px-siaf-lg py-siaf-md">
-        <siaf-button variant="text" icon="arrow_back" [iconOnly]="true" ariaLabel="Volver al reporte" (click)="volver.emit()" />
+      <header pageHeader class="flex items-center gap-siaf-xs bg-surface px-siaf-md py-siaf-md">
+        <siaf-button class="-ml-siaf-xs" variant="text" icon="arrow_back" [iconOnly]="true" ariaLabel="Volver al reporte" (click)="volver.emit()" />
         <h1 class="m-0 min-w-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">{{ entidad().codigo }} · {{ entidad().nombre }}</h1>
       </header>
 

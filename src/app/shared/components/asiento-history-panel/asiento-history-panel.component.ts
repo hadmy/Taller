@@ -89,13 +89,13 @@ type MovimientoRow = {
         <aside class="flex h-screen w-full flex-col overflow-hidden bg-surface text-text shadow-siaf-lg lg:rounded-l-siaf-md" [siafFoco]="open" (siafFocoEscape)="closed.emit()" (click)="$event.stopPropagation()">
           <header class="flex h-14 shrink-0 items-center gap-siaf-xs px-siaf-md">
             <h2 id="asiento-history-title" class="m-0 min-w-0 flex-1 text-base font-bold uppercase leading-normal tracking-[0.02px] text-text">Historial del registro</h2>
-            <button class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-light-pressed)]" type="button" aria-label="Cerrar historial del asiento de ajuste" (click)="closed.emit()">
+            <button class="-mr-siaf-xs inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-light-pressed)]" type="button" aria-label="Cerrar historial del asiento de ajuste" (click)="closed.emit()">
               <siaf-icon name="close" [size]="24" />
             </button>
           </header>
 
           <div class="min-h-0 flex-1 overflow-y-auto bg-surface">
-            <div class="mx-auto grid min-h-full w-full max-w-[1160px] grid-cols-1 gap-[64px] px-siaf-md py-siaf-md sm:px-siaf-xl lg:grid-cols-[210px_minmax(0,890px)] lg:px-0">
+            <div class="grid min-h-full w-full grid-cols-1 gap-siaf-xl px-siaf-md pb-siaf-md lg:grid-cols-[210px_minmax(0,1fr)]">
               <aside class="hidden lg:block">
                 <!-- Columna de versiones: siaf-steps con tarjetas; hoy solo la versión de creación. -->
                 <siaf-steps class="sticky top-siaf-md block" variant="cards" [steps]="versiones()" [activeStep]="1" />

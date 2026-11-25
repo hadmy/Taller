@@ -71,7 +71,7 @@ export type UploadSideNavVariant = 'default' | 'bulk-chart-accounts';
         <aside class="absolute bottom-0 right-0 top-0 flex w-full max-w-[420px] flex-col overflow-hidden rounded-siaf-md bg-surface shadow-siaf-lg" [siafFoco]="open" (siafFocoEscape)="closePanel()" (click)="$event.stopPropagation()">
           <header class="flex h-14 shrink-0 items-center gap-siaf-xs px-siaf-md">
             <h2 id="upload-side-nav-title" class="m-0 flex-1 text-base font-bold uppercase leading-normal tracking-[0.02px] text-text">{{ title }}</h2>
-            <button class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-light-pressed)]" type="button" aria-label="Cerrar" (click)="closePanel()">
+            <button class="-mr-siaf-xs inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-light-pressed)]" type="button" aria-label="Cerrar" (click)="closePanel()">
               <siaf-icon name="close" [size]="24" />
             </button>
           </header>

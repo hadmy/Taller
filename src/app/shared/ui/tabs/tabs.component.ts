@@ -20,6 +20,7 @@ export interface TabItem {
  * - `border` (por defecto `true`): la activa se dibuja como carpeta, con borde arriba y a los lados y el
  *   fondo de la superficie, y corta la línea. Con `border=false` la activa lleva un subrayado azul de 2 px.
  * - Al pasar el mouse, enfocar con teclado o presionar, una capa de estado del Figma cubre la pestaña.
+ * - `filled` pone sobre gris las pestañas que no son la activa.
  * - `count` muestra un contador con `siaf-badge`; `fullWidth` reparte el ancho entre las pestañas.
  * - `disabled` en un `TabItem` la deja visible pero atenuada, sin clic ni foco por teclado (p. ej. una sección
  *   todavía no implementada).
@@ -64,7 +65,7 @@ export interface TabItem {
   standalone: true,
   imports: [BadgeComponent],
   template: `
-    <div class="siaf-tabs flex overflow-x-auto" role="tablist" [attr.aria-label]="ariaLabel || null" [attr.data-borde]="border ? '' : null">
+    <div class="siaf-tabs flex overflow-x-auto" role="tablist" [attr.aria-label]="ariaLabel || null" [attr.data-borde]="border ? '' : null" [attr.data-relleno]="filled ? '' : null">
       @for (tab of tabs; track tab.id; let indice = $index) {
         <button
           class="siaf-tab relative flex min-h-10 items-center justify-center gap-siaf-xs whitespace-nowrap px-siaf-md py-siaf-xs"
@@ -125,6 +126,10 @@ export interface TabItem {
     /* Deshabilitada (Figma «Tabs item», State=Disabled): texto atenuado sobre gris. */
     .siaf-tab[aria-disabled='true'] {
       color: var(--sys-color-text-neutral-disabled);
+      background-color: var(--sys-color-bg-states-light-disabled);
+    }
+
+    .siaf-tabs[data-relleno] .siaf-tab:not([data-activa]) {
       background-color: var(--sys-color-bg-states-light-disabled);
     }
 
@@ -191,6 +196,8 @@ export class TabsComponent {
   @Input() activeId = '';
   /** Figma «Border»: `true` dibuja la activa como carpeta; `false`, con subrayado azul. */
   @Input() border = true;
+  /** Las pestañas que no son la activa van sobre gris (pestañas de configuración del CMN). */
+  @Input() filled = false;
   /** Reparte el ancho disponible entre las pestañas. */
   @Input() fullWidth = false;
   /** Nombre accesible de la fila de pestañas. */

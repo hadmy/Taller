@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
 import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -10,9 +11,8 @@ import { FormTableSearchComponent } from '../../../../shared/components/form-tab
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { PreciosDiferenciadosApiService } from '../api/precios-diferenciados-api.service';
-import { PRECIOS_DIFERENCIADOS_PROCESS_ID, PRECIOS_DIFERENCIADOS_ROUTE } from '../config/precios-diferenciados.rutas';
+import { PRECIOS_DIFERENCIADOS_ROUTE } from '../config/precios-diferenciados.rutas';
 import { SeleccionarCubsoPanelComponent } from '../components/seleccionar-cubso-panel.component';
 import { CatalogoCubso, PrecioDiferenciado } from '../models/precio-diferenciado.model';
 
@@ -45,11 +45,8 @@ export class PreciosDiferenciadosComponent implements OnInit {
   private readonly api = inject(PreciosDiferenciadosApiService);
   private readonly router = inject(Router);
 
-  readonly breadcrumbs = buildProcessBreadcrumbs(
-    PRECIOS_DIFERENCIADOS_PROCESS_ID,
-    PRECIOS_DIFERENCIADOS_ROUTE,
-    'Configuración de precios diferenciados',
-  );
+  readonly breadcrumbs = CONFIGURACION_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
 
   readonly cargando = signal(false);
   readonly eliminando = signal(false);

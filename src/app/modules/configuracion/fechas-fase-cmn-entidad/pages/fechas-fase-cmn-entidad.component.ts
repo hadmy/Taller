@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
 import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -12,9 +13,8 @@ import { FormTableSearchComponent } from '../../../../shared/components/form-tab
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { FechasFaseCmnEntidadApiService } from '../api/fechas-fase-cmn-entidad-api.service';
-import { FECHAS_FASE_CMN_ENTIDAD_FORM_ROUTE, FECHAS_FASE_CMN_ENTIDAD_PROCESS_ID, FECHAS_FASE_CMN_ENTIDAD_ROUTE } from '../config/fechas-fase-cmn-entidad.rutas';
+import { FECHAS_FASE_CMN_ENTIDAD_FORM_ROUTE } from '../config/fechas-fase-cmn-entidad.rutas';
 import { FechaFaseCmnEntidad } from '../models/fecha-fase-cmn.model';
 
 /**
@@ -43,7 +43,8 @@ export class FechasFaseCmnEntidadComponent implements OnInit {
   private readonly api = inject(FechasFaseCmnEntidadApiService);
   private readonly router = inject(Router);
 
-  readonly breadcrumbs = buildProcessBreadcrumbs(FECHAS_FASE_CMN_ENTIDAD_PROCESS_ID, FECHAS_FASE_CMN_ENTIDAD_ROUTE, 'Configuración de fechas de fase del CMN');
+  readonly breadcrumbs = CONFIGURACION_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
 
   readonly cargando = signal(false);
   readonly eliminando = signal(false);

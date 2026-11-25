@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
 import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -9,13 +10,8 @@ import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { FechasFaseCmnDplaipApiService } from '../api/fechas-fase-cmn-dplaip-api.service';
-import {
-  FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE,
-  FECHAS_FASE_CMN_DPLAIP_PROCESS_ID,
-  FECHAS_FASE_CMN_DPLAIP_ROUTE,
-} from '../config/fechas-fase-cmn-dplaip.rutas';
+import { FECHAS_FASE_CMN_DPLAIP_ROUTE } from '../config/fechas-fase-cmn-dplaip.rutas';
 import { FaseFecha, FechaFaseCmnDplaip, faseFechaVacia } from '../models/fecha-fase-cmn.model';
 
 /**
@@ -36,11 +32,8 @@ export class FechaFaseCmnDplaipFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  readonly breadcrumbs = buildProcessBreadcrumbs(
-    FECHAS_FASE_CMN_DPLAIP_PROCESS_ID,
-    FECHAS_FASE_CMN_DPLAIP_ROUTE,
-    'Configuración de fechas de fase del CMN para la entidad',
-  );
+  readonly breadcrumbs = CONFIGURACION_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
 
   readonly cargando = signal(false);
   readonly guardando = signal(false);
@@ -101,7 +94,7 @@ export class FechaFaseCmnDplaipFormComponent implements OnInit {
 
   /** «Cancelar»: descarta lo editado y regresa a la lista de fechas de fase (Figma 5110:402515). */
   cancelar(): void {
-    void this.router.navigateByUrl(FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE);
+    void this.router.navigateByUrl(FECHAS_FASE_CMN_DPLAIP_ROUTE);
   }
 
   /** «Grabar»: abre la confirmación; el guardado ocurre al aceptarla. */
@@ -124,7 +117,7 @@ export class FechaFaseCmnDplaipFormComponent implements OnInit {
           this.guardando.set(false);
           this.modalGrabarAbierto.set(false);
           // Figma 5110:402515: al grabar se pasa a la lista de años (con el año recién configurado «En Proceso»).
-          void this.router.navigateByUrl(FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE);
+          void this.router.navigateByUrl(FECHAS_FASE_CMN_DPLAIP_ROUTE);
         },
         error: () => this.guardando.set(false),
       });

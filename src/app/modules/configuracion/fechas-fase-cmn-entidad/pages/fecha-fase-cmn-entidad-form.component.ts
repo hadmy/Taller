@@ -8,13 +8,10 @@ import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { FechasFaseCmnEntidadApiService } from '../api/fechas-fase-cmn-entidad-api.service';
-import {
-  FECHAS_FASE_CMN_ENTIDAD_LISTA_ROUTE,
-  FECHAS_FASE_CMN_ENTIDAD_PROCESS_ID,
-  FECHAS_FASE_CMN_ENTIDAD_ROUTE,
-} from '../config/fechas-fase-cmn-entidad.rutas';
+import { FECHAS_FASE_CMN_ENTIDAD_LISTA_ROUTE } from '../config/fechas-fase-cmn-entidad.rutas';
 import { ETAPAS_FASE, EtapasFase, FechaFaseCmnEntidad, etapasFaseVacia, fechasDeFase } from '../models/fecha-fase-cmn.model';
 
 /** Una de las tres fases del formulario, con su etiqueta fija (Figma 5110:410301). */
@@ -45,6 +42,7 @@ function aFechaPe(iso: string): string {
   selector: 'siaf-fecha-fase-cmn-entidad-form',
   standalone: true,
   imports: [
+    ConfiguracionTabsComponent,
     ButtonComponent,
     DateTimePickerComponent,
     ModalComponent,
@@ -61,11 +59,8 @@ export class FechaFaseCmnEntidadFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  readonly breadcrumbs = buildProcessBreadcrumbs(
-    FECHAS_FASE_CMN_ENTIDAD_PROCESS_ID,
-    FECHAS_FASE_CMN_ENTIDAD_ROUTE,
-    'Configuración de fechas de fase del CMN para la entidad',
-  );
+  readonly breadcrumbs = CONFIGURACION_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
 
   readonly fases = FASES_FORM;
   readonly etapas = ETAPAS_FASE;

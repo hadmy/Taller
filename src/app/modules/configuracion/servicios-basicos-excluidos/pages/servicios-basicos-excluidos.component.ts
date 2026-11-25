@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
 import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -8,15 +9,10 @@ import { FormTableSearchComponent } from '../../../../shared/components/form-tab
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../shared/utils/form-snapshot.util';
 import { ServiciosBasicosExcluidosApiService } from '../api/servicios-basicos-excluidos-api.service';
 import { EditarServicioBasicoPanelComponent } from '../components/editar-servicio-basico-panel.component';
 import { SeleccionarItemsPanelComponent } from '../components/seleccionar-items-panel.component';
-import {
-  SERVICIOS_BASICOS_EXCLUIDOS_PROCESS_ID,
-  SERVICIOS_BASICOS_EXCLUIDOS_ROUTE,
-} from '../config/servicios-basicos-excluidos.rutas';
 import { EntidadServicioBasico, ServicioBasico, codigoServicioBasico } from '../models/servicio-basico.model';
 
 /**
@@ -49,10 +45,8 @@ import { EntidadServicioBasico, ServicioBasico, codigoServicioBasico } from '../
 export class ServiciosBasicosExcluidosComponent implements OnInit {
   private readonly api = inject(ServiciosBasicosExcluidosApiService);
 
-  readonly breadcrumbs = buildProcessBreadcrumbs(
-    SERVICIOS_BASICOS_EXCLUIDOS_PROCESS_ID,
-    SERVICIOS_BASICOS_EXCLUIDOS_ROUTE,
-  );
+  readonly breadcrumbs = CONFIGURACION_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
   readonly codigo = codigoServicioBasico;
 
   readonly items = signal<ServicioBasico[]>([]);

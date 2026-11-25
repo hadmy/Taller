@@ -48,40 +48,10 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
         label: 'Cuadro Multianual de Necesidades',
         children: [
           {
+            // Entra a Áreas usuarias; las demás configuraciones se eligen en sus pestañas (`siaf-configuracion-tabs`).
             id: 'configuraciones',
             label: 'Configuraciones',
-            children: [
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-areas-usuarias',
-                label: 'Configuración de Áreas Usuarias',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-area-usuaria',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-servicios-basicos-excluidos-ley',
-                label: 'Configuración de Servicios Básicos Excluidos de Ley',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/servicios-basicos-excluidos-ley',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-fechas-fase-dplaip',
-                label: 'Configuración de Fechas de Fase del CMN - DPLAIP',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-cmn-dplaip',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-fechas-fase-entidad',
-                label: 'Configuración de Fechas de Cierre de Fase del CMN por Área Usuaria',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-cmn-entidad',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-precios-diferenciados',
-                label: 'Configuración de Precios Diferenciados',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/precios-diferenciados',
-              },
-              {
-                id: 'cuadro-multianual-necesidades-configuracion-distribucion-interna-presupuestaria',
-                label: 'Configuración de distribución interna presupuestaria',
-                moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/distribucion-interna-presupuesto',
-              },
-            ],
+            moduleRoute: '/procesos/cuadro-multianual-necesidades/configuracion/fechas-fase-area-usuaria',
           },
           {
             id: 'documentos-registros',

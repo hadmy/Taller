@@ -13794,7 +13794,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "ui",
     "importacion": "@siaf/ui/tabs/tabs.component",
     "archivo": "src/app/shared/ui/tabs/tabs.component.ts",
-    "descripcion": "Pestañas del design system (Figma UI KIT, nodo 2588:135 «Tabs content»).\n\nUna fila de pestañas sobre una línea gris de 2 px. Texto de 14 px en gris; la activa va en negrita azul.\n- `border` (por defecto `true`): la activa se dibuja como carpeta, con borde arriba y a los lados y el\n  fondo de la superficie, y corta la línea. Con `border=false` la activa lleva un subrayado azul de 2 px.\n- Al pasar el mouse, enfocar con teclado o presionar, una capa de estado del Figma cubre la pestaña.\n- `count` muestra un contador con `siaf-badge`; `fullWidth` reparte el ancho entre las pestañas.\n- `disabled` en un `TabItem` la deja visible pero atenuada, sin clic ni foco por teclado (p. ej. una sección\n  todavía no implementada).\n- Con muchas pestañas (Figma «6+») la fila se desplaza en horizontal sin barra visible.\n\nEl padre mantiene el `activeId` y decide qué contenido pinta: este componente solo dibuja la fila.\n`siaf-records-tabs`, la franja «Detalle | Historial» de `siaf-detail-history-tabs` y el login lo usan por dentro.",
+    "descripcion": "Pestañas del design system (Figma UI KIT, nodo 2588:135 «Tabs content»).\n\nUna fila de pestañas sobre una línea gris de 2 px. Texto de 14 px en gris; la activa va en negrita azul.\n- `border` (por defecto `true`): la activa se dibuja como carpeta, con borde arriba y a los lados y el\n  fondo de la superficie, y corta la línea. Con `border=false` la activa lleva un subrayado azul de 2 px.\n- Al pasar el mouse, enfocar con teclado o presionar, una capa de estado del Figma cubre la pestaña.\n- `filled` pone sobre gris las pestañas que no son la activa.\n- `count` muestra un contador con `siaf-badge`; `fullWidth` reparte el ancho entre las pestañas.\n- `disabled` en un `TabItem` la deja visible pero atenuada, sin clic ni foco por teclado (p. ej. una sección\n  todavía no implementada).\n- Con muchas pestañas (Figma «6+») la fila se desplaza en horizontal sin barra visible.\n\nEl padre mantiene el `activeId` y decide qué contenido pinta: este componente solo dibuja la fila.\n`siaf-records-tabs`, la franja «Detalle | Historial» de `siaf-detail-history-tabs` y el login lo usan por dentro.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
@@ -13818,6 +13818,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "true",
         "requerida": false,
         "descripcion": "Figma «Border»: `true` dibuja la activa como carpeta; `false`, con subrayado azul."
+      },
+      {
+        "nombre": "filled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Las pestañas que no son la activa van sobre gris (pestañas de configuración del CMN)."
       },
       {
         "nombre": "fullWidth",

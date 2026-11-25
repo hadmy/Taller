@@ -5,7 +5,7 @@ import {
   DISTRIBUCION_INTERNA_PRESUPUESTO_FORM_ROUTE,
   DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE,
 } from './distribucion-interna-presupuesto/config/distribucion-interna-presupuesto.rutas';
-import { FECHAS_FASE_CMN_DPLAIP_FORM_ROUTE, FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE, FECHAS_FASE_CMN_DPLAIP_ROUTE } from './fechas-fase-cmn-dplaip/config/fechas-fase-cmn-dplaip.rutas';
+import { FECHAS_FASE_CMN_DPLAIP_FORM_ROUTE, FECHAS_FASE_CMN_DPLAIP_ROUTE } from './fechas-fase-cmn-dplaip/config/fechas-fase-cmn-dplaip.rutas';
 import { FECHAS_FASE_CMN_ENTIDAD_FORM_ROUTE, FECHAS_FASE_CMN_ENTIDAD_LISTA_ROUTE, FECHAS_FASE_CMN_ENTIDAD_ROUTE } from './fechas-fase-cmn-entidad/config/fechas-fase-cmn-entidad.rutas';
 import { SERVICIOS_BASICOS_EXCLUIDOS_ROUTE } from './servicios-basicos-excluidos/config/servicios-basicos-excluidos.rutas';
 import { PRECIOS_DIFERENCIADOS_ROUTE } from './precios-diferenciados/config/precios-diferenciados.rutas';
@@ -48,13 +48,6 @@ export const CONFIGURACION_ROUTES: Routes = [
   },
   {
     path: FECHAS_FASE_CMN_DPLAIP_ROUTE.slice(1),
-    loadComponent: () =>
-      import('./fechas-fase-cmn-dplaip/pages/fecha-fase-cmn-dplaip-form.component').then(
-        (m) => m.FechaFaseCmnDplaipFormComponent,
-      ),
-  },
-  {
-    path: FECHAS_FASE_CMN_DPLAIP_LISTA_ROUTE.slice(1),
     loadComponent: () =>
       import('./fechas-fase-cmn-dplaip/pages/fechas-fase-cmn-dplaip.component').then(
         (m) => m.FechasFaseCmnDplaipComponent,

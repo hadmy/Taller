@@ -12,12 +12,10 @@ import { FormTableSearchComponent } from '../../../../shared/components/form-tab
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { DistribucionInternaPresupuestoApiService, PlantillaDistribucion } from '../api/distribucion-interna-presupuesto-api.service';
-import {
-  DISTRIBUCION_INTERNA_PRESUPUESTO_PROCESS_ID,
-  DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE,
-} from '../config/distribucion-interna-presupuesto.rutas';
+import { DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE } from '../config/distribucion-interna-presupuesto.rutas';
 import {
   DistribucionFilaOu,
   DistribucionGenerica,
@@ -35,7 +33,7 @@ import {
 @Component({
   selector: 'siaf-distribucion-interna-presupuesto-form',
   standalone: true,
-  imports: [AlertComponent, ButtonComponent, DecimalPipe, FormTableSearchComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TabsComponent, TextFieldComponent],
+  imports: [ConfiguracionTabsComponent, AlertComponent, ButtonComponent, DecimalPipe, FormTableSearchComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TabsComponent, TextFieldComponent],
   templateUrl: './distribucion-interna-presupuesto-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -44,11 +42,8 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  readonly breadcrumbs = buildProcessBreadcrumbs(
-    DISTRIBUCION_INTERNA_PRESUPUESTO_PROCESS_ID,
-    DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE,
-    'Distribución interna de presupuesto',
-  );
+  readonly breadcrumbs = CONFIGURACION_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
 
   readonly opcionesPresupuestoFase: TextFieldOption[] = PRESUPUESTOS_FASE.map((p) => ({ label: p.label, value: p.key }));
 

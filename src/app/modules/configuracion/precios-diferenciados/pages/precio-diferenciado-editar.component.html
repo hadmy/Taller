@@ -22,11 +22,13 @@
   </siaf-page-shell>
 } @else {
   <siaf-page-shell [breadcrumbs]="breadcrumbs">
-    <siaf-page-header pageHeader title="Configuración de precios diferenciados" />
+    <siaf-page-header pageHeader [title]="titulo" />
 
-    <div class="flex min-h-0 flex-1 flex-col gap-siaf-md overflow-auto rounded-siaf-md bg-surface p-siaf-lg">
+    <siaf-configuracion-tabs activa="precios-diferenciados" />
+
+    <div class="flex min-h-0 flex-1 flex-col gap-siaf-md overflow-auto rounded-b-siaf-md bg-surface p-siaf-lg">
       <header class="flex items-center justify-between gap-siaf-md">
-        <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Editar precios diferenciados</h2>
+        <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Editar precios diferenciados</h2>
         <div class="flex gap-siaf-sm">
           <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
           <siaf-button variant="filled" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="abrirModalGrabar()">Grabar</siaf-button>

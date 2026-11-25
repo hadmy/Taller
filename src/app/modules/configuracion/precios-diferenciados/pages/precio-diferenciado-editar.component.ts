@@ -7,10 +7,11 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { TextFieldComponent } from '../../../../shared/ui/text-field/text-field.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../shared/utils/form-snapshot.util';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { PreciosDiferenciadosApiService } from '../api/precios-diferenciados-api.service';
-import { PRECIOS_DIFERENCIADOS_PROCESS_ID, PRECIOS_DIFERENCIADOS_ROUTE } from '../config/precios-diferenciados.rutas';
+import { PRECIOS_DIFERENCIADOS_ROUTE } from '../config/precios-diferenciados.rutas';
 import { PrecioArea, PrecioDiferenciado } from '../models/precio-diferenciado.model';
 
 /**
@@ -23,7 +24,7 @@ import { PrecioArea, PrecioDiferenciado } from '../models/precio-diferenciado.mo
 @Component({
   selector: 'siaf-precio-diferenciado-editar',
   standalone: true,
-  imports: [ButtonComponent, EmptyStateComponent, ModalComponent, PageHeaderComponent, PageShellComponent, TextFieldComponent],
+  imports: [ConfiguracionTabsComponent, ButtonComponent, EmptyStateComponent, ModalComponent, PageHeaderComponent, PageShellComponent, TextFieldComponent],
   templateUrl: './precio-diferenciado-editar.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -32,7 +33,8 @@ export class PrecioDiferenciadoEditarComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(PreciosDiferenciadosApiService);
 
-  readonly breadcrumbs = buildProcessBreadcrumbs(PRECIOS_DIFERENCIADOS_PROCESS_ID, PRECIOS_DIFERENCIADOS_ROUTE, 'Editar precios diferenciados');
+  readonly breadcrumbs = CONFIGURACION_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
 
   readonly cargando = signal(false);
   readonly guardando = signal(false);

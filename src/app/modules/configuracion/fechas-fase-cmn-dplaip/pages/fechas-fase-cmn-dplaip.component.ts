@@ -11,9 +11,10 @@ import { FormTableSearchComponent } from '../../../../shared/components/form-tab
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { FechasFaseCmnDplaipApiService } from '../api/fechas-fase-cmn-dplaip-api.service';
-import { FECHAS_FASE_CMN_DPLAIP_FORM_ROUTE, FECHAS_FASE_CMN_DPLAIP_PROCESS_ID, FECHAS_FASE_CMN_DPLAIP_ROUTE } from '../config/fechas-fase-cmn-dplaip.rutas';
+import { FECHAS_FASE_CMN_DPLAIP_FORM_ROUTE } from '../config/fechas-fase-cmn-dplaip.rutas';
 import { FechaFaseCmnDplaip } from '../models/fecha-fase-cmn.model';
 
 /**
@@ -26,6 +27,7 @@ import { FechaFaseCmnDplaip } from '../models/fecha-fase-cmn.model';
   selector: 'siaf-fechas-fase-cmn-dplaip',
   standalone: true,
   imports: [
+    ConfiguracionTabsComponent,
     ButtonComponent,
     FormTableSearchComponent,
     ModalComponent,
@@ -43,7 +45,8 @@ export class FechasFaseCmnDplaipComponent implements OnInit {
   private readonly api = inject(FechasFaseCmnDplaipApiService);
   private readonly router = inject(Router);
 
-  readonly breadcrumbs = buildProcessBreadcrumbs(FECHAS_FASE_CMN_DPLAIP_PROCESS_ID, FECHAS_FASE_CMN_DPLAIP_ROUTE, 'Configuración de fechas de fase del CMN - DPLAIP');
+  readonly breadcrumbs = CONFIGURACION_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
 
   readonly cargando = signal(false);
   readonly eliminando = signal(false);

@@ -12,9 +12,10 @@ import { SwitchComponent } from '../../../../shared/ui/switch/switch.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../shared/utils/form-snapshot.util';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
 import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { AreasUsuariasApiService } from '../api/areas-usuarias-api.service';
-import { AREAS_USUARIAS_BREADCRUMBS, AREAS_USUARIAS_ROUTE, TITULO_CONFIGURACION } from '../config/areas-usuarias.rutas';
+import { AREAS_USUARIAS_ROUTE } from '../config/areas-usuarias.rutas';
 import { BuscarItemsPanelComponent } from '../components/buscar-items-panel.component';
 import {
   AreaUsuaria,
@@ -69,7 +70,7 @@ export class AreaUsuariaDetalleComponent implements OnInit {
   readonly items = signal<AreaUsuariaItem[]>([]);
   private readonly snapshotInicial = signal<string | null>(null);
 
-  readonly breadcrumbs = AREAS_USUARIAS_BREADCRUMBS;
+  readonly breadcrumbs = CONFIGURACION_BREADCRUMBS;
   readonly titulo = TITULO_CONFIGURACION;
   readonly modalGrabar = signal(false);
 

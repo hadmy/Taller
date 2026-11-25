@@ -13,13 +13,13 @@
 />
 
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración del Cuadro Multianual de Necesidades" />
+  <siaf-page-header pageHeader [title]="titulo" />
 
   <siaf-configuracion-tabs activa="distribucion-interna" />
 
-  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-b-siaf-md bg-surface p-siaf-lg">
     <header class="flex items-center justify-between">
-      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+      <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
         Configurar distribución interna del techo presupuestal por genérica
       </h2>
       <siaf-button variant="filled" icon="add" [iconOnly]="true" ariaLabel="Agregar distribución" (click)="irAlFormulario()" />
@@ -52,7 +52,7 @@
           <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
             <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
             <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Año</th>
-            <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Estado</th>
+            <th class="w-[180px] border-b border-l border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Estado</th>
           </tr>
         </thead>
         <tbody>
@@ -68,7 +68,7 @@
                 />
               </td>
               <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ anio.anio }}</td>
-              <td class="px-siaf-md py-siaf-sm">
+              <td class="border-l border-[var(--sys-color-divider-default)] px-siaf-md py-siaf-sm">
                 @if (anio.estado === 'Validado') {
                   <!-- Figma de esta pantalla: «Validado» con fondo suave azul y check en círculo. -->
                   <siaf-status-tag tone="info" appearance="soft" icon="check_circle" size="small">Validado</siaf-status-tag>

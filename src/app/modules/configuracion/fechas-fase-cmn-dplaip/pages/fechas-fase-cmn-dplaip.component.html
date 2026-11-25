@@ -13,11 +13,13 @@
 />
 
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración de fechas de fase del CMN" />
+  <siaf-page-header pageHeader [title]="titulo" />
 
-  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
+  <siaf-configuracion-tabs activa="fechas-dplaip" />
+
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-b-siaf-md bg-surface p-siaf-lg">
     <header class="flex items-center justify-between">
-      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Fechas de fase</h2>
+      <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Fechas de fase</h2>
       <siaf-button variant="filled" icon="add" [iconOnly]="true" ariaLabel="Agregar año" (click)="irAlFormulario()" />
     </header>
 
@@ -48,7 +50,7 @@
           <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
             <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"></th>
             <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Año</th>
-            <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-right">Estado</th>
+            <th class="w-[180px] border-b border-l border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Estado</th>
           </tr>
         </thead>
         <tbody>
@@ -64,7 +66,7 @@
                 />
               </td>
               <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ anio.anio }}</td>
-              <td class="px-siaf-md py-siaf-sm text-right"><div class="flex justify-end">
+              <td class="border-l border-[var(--sys-color-divider-default)] px-siaf-md py-siaf-sm"><div class="flex">
                 @if (anio.estado === 'Activo') {
                   <!-- Figma de esta pantalla (5110:402459): «Activo» con fondo suave azul y check en círculo. -->
                   <siaf-status-tag tone="info" appearance="soft" icon="check_circle" size="small">Activo</siaf-status-tag>

@@ -1,5 +1,5 @@
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración del Cuadro Multianual de Necesidades">
+  <siaf-page-header pageHeader [title]="titulo">
     <!-- «Grabar» con ítems en edición o con cambios por guardar; la vista inicial vacía y la grabada no lo llevan. -->
     @if ((editando() && items().length > 0) || huboCambios()) {
       <siaf-button actions variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
@@ -10,9 +10,9 @@
 
   <siaf-configuracion-tabs activa="servicios-basicos" />
 
-  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md overflow-auto rounded-siaf-md bg-surface p-siaf-lg">
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md overflow-auto rounded-b-siaf-md bg-surface p-siaf-lg">
     <header class="flex items-center justify-between">
-      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+      <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
         {{ items().length ? 'Vincular servicios basicos' : 'Ítems de servicios basicos' }}
       </h2>
       <siaf-button variant="filled" icon="search" [iconOnly]="true" ariaLabel="Buscar ítems de servicios básicos" (click)="abrirPanel()" />

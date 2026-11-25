@@ -12,16 +12,18 @@
 />
 
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración de fechas de fase del CMN para la entidad" />
+  <siaf-page-header pageHeader [title]="titulo" />
 
-  <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg rounded-siaf-md bg-surface p-siaf-lg">
+  <siaf-configuracion-tabs activa="fechas-entidad" />
+
+  <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg rounded-b-siaf-md bg-surface p-siaf-lg">
     <header class="flex items-center justify-between">
-      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+      <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
         {{ editando() ? 'Editar fechas de fase en la entidad' : 'Fechas de fase en la entidad' }}
       </h2>
       <div class="flex gap-siaf-sm">
         <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
-        <siaf-button variant="filled" icon="save" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="grabar()">
+        <siaf-button variant="filled" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="grabar()">
           Grabar
         </siaf-button>
       </div>

@@ -53,14 +53,7 @@ export const routes: Routes = [
           import('./modules/configuracion/configuracion.routes').then((m) => m.CONFIGURACION_ROUTES),
         data: { permissions: ['document.read'] }
       },
-      // ── Reportes: Dashboard ──
-      {
-        path: '',
-        loadChildren: () =>
-          import('./modules/reportes/reportes.routes').then((m) => m.REPORTES_ROUTES),
-        data: { permissions: ['document.read'] }
-      },
-      // ── Consultas y reportes: Seguimiento del CMN – DPLAIP ──
+      // ── Consultas y reportes: Seguimiento del CMN – DPLAIP y Entidad ──
       {
         path: '',
         loadChildren: () =>

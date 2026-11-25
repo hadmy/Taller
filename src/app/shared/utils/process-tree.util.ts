@@ -109,16 +109,6 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
             label: 'Consultas y Reportes',
             children: [
               {
-                id: 'reportes-dashboard',
-                label: 'Dashboard',
-                moduleRoute: '/procesos/reportes/dashboard',
-              },
-              {
-                id: 'reportes-seguimiento-nacional-cmn',
-                label: 'Seguimiento del CMN',
-                moduleRoute: '/procesos/reportes/seguimiento-nacional-cmn',
-              },
-              {
                 id: 'consultas-seguimiento-dplaip',
                 label: 'Seguimiento del CMN – DPLAIP',
                 moduleRoute: '/procesos/consultas/seguimiento-dplaip',

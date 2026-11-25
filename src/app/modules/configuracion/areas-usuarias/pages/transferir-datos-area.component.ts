@@ -6,11 +6,11 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
+import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { AreasUsuariasApiService } from '../api/areas-usuarias-api.service';
-import { AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE } from '../config/areas-usuarias.rutas';
+import { AREAS_USUARIAS_BREADCRUMBS, AREAS_USUARIAS_ROUTE, TITULO_CONFIGURACION } from '../config/areas-usuarias.rutas';
 import { AreaUsuaria, AreaUsuariaItem } from '../models/area-usuaria.model';
 
 /** Texto del modal «¿Grabar?» de la transferencia (Figma A.1-RC-089). */
@@ -20,12 +20,12 @@ export const MSJ_CONFIRMAR_TRANSFERIR = 'Los registros se grabarán correctament
  * «Transferir datos» de un área usuaria inactiva (Figma «5. TRANSFERIR DATA», A.1-RC-086 a RC-090): muestra el área
  * de origen (inactiva, solo lectura), se elige el área de destino (activa) y se marcan los commodities o ítems a
  * transferir. «Grabar» pide confirmación y, al aceptar, vuelve a la lista con el aviso de éxito; «Cancelar» vuelve
- * sin cambios. Se llega con el ícono «Transferir datos» de la fila inactiva o con un clic en esa fila.
+ * sin cambios. Se llega desde «Más opciones» con el área inactiva marcada o con un clic en su fila.
  */
 @Component({
   selector: 'siaf-transferir-datos-area',
   standalone: true,
-  imports: [ButtonComponent, ConfiguracionTabsComponent, ModalComponent, PageHeaderComponent, PageShellComponent, TextFieldComponent],
+  imports: [ButtonComponent, ConfiguracionTabsComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TextFieldComponent],
   templateUrl: './transferir-datos-area.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -45,9 +45,23 @@ export class TransferirDatosAreaComponent implements OnInit {
   readonly seleccion = signal<Set<string>>(new Set());
   readonly modalGrabar = signal(false);
 
-  readonly breadcrumbs = computed(() =>
-    buildProcessBreadcrumbs(AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE, 'Transferir datos'),
-  );
+  readonly breadcrumbs = AREAS_USUARIAS_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
+
+  // Paginación de los registros por transferir.
+  readonly page = signal(1);
+  readonly rowsPerPage = signal(25);
+  readonly rowsPerPageOptions = [10, 25, 50, 100];
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.items().length / this.rowsPerPage())));
+  readonly itemsPagina = computed(() => {
+    const inicio = (this.page() - 1) * this.rowsPerPage();
+    return this.items().slice(inicio, inicio + this.rowsPerPage());
+  });
+
+  cambiarFilasPorPagina(valor: number): void {
+    this.rowsPerPage.set(valor);
+    this.page.set(1);
+  }
 
   /** Destinos posibles: áreas activas distintas del origen. */
   readonly opcionesDestino = computed<TextFieldOption[]>(() =>

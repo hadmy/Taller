@@ -342,7 +342,7 @@ describe('mockBackendInterceptor', () => {
     const URL = `${API}/configuracion/areas-usuarias`;
     const areas = esperar(http.get<AreaUsuaria[]>(URL, { headers })).valor!;
     const mesa = areas.find((a) => a.denominacion === 'MESA DE PARTES')!;
-    const destino = areas.find((a) => a.denominacion === 'SECRETARÍA GENERAL')!;
+    const destino = areas.find((a) => a.denominacion === 'RECTORADO')!;
     expect(mesa.activo).toBeFalse();
 
     const origen = esperar(http.get<{ items: AreaUsuariaItem[] }>(`${URL}/${mesa.id}/detalle`, { headers })).valor!;

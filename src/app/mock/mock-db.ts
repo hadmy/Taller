@@ -27,7 +27,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 42;
+const VERSION = 43;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol en la entidad de la solicitud. */
@@ -354,14 +354,12 @@ type EstadoSemilla = 'ELABORADO' | 'VERIFICADO' | 'VALIDADO' | 'APROBADO' | 'OBS
 const AREAS_USUARIAS_SEMILLA: Omit<AreaUsuaria, 'id'>[] = (
   [
     ['01', 'ALTA DIRECCIÓN', {}],
-    ['01.01', 'RECTORADO', { esMaa: true }],
-    ['01.01.01', 'SECRETARÍA GENERAL', {}],
-    ['01.01.01.01', 'OFICINA ADMINISTRATIVA', { esOa: true }],
+    ['01.01', 'RECTORADO', {}],
     ['01.01.02', 'UNIDAD DE DESARROLLO DE SOFTWARE', { pendiente: true }],
-    ['01.01.02.02', 'UNIDAD DE PROTOCOLO Y EVENTOS', { esAte: true }],
+    ['01.01.02.02', 'UNIDAD DE PROTOCOLO Y EVENTOS', {}],
     ['01.01.02.03', 'UNIDAD DE COMUNICACIONES', {}],
     ['01.01.02.03.04', 'MESA DE PARTES', { activo: false }],
-    ['01.01.02.04', 'OFICINA DE IMAGEN INSTITUCIONAL', { pendiente: true }],
+    ['01.01.02.03.04.01', 'OFICINA DE IMAGEN INSTITUCIONAL', { pendiente: true }],
     ['01.01.02.03.04.05', 'UNIDAD DE GRADOS Y TÍTULOS', {}],
   ] as [string, string, Partial<AreaUsuaria>][]
 ).map(([codigo, denominacion, extra]) => ({

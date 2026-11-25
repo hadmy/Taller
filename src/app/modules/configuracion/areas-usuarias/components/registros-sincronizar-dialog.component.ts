@@ -4,7 +4,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { FocoDirective } from '../../../../shared/ui/foco/foco.directive';
 import { IconComponent } from '../../../../shared/ui/icon/icon.component';
 import { RecordStatusTagComponent } from '../../../../shared/ui/record-status-tag/record-status-tag.component';
-import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
+import { TextFieldComponent } from '../../../../shared/ui/text-field/text-field.component';
 import { AreaUsuaria, BANDERAS_AREA_USUARIA } from '../models/area-usuaria.model';
 
 type Bandera = 'generaCmn' | 'esAte' | 'esOa' | 'esMaa';
@@ -17,7 +17,7 @@ type Bandera = 'generaCmn' | 'esAte' | 'esOa' | 'esMaa';
 @Component({
   selector: 'siaf-registros-sincronizar-dialog',
   standalone: true,
-  imports: [ButtonComponent, FocoDirective, FormTableSearchComponent, IconComponent, RecordStatusTagComponent],
+  imports: [ButtonComponent, FocoDirective, IconComponent, RecordStatusTagComponent, TextFieldComponent],
   template: `
     @if (open) {
       <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-siaf-md" role="presentation">
@@ -37,9 +37,9 @@ type Bandera = 'generaCmn' | 'esAte' | 'esOa' | 'esMaa';
           </header>
 
           <div class="flex min-h-[320px] flex-1 flex-col gap-siaf-md overflow-auto p-siaf-md">
-            <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar unidad organizacional" (typing)="busqueda.set($event)" (valueChange)="busqueda.set($event)" />
+            <siaf-input label="Buscar" [autoSuccess]="false" [value]="busqueda()" (valueChange)="busqueda.set('' + $event)" />
 
-            <div class="flex h-8 items-center">
+            <div class="flex h-10 items-center pl-siaf-sm">
               <input
                 class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
                 type="checkbox"
@@ -55,7 +55,7 @@ type Bandera = 'generaCmn' | 'esAte' | 'esOa' | 'esMaa';
             @if (filtradas().length === 0) {
               <p class="m-0 p-siaf-md text-center text-sm text-[var(--sys-color-text-neutral-medium)]">No hay unidades organizacionales nuevas para sincronizar.</p>
             } @else {
-              <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+              <div class="overflow-auto">
                 <table class="w-full min-w-[760px] border-collapse text-sm">
                   <thead>
                     <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
@@ -86,6 +86,8 @@ type Bandera = 'generaCmn' | 'esAte' | 'esOa' | 'esMaa';
                           <td class="px-siaf-sm py-siaf-sm text-center">
                             @if (b.key === 'generaCmn' || u[b.key]) {
                               <siaf-icon class="text-[var(--sys-color-text-neutral-high)]" name="check" [size]="20" [decorative]="false" [label]="b.label + ': sí'" />
+                            } @else {
+                              <span class="text-[var(--sys-color-text-neutral-medium)]" role="img" [attr.aria-label]="b.label + ': no'">-</span>
                             }
                           </td>
                         }

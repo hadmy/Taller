@@ -74,7 +74,6 @@ export interface TabItem {
           [class.shrink-0]="!fullWidth"
           [class.flex-1]="fullWidth"
           [class.min-w-0]="fullWidth"
-          [class.opacity-50]="tab.disabled"
           [class.cursor-not-allowed]="tab.disabled"
           [attr.data-activa]="tab.id === activeId ? '' : null"
           [attr.aria-selected]="tab.id === activeId"
@@ -123,6 +122,12 @@ export interface TabItem {
       transition: color 150ms, box-shadow 150ms;
     }
 
+    /* Deshabilitada (Figma «Tabs item», State=Disabled): texto atenuado sobre gris. */
+    .siaf-tab[aria-disabled='true'] {
+      color: var(--sys-color-text-neutral-disabled);
+      background-color: var(--sys-color-bg-states-light-disabled);
+    }
+
     .siaf-tab > * {
       position: relative;
     }
@@ -138,7 +143,7 @@ export interface TabItem {
       transition: background-color 150ms;
     }
 
-    .siaf-tab:not([data-activa]):hover::before {
+    .siaf-tab:not([data-activa], [aria-disabled='true']):hover::before {
       background-color: var(--sys-color-bg-states-light-hover);
     }
 
@@ -146,7 +151,7 @@ export interface TabItem {
       background-color: var(--sys-color-bg-states-light-focus);
     }
 
-    .siaf-tab:not([data-activa]):active::before {
+    .siaf-tab:not([data-activa], [aria-disabled='true']):active::before {
       background-color: var(--sys-color-bg-states-light-pressed);
     }
 

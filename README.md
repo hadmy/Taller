@@ -66,7 +66,7 @@ verificación es `123456`.
 **Otros recorridos (entrar escribiendo el correo o el DNI):**
 
 1. **Login** como Ana. El escritorio virtual muestra la bandeja, los contadores y sus notificaciones.
-2. **Procesos → Solicitudes → Solicitud del cuadro multianual de necesidades → Necesidades estratégicas** (Documentos y registros). La pestaña Documentos es la bandeja; Registros,
+2. **Procesos → Gestión de abastecimiento → Cuadro Multianual de Necesidades → Documentos y Registros → Necesidades estratégicas** (Documentos y registros). La pestaña Documentos es la bandeja; Registros,
    los ítems ya aprobados (con el historial de la solicitud que los incluyó).
 3. **Crear documento → Solicitud de necesidades estratégicas**: elegir los ítems y **Grabar**. La solicitud recibe su
    número (`CMN-SIE-00008-2026-MEF-OGA`) y queda Elaborada; luego **Verificar**.
@@ -78,8 +78,8 @@ verificación es `123456`.
    se puede eliminar.
 7. Entrar como Carla y cambiar de perfil desde el menú del usuario: el avatar pasa de «CR» a «AP» y cambian la bandeja,
    los botones y las notificaciones.
-8. **CMN** como la Especialista OA: en **Procesos**, buscar «CMN Programación» (o Solicitudes →
-   Solicitud del cuadro multianual de necesidades → CMN Programación) y, en Documentos y registros, **Crear
+8. **CMN** como la Especialista OA: en **Procesos**, buscar «CMN Programación» (o Gestión de abastecimiento →
+   Cuadro Multianual de Necesidades → Documentos y Registros → CMN Programación) y, en Documentos y registros, **Crear
    documento → Solicitud de CMN - Anexo N.º 02**. Lo valida el **Evaluador OA** y lo aprueba el **Aprobador OA**: cada
    perfil ve y responde solo las solicitudes de su entidad.
 9. **Catálogo de componentes** en `/ui-kit`: cada componente con su ficha, sus entradas y su ejemplo.

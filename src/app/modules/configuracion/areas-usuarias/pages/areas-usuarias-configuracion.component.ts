@@ -2,41 +2,39 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } 
 import { Router } from '@angular/router';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CheckboxComponent } from '../../../../shared/ui/checkbox/checkbox.component';
 import { IconDropdownMenuComponent, IconDropdownMenuItem } from '../../../../shared/ui/icon-dropdown-menu/icon-dropdown-menu.component';
 import { IconComponent } from '../../../../shared/ui/icon/icon.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
-import { ReadonlyFieldComponent } from '../../../../shared/ui/readonly-field/readonly-field.component';
 import { RecordStatusTagComponent } from '../../../../shared/ui/record-status-tag/record-status-tag.component';
 import { SideNavComponent } from '../../../../shared/ui/side-nav/side-nav.component';
 import { SnackbarComponent } from '../../../../shared/ui/snackbar/snackbar.component';
 import { StatusTagComponent } from '../../../../shared/ui/status-tag/status-tag.component';
+import { TextFieldComponent } from '../../../../shared/ui/text-field/text-field.component';
 import { TooltipDirective } from '../../../../shared/ui/tooltip/tooltip.directive';
-import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
-import { TableControlsComponent } from '../../../../shared/components/table-controls/table-controls.component';
 import { RegistrosSincronizarDialogComponent } from '../components/registros-sincronizar-dialog.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { AreasUsuariasApiService } from '../api/areas-usuarias-api.service';
-import { AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE } from '../config/areas-usuarias.rutas';
+import { AREAS_USUARIAS_BREADCRUMBS, AREAS_USUARIAS_ROUTE, TITULO_CONFIGURACION } from '../config/areas-usuarias.rutas';
 import { AreaUsuaria, BANDERAS_AREA_USUARIA } from '../models/area-usuaria.model';
 
-/** Aviso al grabar (HU-01, MSJ-J-01). */
-export const MSJ_GRABADO = 'Se actualizó la configuración de la lista de áreas usuarias';
+/** Aviso al grabar la edición masiva (Figma A.1-RC-038). */
+export const msjGrabado = (n: number): string => `Registros actualizados con éxito: ${n}`;
 
 type Bandera = 'generaCmn' | 'esAte' | 'esOa' | 'esMaa';
 
 /**
- * Configuración de áreas usuarias, pestaña de «Configuración del Cuadro Multianual de Necesidades» (Figma «A.1-RC-043»):
+ * Configuración de áreas usuarias, pestaña de «Configuración del Cuadro Multianual de Necesidades» (Figma «2. REGISTRO
+ * CONFIGURACION», A.1-RC-006 a RC-043):
  * - En **solo lectura** las banderas (¿Genera CMN?, ¿Es ATE?, ¿Es OA?, ¿Es MAA?) se muestran con ✓ si están marcadas y
- *   con «-» si no. Cada fila se marca con su casilla; la barra de arriba marca toda la página.
- * - **Lápiz** con un área marcada: abre su detalle. Con varias: pasan a edición (casillas en sus cuatro banderas) y se
- *   abre «Edición masiva», que aplica «¿Genera CMN?» a todas; «Limpiar» lo devuelve a lo grabado. «Cancelar» descarta y
- *   «Grabar» (con cambios y confirmación) graba las filas cambiadas y muestra el aviso MSJ-J-01. El servidor aplica las
- *   reglas de una sola OA y una sola MAA.
+ *   con «-» si no. Cada fila se marca con su casilla; la de arriba marca toda la página.
+ * - **Lápiz** (aparece con filas marcadas): con un área abre su detalle; con varias, «Cancelar» y «Grabar» reemplazan a
+ *   «Sincronizar» y el lápiz pasa las filas a edición (casillas en sus cuatro banderas). En edición, el lápiz abre
+ *   «Edición masiva», que aplica «Generar CMN?» a todas; «Limpiar» lo devuelve a lo grabado. «Cancelar» descarta y
+ *   «Grabar» (con cambios y confirmación) actualiza las áreas marcadas y muestra cuántas. El servidor aplica las reglas
+ *   de una sola OA y una sola MAA.
  * - «Sincronizar» abre el diálogo «Registros» (Figma A.1-RC-091 a RC-094) con las unidades del pliego que aún no
  *   están en la lista; «Aceptar» las incorpora con «¿Genera CMN?» y la etiqueta «Nuevo».
  * - Un clic en la fila (o Enter) abre el detalle del área para agregar commodities o ítems; la casilla no lo dispara y,
@@ -49,22 +47,19 @@ type Bandera = 'generaCmn' | 'esAte' | 'esOa' | 'esMaa';
   standalone: true,
   imports: [
     ButtonComponent,
-    CheckboxComponent,
     ConfiguracionTabsComponent,
-    FormTableSearchComponent,
     IconComponent,
     IconDropdownMenuComponent,
     ModalComponent,
     PageHeaderComponent,
     PageShellComponent,
     PaginationComponent,
-    ReadonlyFieldComponent,
     RecordStatusTagComponent,
     RegistrosSincronizarDialogComponent,
     SideNavComponent,
     SnackbarComponent,
     StatusTagComponent,
-    TableControlsComponent,
+    TextFieldComponent,
     TooltipDirective,
   ],
   templateUrl: './areas-usuarias-configuracion.component.html',
@@ -74,8 +69,12 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
   private readonly api = inject(AreasUsuariasApiService);
   private readonly router = inject(Router);
 
-  readonly breadcrumbs = buildProcessBreadcrumbs(AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE, 'Configuración del Cuadro Multianual de Necesidades');
+  readonly breadcrumbs = AREAS_USUARIAS_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
   readonly banderas = BANDERAS_AREA_USUARIA as { key: Bandera; label: string; descripcion: string }[];
+
+  /** Anchos de las columnas de banderas (Figma A.1-RC-006). */
+  readonly anchoBandera: Record<Bandera, string> = { generaCmn: 'w-[143px]', esAte: 'w-[110px]', esOa: 'w-[110px]', esMaa: 'w-[155px]' };
 
   readonly cargando = signal(false);
   readonly guardando = signal(false);
@@ -87,6 +86,8 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
   readonly marcadas = signal<Set<string>>(new Set());
   readonly borrador = signal<Record<string, AreaUsuaria> | null>(null);
   readonly editando = computed(() => this.borrador() !== null);
+  /** Con varias áreas marcadas, «Cancelar» y «Grabar» reemplazan a «Sincronizar» (Figma A.1-RC-035). */
+  readonly masiva = computed(() => this.editando() || this.seleccion().length > 1);
 
   // Panel «Edición masiva» y confirmación de «Grabar»
   readonly panelMasivo = signal(false);
@@ -124,7 +125,7 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
     const [area, otra] = this.seleccion();
     return area && !otra && this.inactiva(area) ? area : null;
   });
-  readonly masOpciones = computed<IconDropdownMenuItem[]>(() => [{ label: 'Transferir datos', value: 'transferir', disabled: !this.areaPorTransferir() }]);
+  readonly masOpciones: IconDropdownMenuItem[] = [{ label: 'Transferir datos', value: 'transferir' }];
 
   /** Áreas cuya copia de trabajo difiere de lo grabado: sin ninguna, «Grabar» queda deshabilitado. */
   readonly cambiadas = computed(() => {
@@ -187,7 +188,6 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
     }
     this.aviso.set(null);
     this.borrador.set(Object.fromEntries(areas.map((a) => [a.id, { ...a }])));
-    this.abrirMasiva();
   }
 
   abrirMasiva(): void {
@@ -211,24 +211,24 @@ export class AreasUsuariasConfiguracionComponent implements OnInit {
     this.panelMasivo.set(false);
   }
 
-  /** «Cancelar»: descarta los cambios y vuelve a solo lectura. */
+  /** «Cancelar»: descarta los cambios y la selección y vuelve a solo lectura. */
   cancelarEdicion(): void {
     this.borrador.set(null);
+    this.marcadas.set(new Set());
     this.panelMasivo.set(false);
   }
 
-  /** «Grabar» confirmado: graba las filas cambiadas, vuelve a solo lectura y muestra MSJ-J-01. */
+  /** «Grabar» confirmado: actualiza las áreas en edición, vuelve a solo lectura y avisa cuántas fueron. */
   grabar(): void {
     this.modalGrabar.set(false);
-    const cambios = this.cambiadas().map(({ id, generaCmn, esAte, esOa, esMaa }) => ({ id, generaCmn, esAte, esOa, esMaa }));
-    if (!cambios.length || this.guardando()) return;
+    if (!this.cambiadas().length || this.guardando()) return;
+    const cambios = Object.values(this.borrador() ?? {}).map(({ id, generaCmn, esAte, esOa, esMaa }) => ({ id, generaCmn, esAte, esOa, esMaa }));
     this.guardando.set(true);
     this.api.guardar(cambios).subscribe({
       next: () => {
         this.guardando.set(false);
         this.cancelarEdicion();
-        this.marcadas.set(new Set());
-        this.aviso.set(MSJ_GRABADO);
+        this.aviso.set(msjGrabado(cambios.length));
         // El servidor aplica las reglas de una sola OA y una sola MAA: se vuelve a leer su resultado.
         this.cargar();
       },

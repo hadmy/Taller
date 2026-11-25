@@ -188,12 +188,12 @@ let siguienteId = 0;
         @for (item of desktopVisibleItems; track item.label; let last = $last) {
           <li class="hidden min-w-0 shrink-0 items-center gap-siaf-xxs md:flex">
             @if (item.href && !last) {
-              <a class="max-w-[180px] truncate font-medium text-text hover:underline" siafTooltip [routerLink]="item.href">
+              <a class="max-w-[260px] truncate font-medium text-text hover:underline" siafTooltip [routerLink]="item.href">
                 {{ item.label }}
               </a>
             } @else {
               <span
-                class="max-w-[220px] truncate" siafTooltip
+                class="max-w-[340px] truncate" siafTooltip
                 [class.font-medium]="!last"
                 [class.font-normal]="last"
                 [class.text-text]="!last"

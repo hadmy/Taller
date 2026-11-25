@@ -1,5 +1,5 @@
 @if (notFound()) {
-  <siaf-page-shell [breadcrumbs]="breadcrumbs()">
+  <siaf-page-shell [breadcrumbs]="breadcrumbs">
     <siaf-empty-state
       illustration="no-data"
       title="El área usuaria no existe"
@@ -9,102 +9,123 @@
     />
   </siaf-page-shell>
 } @else if (area(); as area) {
-  <siaf-page-shell [breadcrumbs]="breadcrumbs()">
-    <siaf-page-header pageHeader title="Configuración de áreas usuarias" />
+  <siaf-page-shell [breadcrumbs]="breadcrumbs">
+    <siaf-page-header pageHeader [title]="titulo" />
 
-    <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg overflow-auto rounded-siaf-md bg-surface p-siaf-lg">
-      <header class="flex items-center justify-between">
-        <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">{{ area.denominacion }}</h2>
-        <div class="flex gap-siaf-sm">
-          <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
-          <siaf-button variant="filled" icon="save" [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="grabar()">
-            Grabar
-          </siaf-button>
-        </div>
-      </header>
+    <div class="min-h-0 flex-1 overflow-auto">
+      <siaf-configuracion-tabs activa="areas-usuarias" />
 
-      <div class="flex flex-wrap gap-siaf-md">
-        @for (bandera of banderas; track bandera.key) {
-          <label
-            class="flex min-h-20 min-w-[290px] flex-1 cursor-pointer items-center gap-siaf-md rounded-siaf-md border border-[var(--sys-color-divider-strong)] bg-surface px-siaf-lg py-siaf-md"
-          >
-            <input
-              class="size-5 accent-[var(--sys-color-icon-states-enabled)]"
-              type="checkbox"
-              [checked]="$any(area)[bandera.key]"
-              (change)="alternar(bandera.key, $any($event.target).checked)"
-            />
-            <span class="text-sm font-medium uppercase text-[var(--sys-color-text-neutral-high)]" [siafTooltip]="bandera.descripcion" tooltipMode="always">{{
-              bandera.label
-            }}</span>
-          </label>
-        }
-      </div>
-
-      <div class="flex flex-col gap-siaf-md">
-        <siaf-tabs [tabs]="tabs()" [activeId]="tabActiva()" (activeIdChange)="seleccionarTab($event)" ariaLabel="Contenido del área usuaria" />
-
-        <div class="flex items-center justify-end">
-          <siaf-button variant="filled" icon="search" [iconOnly]="true" ariaLabel="Buscar commodities u ítems" (click)="abrirPanel()" />
-        </div>
-
-        @if (!hayItemsEnPestana()) {
-          <div class="rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-lowest)] px-siaf-md py-siaf-md text-sm text-[var(--sys-color-text-neutral-medium)]">
-            No se ha seleccionado ningún tipo. Haga clic en el botón para realizar una selección.
+      <div class="flex flex-col gap-siaf-lg rounded-b-siaf-md bg-surface p-siaf-lg">
+        <header class="flex items-center justify-between">
+          <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">{{ area.denominacion }}</h2>
+          <div class="flex gap-siaf-sm">
+            <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+            <siaf-button variant="filled" data-grabar [disabled]="!huboCambios() || guardando()" [loading]="guardando()" (click)="modalGrabar.set(true)">
+              Grabar
+            </siaf-button>
           </div>
-        } @else {
-        <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
-          <table class="w-full min-w-[720px] border-collapse text-sm">
-            <thead>
-              <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Commodity</th>
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción commodity</th>
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Item</th>
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción ítem</th>
-                @if (esPuedePedir()) {
-                  <th class="w-48 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Especialidad</th>
-                }
-                <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigente</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of itemsFiltrados(); track item.id) {
-                <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
-                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.commodity }}</td>
-                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionCommodity }}</td>
-                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.item }}</td>
-                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionItem }}</td>
+        </header>
+
+        <div class="grid gap-siaf-md sm:grid-cols-2 lg:grid-cols-4">
+          @for (bandera of banderas; track bandera.key) {
+            <label
+              class="flex min-h-20 cursor-pointer items-center gap-siaf-md rounded-siaf-md border border-[var(--sys-color-divider-strong)] bg-surface px-siaf-lg py-siaf-md"
+            >
+              <input
+                class="size-5 accent-[var(--sys-color-icon-states-enabled)]"
+                type="checkbox"
+                [checked]="$any(area)[bandera.key]"
+                (change)="alternar(bandera.key, $any($event.target).checked)"
+              />
+              <span class="text-sm font-medium uppercase text-[var(--sys-color-text-neutral-high)]" [siafTooltip]="bandera.descripcion" tooltipMode="always">{{
+                bandera.label
+              }}</span>
+            </label>
+          }
+        </div>
+
+        <div class="flex flex-col gap-siaf-md">
+          <siaf-tabs [border]="false" [tabs]="tabs()" [activeId]="tabActiva()" (activeIdChange)="seleccionarTab($event)" ariaLabel="Contenido del área usuaria" />
+
+          <div class="flex items-center justify-between">
+            <h3 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Necesidades</h3>
+            <siaf-button variant="filled" icon="search" [iconOnly]="true" ariaLabel="Buscar commodities u ítems" (click)="abrirPanel()" />
+          </div>
+
+          @if (!hayItemsEnPestana()) {
+            <div class="rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-lowest)] px-siaf-md py-siaf-md text-sm text-[var(--sys-color-text-neutral-medium)]">
+              No se ha seleccionado ningún tipo. Haga clic en el botón para realizar una selección.
+            </div>
+          } @else {
+          <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+            <table class="w-full min-w-[720px] border-collapse text-sm">
+              <thead>
+                <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                  @if (!esNecesidades()) {
+                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Commodity</th>
+                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción commodity</th>
+                  }
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Item</th>
+                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción ítem</th>
                   @if (esPuedePedir()) {
-                    <td class="px-siaf-md py-siaf-xs">
-                      <siaf-input
-                        type="select"
-                        [hideLabel]="true"
-                        [label]="'Especialidad: ' + item.descripcionItem"
-                        [options]="opcionesEspecialidad"
-                        [value]="item.especialidad ?? 'General'"
-                        (valueChange)="cambiarEspecialidad(item.id, $any($event))"
+                    <th class="w-48 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Especialidad</th>
+                  }
+                  <th class="w-32 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Vigente</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of itemsFiltrados(); track item.id) {
+                  <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
+                    @if (!esNecesidades()) {
+                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.commodity }}</td>
+                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionCommodity }}</td>
+                    }
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.item }}</td>
+                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcionItem }}</td>
+                    @if (esPuedePedir()) {
+                      <td class="px-siaf-md py-siaf-xs">
+                        <siaf-input
+                          type="select"
+                          [hideLabel]="true"
+                          [label]="'Especialidad: ' + item.descripcionItem"
+                          [options]="opcionesEspecialidad"
+                          [value]="item.especialidad ?? 'General'"
+                          (valueChange)="cambiarEspecialidad(item.id, $any($event))"
+                        />
+                      </td>
+                    }
+                    <td class="px-siaf-md py-siaf-xs text-center">
+                      <siaf-switch
+                        [checked]="item.vigente"
+                        [ariaLabel]="'Vigente: ' + item.descripcionItem"
+                        (checkedChange)="cambiarVigente(item.id, $event)"
                       />
                     </td>
-                  }
-                  <td class="px-siaf-md py-siaf-xs text-center">
-                    <siaf-switch
-                      [checked]="item.vigente"
-                      [ariaLabel]="'Vigente: ' + item.descripcionItem"
-                      (checkedChange)="cambiarVigente(item.id, $event)"
-                    />
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td class="p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-low)]" [attr.colspan]="esPuedePedir() ? 6 : 5">No se encontraron ítems.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-low)]" colspan="6">No se encontraron ítems.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          }
         </div>
-        }
       </div>
     </div>
+
+    <siaf-modal
+      [open]="modalGrabar()"
+      variant="save"
+      [showIllustration]="true"
+      title="¿Grabar?"
+      description="Se actualizarán los datos del área"
+      confirmLabel="Aceptar"
+      (canceled)="modalGrabar.set(false)"
+      (closed)="modalGrabar.set(false)"
+      (confirmed)="grabar()"
+    />
 
     <siaf-buscar-items-panel
       [open]="panelAbierto()"

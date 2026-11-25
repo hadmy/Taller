@@ -5,7 +5,7 @@ import { of } from 'rxjs';
 import { AreasUsuariasApiService } from '../api/areas-usuarias-api.service';
 import { AREAS_USUARIAS_ROUTE } from '../config/areas-usuarias.rutas';
 import { AreaUsuaria } from '../models/area-usuaria.model';
-import { AreasUsuariasConfiguracionComponent, MSJ_GRABADO } from './areas-usuarias-configuracion.component';
+import { AreasUsuariasConfiguracionComponent, msjGrabado } from './areas-usuarias-configuracion.component';
 
 const area = (id: string, generaCmn: boolean, activo = true): AreaUsuaria =>
   ({ id, codigo: id, denominacion: `Área ${id}`, generaCmn, esAte: false, esOa: false, esMaa: false, activo }) as AreaUsuaria;
@@ -36,6 +36,8 @@ describe('AreasUsuariasConfiguracionComponent · selección y edición masiva', 
   it('en solo lectura muestra ✓ o «-» en cada condición y una casilla por fila', () => {
     const el = render();
     expect(el.querySelectorAll('tbody [data-marcar]').length).toBe(3);
+    // Sin filas marcadas, la barra solo tiene la casilla de la página.
+    expect(el.querySelector('[data-editar]')).toBeNull();
     expect(el.querySelectorAll('[data-bandera]').length).toBe(0);
     expect(el.querySelectorAll('[data-fila="01"] siaf-icon[name="check"]').length).toBe(1);
     expect(el.querySelectorAll('[data-fila="01"] [role="img"][aria-label$=": no"]').length).toBe(3);
@@ -60,14 +62,19 @@ describe('AreasUsuariasConfiguracionComponent · selección y edición masiva', 
     expect(component.puedeEditar()).toBeFalse();
   });
 
-  it('con varias áreas abre «Edición masiva»; Aplicar cambia el borrador y Cancelar lo descarta', () => {
+  it('con varias áreas el lápiz las pasa a edición y, en edición, abre «Edición masiva»', () => {
     component.marcar(component.areas()[0], true);
     component.marcar(component.areas()[1], true);
-    component.editarSeleccion();
-    const el = render();
-    expect(component.panelMasivo()).toBeTrue();
-    expect(el.querySelectorAll('[data-bandera]').length).toBe(8);
+    let el = render();
+    // «Cancelar» y «Grabar» reemplazan a «Sincronizar» desde que hay varias marcadas.
     expect(el.querySelector('[data-sincronizar]')).toBeNull();
+    expect(el.querySelector('[data-cancelar-edicion]')).not.toBeNull();
+    (el.querySelector('[data-editar] button') as HTMLElement).click();
+    el = render();
+    expect(el.querySelectorAll('[data-bandera]').length).toBe(8);
+    expect(component.panelMasivo()).toBeFalse();
+    (el.querySelector('[data-editar] button') as HTMLElement).click();
+    expect(component.panelMasivo()).toBeTrue();
     expect(component.cambiadas()).toEqual([]);
 
     component.masivoGeneraCmn.set(true);
@@ -80,26 +87,32 @@ describe('AreasUsuariasConfiguracionComponent · selección y edición masiva', 
     component.alternar('01', 'esOa', true);
     component.cancelarEdicion();
     expect(component.editando()).toBeFalse();
+    expect(component.marcadas().size).toBe(0);
     expect(component.areas()[0].esOa).toBeFalse();
     expect(guardar).not.toHaveBeenCalled();
   });
 
-  it('Grabar manda solo las áreas cambiadas, vuelve a solo lectura y avisa', () => {
+  it('Grabar pide cambios, actualiza las áreas marcadas y avisa cuántas fueron', () => {
     component.marcar(component.areas()[0], true);
     component.marcar(component.areas()[1], true);
     component.editarSeleccion();
+    component.grabar();
+    expect(guardar).not.toHaveBeenCalled();
     component.alternar('02', 'esOa', true);
     component.grabar();
-    expect(guardar).toHaveBeenCalledWith([{ id: '02', generaCmn: false, esAte: false, esOa: true, esMaa: false }]);
+    expect(guardar).toHaveBeenCalledWith([
+      { id: '01', generaCmn: true, esAte: false, esOa: false, esMaa: false },
+      { id: '02', generaCmn: false, esAte: false, esOa: true, esMaa: false },
+    ]);
     expect(component.editando()).toBeFalse();
     expect(component.marcadas().size).toBe(0);
-    expect(component.aviso()).toBe(MSJ_GRABADO);
+    expect(component.aviso()).toBe(msjGrabado(2));
   });
 
   it('«Transferir datos» solo con una única área inactiva marcada', () => {
-    expect(component.masOpciones()[0].disabled).toBeTrue();
+    expect(component.areaPorTransferir()).toBeNull();
     component.marcar(component.areas()[2], true);
-    expect(component.masOpciones()[0].disabled).toBeFalse();
+    expect(render().querySelector('siaf-icon-dropdown-menu')).not.toBeNull();
     component.onMasOpciones('transferir');
     expect(ir).toHaveBeenCalledWith(`${AREAS_USUARIAS_ROUTE}/03/transferir`);
   });

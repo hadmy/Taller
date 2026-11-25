@@ -2764,7 +2764,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "usa": [],
-    "sinUso": false
+    "sinUso": true
   },
   {
     "selector": "siaf-collapsible-card",
@@ -13876,6 +13876,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     },
     "tokens": [
       {
+        "token": "--sys-color-bg-states-light-disabled",
+        "via": [
+          "var()"
+        ]
+      },
+      {
         "token": "--sys-color-bg-states-light-focus",
         "via": [
           "var()"
@@ -13919,6 +13925,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       },
       {
         "token": "--sys-color-text-neutral-activated",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-disabled",
         "via": [
           "var()"
         ]

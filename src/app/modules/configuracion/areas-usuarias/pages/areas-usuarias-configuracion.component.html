@@ -1,166 +1,175 @@
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
-  <siaf-page-header pageHeader title="Configuración del Cuadro Multianual de Necesidades" />
+  <siaf-page-header pageHeader [title]="titulo" />
 
-  <siaf-configuracion-tabs activa="areas-usuarias" />
+  <div class="min-h-0 flex-1 overflow-auto">
+    <siaf-configuracion-tabs activa="areas-usuarias" />
 
-  <div class="flex min-h-0 flex-1 flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
-    <header class="flex items-center justify-between">
-      <h2 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Áreas usuarias</h2>
-      @if (editando()) {
-        <span class="flex items-center gap-siaf-xs">
-          <siaf-button variant="outline" data-cancelar-edicion [disabled]="guardando()" (click)="cancelarEdicion()">Cancelar</siaf-button>
-          <siaf-button variant="filled" data-grabar-edicion [disabled]="!cambiadas().length || guardando()" [loading]="guardando()" (click)="modalGrabar.set(true)">Grabar</siaf-button>
-        </span>
-      } @else {
-        <siaf-button
-          variant="filled"
-          icon="sync"
-          [iconOnly]="true"
-          ariaLabel="Sincronizar registros"
-          siafTooltip="Sincronizar"
-          tooltipMode="always"
-          data-sincronizar
-          [disabled]="guardando()"
-          (click)="sincronizar()"
+    <div class="flex flex-col gap-siaf-md rounded-b-siaf-md bg-surface p-siaf-lg">
+      <header class="flex min-h-10 items-center justify-between">
+        <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Áreas usuarias</h2>
+        @if (masiva()) {
+          <span class="flex items-center gap-siaf-xs">
+            <siaf-button variant="outline" data-cancelar-edicion [disabled]="guardando()" (click)="cancelarEdicion()">Cancelar</siaf-button>
+            <siaf-button variant="filled" data-grabar-edicion [disabled]="!cambiadas().length || guardando()" [loading]="guardando()" (click)="modalGrabar.set(true)">Grabar</siaf-button>
+          </span>
+        } @else {
+          <siaf-button
+            variant="filled"
+            icon="sync"
+            [iconOnly]="true"
+            ariaLabel="Sincronizar registros"
+            siafTooltip="Sincronizar"
+            tooltipMode="always"
+            data-sincronizar
+            [disabled]="guardando()"
+            (click)="sincronizar()"
+          />
+        }
+      </header>
+
+      <siaf-input label="Buscar" [autoSuccess]="false" [value]="busqueda()" data-buscar (valueChange)="filtrar('' + $event)" />
+
+      <!-- Barra de la grilla (Figma A.1-RC-007 y RC-085): marcar la página y, con filas marcadas, editar y más opciones. -->
+      <div class="flex h-10 items-center gap-siaf-sm pl-siaf-md">
+        <input
+          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+          type="checkbox"
+          aria-label="Seleccionar las áreas usuarias de la página"
+          data-marcar-pagina
+          [checked]="paginaMarcada()"
+          [indeterminate]="paginaParcial()"
+          [disabled]="editando() || !areasPaginadas().length"
+          (change)="marcarPagina($any($event.target).checked)"
         />
-      }
-    </header>
+        @if (seleccion().length) {
+          <span class="ml-siaf-xs h-8 w-px bg-[var(--sys-color-divider-default)]" aria-hidden="true"></span>
+          <siaf-button
+            variant="text"
+            icon="edit"
+            [iconOnly]="true"
+            ariaLabel="Editar las áreas usuarias seleccionadas"
+            siafTooltip="Editar"
+            tooltipMode="always"
+            data-editar
+            [disabled]="!puedeEditar() || guardando()"
+            (click)="editando() ? abrirMasiva() : editarSeleccion()"
+          />
+          @if (areaPorTransferir()) {
+            <siaf-icon-dropdown-menu icon="more_vert" ariaLabel="Más opciones" align="left" [items]="masOpciones" (selected)="onMasOpciones($event)" />
+          }
+        }
+      </div>
 
-    <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" (typing)="filtrar($event)" (valueChange)="filtrar($event)" />
-
-    <!-- Barra de la grilla: seleccionar la página, editar (detalle o edición masiva) y más opciones. -->
-    <siaf-table-controls
-      selectAllLabel="Seleccionar las áreas usuarias de la página"
-      editLabel="Editar las áreas usuarias seleccionadas"
-      [checked]="paginaMarcada()"
-      [indeterminate]="paginaParcial()"
-      [disabled]="editando() || !areasPaginadas().length"
-      [selectedCount]="seleccion().length"
-      [showEditAction]="true"
-      [editDisabled]="!puedeEditar() || guardando()"
-      [page]="page()"
-      [pageSize]="rowsPerPage()"
-      [totalItems]="areasFiltradas().length"
-      [totalPages]="totalPages()"
-      (selectionChange)="marcarPagina($event)"
-      (edit)="editando() ? abrirMasiva() : editarSeleccion()"
-      (previous)="paginaAnterior()"
-      (next)="paginaSiguiente()"
-    >
-      @if (!editando()) {
-        <siaf-icon-dropdown-menu tableAction icon="more_vert" ariaLabel="Más opciones" align="left" [items]="masOpciones()" (selected)="onMasOpciones($event)" />
-      }
-    </siaf-table-controls>
-
-    <div class="min-h-0 flex-1 overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
-      <table class="w-full min-w-[920px] border-collapse text-sm">
-        <!--
-          `sticky` va en cada th. El gris del encabezado (`surface-high`) es translúcido: sin una base opaca debajo
-          (`bg-surface`), las filas que pasan por detrás se transparentan al hacer scroll.
-        -->
-        <thead
-          class="[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-surface [&_th]:bg-[linear-gradient(var(--sys-color-bg-surfaces-surface-high),var(--sys-color-bg-surfaces-surface-high))] [&_th]:shadow-[inset_0_-1px_0_var(--sys-color-divider-strong)]"
-        >
-          <tr class="text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-            <th class="w-12 px-siaf-md py-siaf-sm"><span class="sr-only">Seleccionar</span></th>
-            <th class="px-siaf-md py-siaf-sm text-left">Código área</th>
-            <th class="px-siaf-md py-siaf-sm text-left">Denominación</th>
-            @for (bandera of banderas; track bandera.key) {
-              <th class="w-32 px-siaf-md py-siaf-sm text-center">
-                <span class="cursor-help" [siafTooltip]="bandera.descripcion" tooltipMode="always">{{ bandera.label }}</span>
-              </th>
-            }
-            <th class="w-36 border-l border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (area of areasPaginadas(); track area.id) {
-            <!-- Clic en la fila (o Enter): abre el detalle del área para agregar commodities o ítems. Sin efecto en edición. -->
-            <tr
-              class="border-b border-[var(--sys-color-divider-default)] last:border-b-0"
-              [class.bg-[var(--sys-color-bg-states-light-selected)]]="marcadas().has(area.id)"
-              [class.opacity-50]="editando() && !enEdicion(area)"
-              [class.cursor-pointer]="!editando()"
-              [class.hover:bg-[var(--sys-color-bg-states-light-hover)]]="!editando()"
-              [attr.tabindex]="editando() ? null : 0"
-              [attr.aria-label]="editando() ? null : 'Abrir ' + area.denominacion + ': commodities o ítems'"
-              [attr.data-fila]="area.id"
-              (click)="verDetalle(area)"
-              (keydown.enter)="verDetalle(area)"
-            >
-              <td class="px-siaf-md py-siaf-sm" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()">
-                <input
-                  class="block size-4 accent-[var(--sys-color-icon-states-enabled)]"
-                  type="checkbox"
-                  data-marcar
-                  [attr.aria-label]="'Seleccionar ' + area.denominacion"
-                  [checked]="marcadas().has(area.id)"
-                  [disabled]="editando()"
-                  (change)="marcar(area, $any($event.target).checked)"
-                />
-              </td>
-              <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.codigo }}</td>
-              <td class="px-siaf-md py-siaf-sm uppercase text-[var(--sys-color-text-neutral-medium)]">
-                <span class="flex items-center gap-siaf-sm">
-                  {{ area.denominacion }}
-                  @if (area.nuevo) {
-                    <siaf-status-tag tone="info" appearance="solid" size="small">Nuevo</siaf-status-tag>
-                  }
-                </span>
-              </td>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[1000px] table-fixed border-collapse text-sm">
+          <!--
+            `sticky` va en cada th. El gris del encabezado (`surface-high`) es translúcido: sin una base opaca debajo
+            (`bg-surface`), las filas que pasan por detrás se transparentan al hacer scroll.
+          -->
+          <thead
+            class="[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-surface [&_th]:bg-[linear-gradient(var(--sys-color-bg-surfaces-surface-high),var(--sys-color-bg-surfaces-surface-high))] [&_th]:shadow-[inset_0_-1px_0_var(--sys-color-divider-strong)]"
+          >
+            <tr class="text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+              <th class="w-12 px-siaf-md py-siaf-sm"><span class="sr-only">Seleccionar</span></th>
+              <th class="w-[175px] px-siaf-md py-siaf-sm text-left">Código área</th>
+              <th class="px-siaf-md py-siaf-sm text-left">Denominación</th>
               @for (bandera of banderas; track bandera.key) {
-                <td class="h-12 px-siaf-md py-siaf-sm text-center">
-                  @if (enEdicion(area)) {
-                    <input
-                      class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
-                      type="checkbox"
-                      [attr.aria-label]="bandera.label + ' — ' + area.denominacion"
-                      [attr.data-bandera]="bandera.key"
-                      [checked]="valor(area, bandera.key)"
-                      [disabled]="guardando()"
-                      (change)="alternar(area.id, bandera.key, $any($event.target).checked)"
-                    />
-                  } @else if (area[bandera.key]) {
-                    <!-- Solo lectura: ✓ si la condición está marcada y «-» si no. -->
-                    <siaf-icon class="text-[var(--sys-color-text-neutral-high)]" name="check" [size]="22" [decorative]="false" [label]="bandera.label + ': sí'" />
+                <th class="px-siaf-md py-siaf-sm text-center" [class]="anchoBandera[bandera.key]">
+                  <span class="cursor-help" [siafTooltip]="bandera.descripcion" tooltipMode="always">{{ bandera.label }}</span>
+                </th>
+              }
+              <th class="w-[150px] border-l border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (area of areasPaginadas(); track area.id) {
+              <!-- Clic en la fila (o Enter): abre el detalle del área para agregar commodities o ítems. Sin efecto en edición. -->
+              <tr
+                class="border-b border-[var(--sys-color-divider-default)] last:border-b-0"
+                [class.bg-[var(--sys-color-bg-states-light-selected)]]="marcadas().has(area.id)"
+                [class.opacity-50]="editando() && !enEdicion(area)"
+                [class.cursor-pointer]="!editando()"
+                [class.hover:bg-[var(--sys-color-bg-states-light-hover)]]="!editando()"
+                [attr.tabindex]="editando() ? null : 0"
+                [attr.aria-label]="editando() ? null : 'Abrir ' + area.denominacion + ': commodities o ítems'"
+                [attr.data-fila]="area.id"
+                (click)="verDetalle(area)"
+                (keydown.enter)="verDetalle(area)"
+              >
+                <td class="px-siaf-md py-siaf-sm" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()">
+                  <input
+                    class="block size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                    type="checkbox"
+                    data-marcar
+                    [attr.aria-label]="'Seleccionar ' + area.denominacion"
+                    [checked]="marcadas().has(area.id)"
+                    [disabled]="editando()"
+                    (change)="marcar(area, $any($event.target).checked)"
+                  />
+                </td>
+                <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ area.codigo }}</td>
+                <td class="px-siaf-md py-siaf-sm uppercase text-[var(--sys-color-text-neutral-medium)]">
+                  <span class="flex items-center justify-between gap-siaf-sm">
+                    {{ area.denominacion }}
+                    @if (area.nuevo) {
+                      <siaf-status-tag tone="info" appearance="solid" size="small">Nuevo</siaf-status-tag>
+                    }
+                  </span>
+                </td>
+                @for (bandera of banderas; track bandera.key) {
+                  <td class="h-12 px-siaf-md py-siaf-sm text-center">
+                    @if (enEdicion(area)) {
+                      <input
+                        class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                        type="checkbox"
+                        [attr.aria-label]="bandera.label + ' — ' + area.denominacion"
+                        [attr.data-bandera]="bandera.key"
+                        [checked]="valor(area, bandera.key)"
+                        [disabled]="guardando()"
+                        (change)="alternar(area.id, bandera.key, $any($event.target).checked)"
+                      />
+                    } @else if (area[bandera.key]) {
+                      <!-- Solo lectura: ✓ si la condición está marcada y «-» si no. -->
+                      <siaf-icon class="text-[var(--sys-color-text-neutral-high)]" name="check" [size]="22" [decorative]="false" [label]="bandera.label + ': sí'" />
+                    } @else {
+                      <span class="text-[var(--sys-color-text-neutral-medium)]" [attr.aria-label]="bandera.label + ': no'" role="img">-</span>
+                    }
+                  </td>
+                }
+                <td class="border-l border-[var(--sys-color-divider-default)] px-siaf-md py-siaf-sm text-center">
+                  <siaf-record-status-tag [status]="inactiva(area) ? 'Inactivo' : 'Activo'" />
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="4 + banderas.length">
+                  @if (cargando()) {
+                    Cargando áreas usuarias…
                   } @else {
-                    <span class="text-[var(--sys-color-text-neutral-medium)]" [attr.aria-label]="bandera.label + ': no'" role="img">-</span>
+                    No se encontraron áreas usuarias.
                   }
                 </td>
-              }
-              <td class="border-l border-[var(--sys-color-divider-default)] px-siaf-md py-siaf-sm text-center">
-                <siaf-record-status-tag [status]="inactiva(area) ? 'Inactivo' : 'Activo'" />
-              </td>
-            </tr>
-          } @empty {
-            <tr>
-              <td class="p-siaf-lg text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="4 + banderas.length">
-                @if (cargando()) {
-                  Cargando áreas usuarias…
-                } @else {
-                  No se encontraron áreas usuarias.
-                }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
 
-    <siaf-pagination
-      navigation="Activate"
-      position="Bottom"
-      [rowPage]="true"
-      [page]="page()"
-      [pageSize]="rowsPerPage()"
-      [totalItems]="areasFiltradas().length"
-      [totalPages]="totalPages()"
-      [rowsPerPage]="rowsPerPage()"
-      [rowsPerPageOptions]="rowsPerPageOptions"
-      (previous)="paginaAnterior()"
-      (next)="paginaSiguiente()"
-      (rowsPerPageChange)="cambiarFilasPorPagina($event)"
-    />
+      <siaf-pagination
+        navigation="Activate"
+        position="Bottom"
+        [rowPage]="true"
+        [page]="page()"
+        [pageSize]="rowsPerPage()"
+        [totalItems]="areasFiltradas().length"
+        [totalPages]="totalPages()"
+        [rowsPerPage]="rowsPerPage()"
+        [rowsPerPageOptions]="rowsPerPageOptions"
+        (previous)="paginaAnterior()"
+        (next)="paginaSiguiente()"
+        (rowsPerPageChange)="cambiarFilasPorPagina($event)"
+      />
+    </div>
   </div>
 
   <!-- «Edición masiva»: «¿Genera CMN?» para todas las áreas marcadas. -->
@@ -173,17 +182,24 @@
     (canceled)="limpiarMasiva()"
     (confirmed)="aplicarMasiva()"
   >
-    <div class="flex flex-col gap-siaf-md">
-      <readonly-field caption="Áreas usuarias seleccionadas" [value]="'' + seleccion().length" />
-      <siaf-checkbox label="Generar CMN?" description="Se aplica a todas las áreas seleccionadas" [checked]="masivoGeneraCmn()" (checkedChange)="masivoGeneraCmn.set($event)" />
-    </div>
+    <label class="flex min-h-20 cursor-pointer items-center gap-siaf-lg rounded-siaf-md border border-[var(--sys-color-divider-strong)] px-siaf-lg py-siaf-md">
+      <input
+        class="size-5 accent-[var(--sys-color-icon-states-enabled)]"
+        type="checkbox"
+        data-masiva-genera-cmn
+        [checked]="masivoGeneraCmn()"
+        (change)="masivoGeneraCmn.set($any($event.target).checked)"
+      />
+      <span class="text-sm uppercase text-[var(--sys-color-text-neutral-high)]">Generar CMN?</span>
+    </label>
   </siaf-side-nav>
 
   <siaf-modal
     [open]="modalGrabar()"
-    variant="custom"
+    variant="save"
+    [showIllustration]="true"
     title="¿Grabar?"
-    [description]="'Se actualizarán los datos de ' + (cambiadas().length === 1 ? '1 área usuaria.' : cambiadas().length + ' áreas usuarias.')"
+    [description]="'Se actualizarán los datos de las ' + seleccion().length + ' áreas usuarias seleccionadas'"
     confirmLabel="Aceptar"
     (canceled)="modalGrabar.set(false)"
     (closed)="modalGrabar.set(false)"

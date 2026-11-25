@@ -4,16 +4,17 @@ import { forkJoin } from 'rxjs';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { TabItem, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
 import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
 import { TooltipDirective } from '../../../../shared/ui/tooltip/tooltip.directive';
 import { SwitchComponent } from '../../../../shared/ui/switch/switch.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
-import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../shared/utils/form-snapshot.util';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { AreasUsuariasApiService } from '../api/areas-usuarias-api.service';
-import { AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE } from '../config/areas-usuarias.rutas';
+import { AREAS_USUARIAS_BREADCRUMBS, AREAS_USUARIAS_ROUTE, TITULO_CONFIGURACION } from '../config/areas-usuarias.rutas';
 import { BuscarItemsPanelComponent } from '../components/buscar-items-panel.component';
 import {
   AreaUsuaria,
@@ -33,7 +34,7 @@ const TAB_NECESIDADES = 'necesidades';
  * «Conf-Areas usuarias-03»): tarjeta con el nombre del área, «Cancelar» / «Grabar», las cuatro banderas y, en
  * pestañas, los commodities/ítems que atiende y que puede pedir en el Cuadro Multianual de Necesidades. Se llega acá
  * con «Editar» sobre el área marcada en `AreasUsuariasConfiguracionComponent` (o buscándola con la lupa).
- * «Necesidades Estratégicas» queda deshabilitada, igual que en el diseño. En «puede pedir» la tabla suma la columna
+ * «Grabar» pide confirmación. En «puede pedir» la tabla suma la columna
  * «Especialidad», un combo por ítem (General, Capacitación, Tecnología, Mobiliario; por defecto General).
  */
 @Component({
@@ -42,7 +43,9 @@ const TAB_NECESIDADES = 'necesidades';
   imports: [
     BuscarItemsPanelComponent,
     ButtonComponent,
+    ConfiguracionTabsComponent,
     EmptyStateComponent,
+    ModalComponent,
     PageHeaderComponent,
     PageShellComponent,
     SwitchComponent,
@@ -66,9 +69,9 @@ export class AreaUsuariaDetalleComponent implements OnInit {
   readonly items = signal<AreaUsuariaItem[]>([]);
   private readonly snapshotInicial = signal<string | null>(null);
 
-  readonly breadcrumbs = computed(() =>
-    buildProcessBreadcrumbs(AREAS_USUARIAS_PROCESS_ID, AREAS_USUARIAS_ROUTE, this.area()?.denominacion ?? ''),
-  );
+  readonly breadcrumbs = AREAS_USUARIAS_BREADCRUMBS;
+  readonly titulo = TITULO_CONFIGURACION;
+  readonly modalGrabar = signal(false);
 
   /**
    * Regla de pestañas: un área que genera CMN **y** es ATE ve las tres; cualquier otra ve solo «puede pedir» y
@@ -78,8 +81,8 @@ export class AreaUsuariaDetalleComponent implements OnInit {
     const area = this.area();
     const atiende = !!area?.generaCmn && !!area?.esAte;
     return [
-      ...(atiende ? [{ id: TAB_ATIENDE, label: 'Commodities o Items que atiende' }] : []),
-      { id: TAB_PUEDE_PEDIR, label: 'Commodities o Items que puede pedir' },
+      ...(atiende ? [{ id: TAB_ATIENDE, label: 'Commodities u Items que atiende' }] : []),
+      { id: TAB_PUEDE_PEDIR, label: 'Commodities u Items que puede pedir' },
       { id: TAB_NECESIDADES, label: 'Necesidades Estratégicas' },
     ];
   });
@@ -177,6 +180,8 @@ export class AreaUsuariaDetalleComponent implements OnInit {
 
   /** La pestaña «puede pedir» suma la columna «Especialidad». */
   readonly esPuedePedir = computed(() => this.tabActiva() === TAB_PUEDE_PEDIR);
+  /** «Necesidades Estratégicas» lista solo el ítem y su descripción (Figma A.1-RC-021). */
+  readonly esNecesidades = computed(() => this.tabActiva() === TAB_NECESIDADES);
   readonly opcionesEspecialidad: TextFieldOption[] = ESPECIALIDADES_ITEM.map((c) => ({ label: c, value: c }));
 
   /** Combo de la columna «Especialidad»: el cambio se guarda con «Grabar». */
@@ -193,7 +198,9 @@ export class AreaUsuariaDetalleComponent implements OnInit {
     void this.router.navigateByUrl(AREAS_USUARIAS_ROUTE);
   }
 
+  /** «Grabar» confirmado (Figma A.1-RC-011): guarda el área y sus ítems y vuelve a la lista. */
   grabar(): void {
+    this.modalGrabar.set(false);
     const actual = this.area();
     if (!actual || !this.huboCambios() || this.guardando()) return;
     this.guardando.set(true);

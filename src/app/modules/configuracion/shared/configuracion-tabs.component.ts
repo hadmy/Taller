@@ -34,10 +34,13 @@ const PESTANAS: { id: ConfiguracionId; label: string }[] = [
   selector: 'siaf-configuracion-tabs',
   standalone: true,
   imports: [TabsComponent],
+  // La fila de pestañas y la tarjeta de debajo forman un solo bloque blanco (Figma «Tabs-configuracion»).
+  host: { class: 'block overflow-hidden rounded-t-siaf-md bg-surface' },
   template: `
     <siaf-tabs
       [tabs]="pestanas"
       [activeId]="activa"
+      [border]="false"
       ariaLabel="Configuraciones del Cuadro Multianual de Necesidades"
       idBase="configuracion"
     />

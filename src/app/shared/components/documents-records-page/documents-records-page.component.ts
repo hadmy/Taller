@@ -8,6 +8,7 @@ import { SolicitudesFacadeService } from '../../../core/state/solicitudes-facade
 
 import { BreadcrumbComponent } from '../../components/breadcrumb/breadcrumb.component';
 import { CustomFilterApplyEvent, CustomFilterComponent, FilterRow } from '../../components/custom-filter/custom-filter.component';
+import { FormTableSearchComponent } from '../../components/form-table-search/form-table-search.component';
 import { FilterPillComponent } from '../../components/filter-pill/filter-pill.component';
 import { PaginationComponent } from '../../components/pagination/pagination.component';
 import { RecordsSearchToolbarComponent } from '../../components/records-search-toolbar/records-search-toolbar.component';
@@ -21,6 +22,7 @@ import { ColumnVisibilityPanelComponent } from '../../ui/column-visibility-panel
 import { CreateDocumentAccepted, CreateDocumentComponent, CreateDocumentField, CreateDocumentSelection } from '../create-document/create-document.component';
 import { DocumentHistoryPanelComponent, DocumentHistorySummary } from '../document-history-panel/document-history-panel.component';
 import { DocumentsRecordsSelectionChange, DocumentsRecordsTableComponent } from '../../ui/documents-records-table/documents-records-table.component';
+import { EmptyStateComponent } from '../../ui/empty-state/empty-state.component';
 import { IconComponent } from '../../ui/icon/icon.component';
 import { IconDropdownMenuComponent, IconDropdownMenuItem } from '../../ui/icon-dropdown-menu/icon-dropdown-menu.component';
 import { ModalComponent } from '../../ui/modal/modal.component';
@@ -102,7 +104,7 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
   imports: [FocoDirective, 
     AccountHistoryPanelComponent, AsientoHistoryPanelComponent, BreadcrumbComponent, ButtonComponent, ColumnVisibilityPanelComponent,
     CreateDocumentComponent, CustomFilterComponent, DocumentHistoryPanelComponent,
-    DocumentsRecordsTableComponent, FilterPillComponent, IconComponent, IconDropdownMenuComponent,
+    DocumentsRecordsTableComponent, EmptyStateComponent, FilterPillComponent, FormTableSearchComponent, IconComponent, IconDropdownMenuComponent,
     ModalComponent, PaginationComponent, RecordsSearchToolbarComponent, RecordsTabsComponent,
     SnackbarComponent, TableControlsComponent, TableSkeletonComponent,
   ],
@@ -181,8 +183,10 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
 
             <header class="flex min-h-[72px] flex-col gap-siaf-sm px-siaf-md pb-siaf-xs pt-siaf-sm md:flex-row md:items-start md:justify-between">
               <div class="min-w-0">
-                <h1 class="m-0 text-sm font-bold uppercase leading-normal text-text">{{ effectiveConfig.title }}</h1>
-                <p class="m-0 text-[10px] font-medium uppercase leading-normal tracking-[0.66px] text-text-muted">Documentos y registros</p>
+                <h1 class="m-0 text-sm font-bold uppercase leading-normal text-text">{{ bandejaVacia?.title ?? effectiveConfig.title }}</h1>
+                @if (!bandejaVacia) {
+                  <p class="m-0 text-[10px] font-medium uppercase leading-normal tracking-[0.66px] text-text-muted">Documentos y registros</p>
+                }
               </div>
 
               <div class="relative shrink-0">
@@ -207,182 +211,205 @@ type DocumentsRecordsRoleMode = 'creator' | 'reviewer' | 'approver' | 'readOnly'
               </div>
             </header>
 
-            <siaf-records-tabs
-              ariaLabel="Documentos y registros"
-              [tabs]="tabsItems"
-              [activeId]="activeTab"
-              (activeIdChange)="selectTab($any($event))"
-            />
-          </section>
-
-          <section class="relative p-siaf-md">
-            <article class="flex min-h-[458px] flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
-              <header class="flex flex-col gap-siaf-md md:flex-row md:items-center md:justify-between">
-                <h2 class="m-0 text-sm font-bold uppercase leading-normal text-text">
-                  {{ activeTab === 'documents' ? 'Documentos existentes' : 'Registros existentes' }}
-                </h2>
-                @if (activeTab === 'documents' && effectiveConfig.accionPrincipal === 'aprobar') {
-                  <siaf-button variant="primary" icon="check_circle" [disabled]="!canApproveSelectedDocuments" (click)="openApproveModal()">
-                    Aprobar
-                  </siaf-button>
-                }
-              </header>
-
-              @if (activeTab === 'records') {
-                <ng-content select="[records-header]" />
-              }
-
-              <div class="flex flex-col gap-siaf-md">
-                <siaf-records-search-toolbar
-                  [value]="searchInput"
-                  placeholder="Buscar"
-                  (valueChange)="onSearchChange($event)"
-                  (searchSubmit)="onSearchSubmit($event)"
-                >
-                  <ng-container actions>
-                    <siaf-icon-dropdown-menu
-                      icon="more_vert"
-                      ariaLabel="Más opciones"
-                      [items]="moreOptionsMenuItems"
-                      [menuWidth]="280"
-                      (selected)="onMoreOptionsAction($event)"
-                    />
-                  </ng-container>
-                </siaf-records-search-toolbar>
-
-                <div class="flex flex-wrap items-center gap-siaf-xs">
-                  @if (activeTab === 'documents') {
-                    <siaf-filter-pill
-                      label="Estado"
-                      [options]="effectiveConfig.statusFilterOptions"
-                      [selectedValue]="selectedStatusFilter"
-                      (selectedValueChange)="onStatusFilterChange($event)"
-                    />
-                    <siaf-filter-pill
-                      label="Tipo de acción"
-                      [options]="effectiveConfig.actionTypeFilterOptions"
-                      [selectedValue]="selectedActionTypeFilter"
-                      (selectedValueChange)="onActionTypeFilterChange($event)"
-                    />
-                  } @else if (activeTab === 'records' && effectiveConfig.recordFilter1Options?.length) {
-                    <siaf-filter-pill
-                      [label]="effectiveConfig.recordFilter1Label ?? ''"
-                      [options]="effectiveConfig.recordFilter1Options ?? []"
-                      [selectedValue]="selectedRecordFilter1"
-                      (selectedValueChange)="onRecordFilter1Change($event)"
-                    />
-                    @if (effectiveConfig.recordFilter2Options?.length) {
-                      <siaf-filter-pill
-                        [label]="effectiveConfig.recordFilter2Label ?? ''"
-                        [options]="effectiveConfig.recordFilter2Options ?? []"
-                        [selectedValue]="selectedRecordFilter2"
-                        (selectedValueChange)="onRecordFilter2Change($event)"
-                      />
-                    }
-                  }
-
-                  @for (filter of appliedCustomFilters; track filter.id) {
-                    <button class="inline-flex h-8 items-center gap-siaf-xs overflow-hidden rounded-siaf-md border border-[var(--sys-color-border-states-active)] bg-[var(--sys-color-bg-states-light-selected)] px-siaf-xs py-siaf-xxs text-sm font-normal leading-normal tracking-[0.025px] text-[var(--sys-color-text-neutral-activated)] transition hover:bg-[var(--sys-color-bg-states-light-hover)]" type="button" aria-label="Filtro personalizado aplicado" (click)="editCustomAppliedFilter(filter)">
-                      <siaf-icon name="bolt" [size]="20" />
-                      {{ filter.campoLabel }}: {{ filter.valor }}
-                      <span class="inline-flex size-5 items-center justify-center rounded-siaf-sm" role="button" tabindex="0" aria-label="Quitar filtro personalizado" (click)="clearCustomAppliedFilter(filter.id, $event)" (keydown.enter)="clearCustomAppliedFilter(filter.id, $event)" (keydown.space)="clearCustomAppliedFilter(filter.id, $event)">
-                        <siaf-icon name="close" [size]="20" />
-                      </span>
-                    </button>
-                  }
-
-                  <button class="inline-flex size-8 items-center justify-center rounded-siaf-md transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)]" type="button" aria-label="Agregar filtro" [class.bg-surface-muted]="customFilterOpen" (click)="openCustomFilterForCreate()">
-                    <siaf-icon name="add" [size]="20" />
-                  </button>
-                </div>
-              </div>
-
-              @if (activeTab === 'documents') {
-                <siaf-table-controls
-                  selectAllLabel="Seleccionar documentos o registros"
-                  [hideTopPaginationOnMobile]="true"
-                  [checked]="allVisibleElaboradoDocumentsSelected"
-                  [indeterminate]="someVisibleElaboradoDocumentsSelected"
-                  [disabled]="visibleSelectableElaboradoDocuments.length === 0"
-                  [selectedCount]="modoCreador ? selectedDocumentRows.length : 0"
-                  [showEditAction]="modoCreador"
-                  [editDisabled]="!editableDocumentRow"
-                  editLabel="Abrir el documento seleccionado"
-                  [showDeleteAction]="modoCreador"
-                  deleteLabel="Eliminar los documentos seleccionados"
-                  (edit)="editSelectedDocument()"
-                  (delete)="openDeleteModal()"
-                  [page]="page"
-                  [pageSize]="rowsPerPage"
-                  [totalItems]="totalItemsPaginador"
-                  [totalPages]="totalPages"
-                  (selectionChange)="toggleVisibleElaboradoDocuments($event)"
-                  (previous)="onPreviousPage()"
-                  (next)="onNextPage()"
-                />
-              } @else {
-                <siaf-table-controls [showSelection]="false"
-                  [page]="page"
-                  [pageSize]="rowsPerPage"
-                  [totalItems]="totalItemsPaginador"
-                  [totalPages]="totalPages"
-                  (previous)="onPreviousPage()"
-                  (next)="onNextPage()"
-                />
-              }
-
-              @if (loading) {
-                <siaf-table-skeleton
-                  [columns]="visibleColumns.length"
-                  [rows]="rowsPerPage"
-                  [minWidthClass]="activeTab === 'documents' ? effectiveConfig.documentTableMinWidthClass : effectiveConfig.recordTableMinWidthClass"
-                />
-              } @else {
-                <siaf-documents-records-table
-                  [activeTab]="activeTab"
-                  [columns]="visibleColumns"
-                  [rows]="paginatedRows"
-                  [minWidthClass]="activeTab === 'documents' ? effectiveConfig.documentTableMinWidthClass : effectiveConfig.recordTableMinWidthClass"
-                  [recordTrackKey]="effectiveConfig.recordTrackKey"
-                  [documentRoute]="documentRoute"
-                  [selectionDisabled]="selectionDisabled"
-                  (selectionChanged)="toggleRowSelection($event)"
-                  (historyOpened)="openHistory($event)"
-                />
-              }
-
-              <siaf-pagination
-                navigation="Activate"
-                position="Bottom"
-                [rowPage]="true"
-                [page]="page"
-                [pageSize]="rowsPerPage"
-                [totalItems]="totalItemsPaginador"
-                [totalPages]="totalPages"
-                [rowsPerPage]="rowsPerPage"
-                [rowsPerPageOptions]="rowsPerPageOptions"
-                (previous)="onPreviousPage()"
-                (next)="onNextPage()"
-                (rowsPerPageChange)="onRowsPerPageChange($event)"
+            @if (!bandejaVacia) {
+              <siaf-records-tabs
+                ariaLabel="Documentos y registros"
+                [tabs]="tabsItems"
+                [activeId]="activeTab"
+                (activeIdChange)="selectTab($any($event))"
               />
-            </article>
-
-            @if (customFilterOpen) {
-              <button class="fixed inset-0 z-20 cursor-default bg-transparent" type="button" data-capa-cierre tabindex="-1" aria-hidden="true" (mousedown)="$event.preventDefault()" (click)="closeCustomFilter()"></button>
-              <div class="fixed inset-x-siaf-md top-24 z-30 sm:absolute sm:left-[40px] sm:top-[188px] sm:w-[936px] sm:max-w-[calc(100%-80px)]" (click)="$event.stopPropagation()">
-                <siaf-custom-filter
-                  [campoOptions]="activeTab === 'records' && effectiveConfig.recordFilterCampoOptions ? effectiveConfig.recordFilterCampoOptions : effectiveConfig.filterCampoOptions"
-                  [condicionOptions]="filterCondicionOptions"
-                  [valorOptions]="activeTab === 'records' && effectiveConfig.recordFilterValorOptions ? effectiveConfig.recordFilterValorOptions : effectiveConfig.filterValorOptions"
-                  [initialRows]="customFilterInitialRows"
-                  [deleteEnabled]="!!editingCustomFilterId"
-                  (aplicar)="onCustomFilterApply($event)"
-                  (cancelar)="closeCustomFilter()"
-                  (eliminar)="deleteEditingCustomFilter()"
-                />
-              </div>
             }
           </section>
+
+          @if (bandejaVacia; as vacia) {
+            <section class="p-siaf-md">
+              <article class="flex min-h-[458px] flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg" data-bandeja-vacia>
+                <h2 class="m-0 text-sm font-bold uppercase leading-normal text-text">{{ vacia.listTitle }}</h2>
+                <siaf-form-table-search placeholder="Buscar" ariaLabel="Buscar solicitudes" />
+                <siaf-empty-state
+                  illustration="no-results"
+                  [title]="vacia.heading"
+                  [description]="effectiveConfig.createDocumentOptions.length ? vacia.description : vacia.readonlyDescription"
+                />
+              </article>
+            </section>
+          } @else {
+            <section class="relative p-siaf-md">
+              <article class="flex min-h-[458px] flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
+                <header class="flex flex-col gap-siaf-md md:flex-row md:items-center md:justify-between">
+                  <h2 class="m-0 text-sm font-bold uppercase leading-normal text-text">
+                    {{ activeTab === 'documents' ? 'Documentos existentes' : 'Registros existentes' }}
+                  </h2>
+                  @if (activeTab === 'documents' && effectiveConfig.accionPrincipal === 'aprobar') {
+                    <siaf-button variant="primary" icon="check_circle" [disabled]="!canApproveSelectedDocuments" (click)="openApproveModal()">
+                      Aprobar
+                    </siaf-button>
+                  }
+                </header>
+
+                @if (activeTab === 'records') {
+                  <ng-content select="[records-header]" />
+                }
+
+                <div class="flex flex-col gap-siaf-md">
+                  <siaf-records-search-toolbar
+                    [value]="searchInput"
+                    placeholder="Buscar"
+                    (valueChange)="onSearchChange($event)"
+                    (searchSubmit)="onSearchSubmit($event)"
+                  >
+                    <ng-container actions>
+                      <siaf-icon-dropdown-menu
+                        icon="more_vert"
+                        ariaLabel="Más opciones"
+                        [items]="moreOptionsMenuItems"
+                        [menuWidth]="280"
+                        (selected)="onMoreOptionsAction($event)"
+                      />
+                    </ng-container>
+                  </siaf-records-search-toolbar>
+
+                  <div class="flex flex-wrap items-center gap-siaf-xs">
+                    @if (activeTab === 'documents') {
+                      <siaf-filter-pill
+                        label="Estado"
+                        [options]="effectiveConfig.statusFilterOptions"
+                        [selectedValue]="selectedStatusFilter"
+                        (selectedValueChange)="onStatusFilterChange($event)"
+                      />
+                      <siaf-filter-pill
+                        label="Tipo de acción"
+                        [options]="effectiveConfig.actionTypeFilterOptions"
+                        [selectedValue]="selectedActionTypeFilter"
+                        (selectedValueChange)="onActionTypeFilterChange($event)"
+                      />
+                    } @else if (activeTab === 'records' && effectiveConfig.recordFilter1Options?.length) {
+                      <siaf-filter-pill
+                        [label]="effectiveConfig.recordFilter1Label ?? ''"
+                        [options]="effectiveConfig.recordFilter1Options ?? []"
+                        [selectedValue]="selectedRecordFilter1"
+                        (selectedValueChange)="onRecordFilter1Change($event)"
+                      />
+                      @if (effectiveConfig.recordFilter2Options?.length) {
+                        <siaf-filter-pill
+                          [label]="effectiveConfig.recordFilter2Label ?? ''"
+                          [options]="effectiveConfig.recordFilter2Options ?? []"
+                          [selectedValue]="selectedRecordFilter2"
+                          (selectedValueChange)="onRecordFilter2Change($event)"
+                        />
+                      }
+                    }
+
+                    @for (filter of appliedCustomFilters; track filter.id) {
+                      <button class="inline-flex h-8 items-center gap-siaf-xs overflow-hidden rounded-siaf-md border border-[var(--sys-color-border-states-active)] bg-[var(--sys-color-bg-states-light-selected)] px-siaf-xs py-siaf-xxs text-sm font-normal leading-normal tracking-[0.025px] text-[var(--sys-color-text-neutral-activated)] transition hover:bg-[var(--sys-color-bg-states-light-hover)]" type="button" aria-label="Filtro personalizado aplicado" (click)="editCustomAppliedFilter(filter)">
+                        <siaf-icon name="bolt" [size]="20" />
+                        {{ filter.campoLabel }}: {{ filter.valor }}
+                        <span class="inline-flex size-5 items-center justify-center rounded-siaf-sm" role="button" tabindex="0" aria-label="Quitar filtro personalizado" (click)="clearCustomAppliedFilter(filter.id, $event)" (keydown.enter)="clearCustomAppliedFilter(filter.id, $event)" (keydown.space)="clearCustomAppliedFilter(filter.id, $event)">
+                          <siaf-icon name="close" [size]="20" />
+                        </span>
+                      </button>
+                    }
+
+                    <button class="inline-flex size-8 items-center justify-center rounded-siaf-md transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)]" type="button" aria-label="Agregar filtro" [class.bg-surface-muted]="customFilterOpen" (click)="openCustomFilterForCreate()">
+                      <siaf-icon name="add" [size]="20" />
+                    </button>
+                  </div>
+                </div>
+
+                @if (activeTab === 'documents') {
+                  <siaf-table-controls
+                    selectAllLabel="Seleccionar documentos o registros"
+                    [hideTopPaginationOnMobile]="true"
+                    [checked]="allVisibleElaboradoDocumentsSelected"
+                    [indeterminate]="someVisibleElaboradoDocumentsSelected"
+                    [disabled]="visibleSelectableElaboradoDocuments.length === 0"
+                    [selectedCount]="modoCreador ? selectedDocumentRows.length : 0"
+                    [showEditAction]="modoCreador"
+                    [editDisabled]="!editableDocumentRow"
+                    editLabel="Abrir el documento seleccionado"
+                    [showDeleteAction]="modoCreador"
+                    deleteLabel="Eliminar los documentos seleccionados"
+                    (edit)="editSelectedDocument()"
+                    (delete)="openDeleteModal()"
+                    [page]="page"
+                    [pageSize]="rowsPerPage"
+                    [totalItems]="totalItemsPaginador"
+                    [totalPages]="totalPages"
+                    (selectionChange)="toggleVisibleElaboradoDocuments($event)"
+                    (previous)="onPreviousPage()"
+                    (next)="onNextPage()"
+                  />
+                } @else {
+                  <siaf-table-controls
+                    selectAllLabel="Seleccionar registros"
+                    [showSelection]="!!effectiveConfig.recordSelection"
+                    [checked]="registrosSeleccionados > 0 && registrosSeleccionados === paginatedRows.length"
+                    [indeterminate]="registrosSeleccionados > 0 && registrosSeleccionados < paginatedRows.length"
+                    [disabled]="!paginatedRows.length"
+                    (selectionChange)="seleccionarRegistros($event)"
+                    [page]="page"
+                    [pageSize]="rowsPerPage"
+                    [totalItems]="totalItemsPaginador"
+                    [totalPages]="totalPages"
+                    (previous)="onPreviousPage()"
+                    (next)="onNextPage()"
+                  />
+                }
+
+                @if (loading) {
+                  <siaf-table-skeleton
+                    [columns]="visibleColumns.length"
+                    [rows]="rowsPerPage"
+                    [minWidthClass]="activeTab === 'documents' ? effectiveConfig.documentTableMinWidthClass : effectiveConfig.recordTableMinWidthClass"
+                  />
+                } @else {
+                  <siaf-documents-records-table
+                    [activeTab]="activeTab"
+                    [columns]="visibleColumns"
+                    [rows]="paginatedRows"
+                    [minWidthClass]="activeTab === 'documents' ? effectiveConfig.documentTableMinWidthClass : effectiveConfig.recordTableMinWidthClass"
+                    [recordTrackKey]="effectiveConfig.recordTrackKey"
+                    [recordSelection]="!!effectiveConfig.recordSelection"
+                    [documentRoute]="documentRoute"
+                    [selectionDisabled]="selectionDisabled"
+                    (selectionChanged)="toggleRowSelection($event)"
+                    (historyOpened)="openHistory($event)"
+                  />
+                }
+
+                <siaf-pagination
+                  navigation="Activate"
+                  position="Bottom"
+                  [rowPage]="true"
+                  [page]="page"
+                  [pageSize]="rowsPerPage"
+                  [totalItems]="totalItemsPaginador"
+                  [totalPages]="totalPages"
+                  [rowsPerPage]="rowsPerPage"
+                  [rowsPerPageOptions]="rowsPerPageOptions"
+                  (previous)="onPreviousPage()"
+                  (next)="onNextPage()"
+                  (rowsPerPageChange)="onRowsPerPageChange($event)"
+                />
+              </article>
+
+              @if (customFilterOpen) {
+                <button class="fixed inset-0 z-20 cursor-default bg-transparent" type="button" data-capa-cierre tabindex="-1" aria-hidden="true" (mousedown)="$event.preventDefault()" (click)="closeCustomFilter()"></button>
+                <div class="fixed inset-x-siaf-md top-24 z-30 sm:absolute sm:left-[40px] sm:top-[188px] sm:w-[936px] sm:max-w-[calc(100%-80px)]" (click)="$event.stopPropagation()">
+                  <siaf-custom-filter
+                    [campoOptions]="activeTab === 'records' && effectiveConfig.recordFilterCampoOptions ? effectiveConfig.recordFilterCampoOptions : effectiveConfig.filterCampoOptions"
+                    [condicionOptions]="filterCondicionOptions"
+                    [valorOptions]="activeTab === 'records' && effectiveConfig.recordFilterValorOptions ? effectiveConfig.recordFilterValorOptions : effectiveConfig.filterValorOptions"
+                    [initialRows]="customFilterInitialRows"
+                    [deleteEnabled]="!!editingCustomFilterId"
+                    (aplicar)="onCustomFilterApply($event)"
+                    (cancelar)="closeCustomFilter()"
+                    (eliminar)="deleteEditingCustomFilter()"
+                  />
+                </div>
+              }
+            </section>
+          }
         </section>
       <siaf-column-visibility-panel
         [open]="columnPanelOpen"
@@ -422,6 +449,12 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   /** Historial de un registro con `recordHistoryKind: 'personalizado'`: el módulo abre su propio panel. */
   @Output() recordHistoryOpened = new EventEmitter<DocumentsRecordsRow>();
   @Input() loading = false;
+
+  /** Aviso de bandeja vacía: sin filas en ninguna pestaña, ya cargada y sin búsqueda aplicada. */
+  get bandejaVacia(): DocumentsRecordsConfig['emptyState'] | null {
+    const sinFilas = !this.config.documentRows.length && !this.config.recordRows.length && !this.config.serverQuery?.total;
+    return this.config.emptyState && sinFilas && !this.loading && !this.searchTerm ? this.config.emptyState : null;
+  }
 
   // Config efectivo con reglas de rol aplicadas automáticamente
   get effectiveConfig(): DocumentsRecordsConfig {
@@ -550,13 +583,14 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     }
 
     const cfg = this.effectiveConfig;
+    if (changes['config'].firstChange) this.selectedRecordFilter1 = cfg.recordFilter1Default ?? '';
     // Las bandejas refrescan por polling: cada re-emisión de config reconstruye
     // las filas. Preservar la selección del usuario casando por identidad
     // estable, o el checkbox se "des-selecciona solo" al llegar el refresh.
     const prevSelectedDocs = new Set(this.documentRows.filter((r) => r.selected).map((r) => this.rowIdentity(r)));
-    const prevSelectedRecords = new Set(this.recordRows.filter((r) => r.selected).map((r) => this.rowIdentity(r)));
+    const prevSelectedRecords = new Set(this.recordRows.filter((r) => r.selected).map((r) => this.recordIdentity(r)));
     this.documentRows = cfg.documentRows.map((row) => ({ ...row, selected: row.selected || prevSelectedDocs.has(this.rowIdentity(row)) }));
-    this.recordRows = cfg.recordRows.map((row) => ({ ...row, selected: row.selected || prevSelectedRecords.has(this.rowIdentity(row)) }));
+    this.recordRows = cfg.recordRows.map((row) => ({ ...row, selected: row.selected || prevSelectedRecords.has(this.recordIdentity(row)) }));
     this.hiddenDocumentColumns = new Set(cfg.documentColumns.filter((column) => column.visibility !== 'visible').map((column) => column.key));
     this.hiddenRecordColumns = new Set(cfg.recordColumns.filter((column) => column.visibility !== 'visible').map((column) => column.key));
     // Con el historial abierto no se toca su resumen: el refresco de la bandeja (polling) lo cambiaba por el de la
@@ -574,6 +608,20 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   /** Identidad estable de una fila entre refreshes de la bandeja (polling). */
   private rowIdentity(row: DocumentsRecordsRow): string {
     return String(row['documentId'] ?? row['recordId'] ?? row['number'] ?? row['document'] ?? '');
+  }
+
+  /** Identidad de un registro: varios pueden venir del mismo documento. */
+  private recordIdentity(row: DocumentsRecordsRow): string {
+    return String(row['recordId'] ?? this.rowIdentity(row));
+  }
+
+  /** Registros marcados de la página visible. */
+  get registrosSeleccionados(): number {
+    return this.paginatedRows.filter((row) => row.selected).length;
+  }
+
+  seleccionarRegistros(selected: boolean): void {
+    this.paginatedRows.forEach((row) => (row.selected = selected));
   }
 
   get filteredRows(): DocumentsRecordsRow[] {

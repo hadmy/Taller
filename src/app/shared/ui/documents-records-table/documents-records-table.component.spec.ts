@@ -87,4 +87,17 @@ describe('DocumentsRecordsTableComponent — tooltip de textos truncados', () =>
 
     expect(tooltipVisible()).toBeNull();
   }));
+
+  it('agrupa las columnas con `headerGroup` en una cabecera de dos filas', () => {
+    fixture.componentRef.setInput('columns', [
+      columns[1],
+      { key: 'a', label: 'Número', visibility: 'visible', group: 'default', headerGroup: 'Documento' },
+      { key: 'b', label: 'Descripción', visibility: 'visible', group: 'default', headerGroup: 'Documento' },
+    ]);
+    fixture.detectChanges();
+    const filas = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('thead tr'));
+    expect(filas.length).toBe(2);
+    expect(filas[0].querySelector('[colspan="2"]')?.textContent?.trim()).toBe('Documento');
+    expect(Array.from(filas[1].children).map((th) => th.textContent?.trim())).toEqual(['Número', 'Descripción']);
+  });
 });

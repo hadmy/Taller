@@ -36,6 +36,8 @@ export type DocumentsRecordsColumn = {
   group: ColumnGroup;
   widthClass?: string;
   align?: 'left' | 'right' | 'center';
+  /** Encabezado superior que agrupa las columnas contiguas con el mismo texto (dos filas de cabecera). */
+  headerGroup?: string;
   /**
    * `budget`: monto programado frente a su presupuesto. La fila trae el monto en `key` y, con el sufijo, `Techo`
    * (con su referencia), `Saldo` y `Avance` (0 a 100, como texto).
@@ -68,6 +70,20 @@ export type DocumentsRecordsConfig = {
   breadcrumbs: DocumentsRecordsBreadcrumbItem[];
   documentRows: DocumentsRecordsRow[];
   /**
+   * Bandeja sin ninguna solicitud ni registro: en vez de las pestañas y la tabla vacía se muestra este aviso. Sin este
+   * campo, la pantalla queda como siempre.
+   */
+  emptyState?: {
+    /** Título de la pantalla mientras está vacía. */
+    title: string;
+    /** Título de la tarjeta. */
+    listTitle: string;
+    heading: string;
+    description: string;
+    /** Descripción para quien no puede crear documentos. */
+    readonlyDescription: string;
+  };
+  /**
    * Modo servidor para la pestaña Documentos: `documentRows` ya viene
    * filtrado y paginado por el backend, así que la página no filtra por texto
    * ni pagina en memoria — emite `(documentsQueryChange)` y muestra `total`
@@ -90,6 +106,8 @@ export type DocumentsRecordsConfig = {
    *  'cuenta' (default, plan de cuentas), 'asiento' (asiento de ajuste), 'documento' (el de la solicitud que creó el
    *  registro) o 'personalizado' (la página emite `recordHistoryOpened` y el módulo abre su propio panel). */
   recordHistoryKind?: 'cuenta' | 'asiento' | 'documento' | 'personalizado';
+  /** Casilla de selección en las filas de la pestaña Registros (por defecto solo la lleva Documentos). */
+  recordSelection?: boolean;
   // Filtros para tab Documentos
   statusFilterOptions: string[];
   actionTypeFilterOptions: string[];
@@ -99,6 +117,8 @@ export type DocumentsRecordsConfig = {
   recordFilter1Options?: string[];
   recordFilter1Label?: string;
   recordFilter1Key?: string;
+  /** Valor con el que abre el primer filtro de Registros; el usuario puede quitarlo. */
+  recordFilter1Default?: string;
   recordFilter2Options?: string[];
   recordFilter2Label?: string;
   recordFilter2Key?: string;

@@ -31,11 +31,11 @@ const documentColumns: DocumentsRecordsColumn[] = [
 ];
 
 const recordColumns: DocumentsRecordsColumn[] = [
-  { key: 'status', label: 'Vigencia', visibility: 'visible', group: 'default', widthClass: 'w-[120px]', kind: 'record-status' },
-  { key: 'codigo', label: 'Código', visibility: 'visible', group: 'default', widthClass: 'w-[200px]' },
+  { key: 'codigo', label: 'Código CUBSO', visibility: 'visible', group: 'default', widthClass: 'w-[200px]' },
   { key: 'descripcion', label: 'Descripción', visibility: 'visible', group: 'default', widthClass: 'min-w-[320px]' },
-  { key: 'number', label: 'Solicitud', visibility: 'visible', group: 'default', widthClass: 'w-[280px]' },
-  { key: 'fechaRegistro', label: 'Fecha de registro', visibility: 'visible', group: 'default', widthClass: 'w-[170px]' },
+  { key: 'status', label: 'Estado del registro', visibility: 'visible', group: 'default', widthClass: 'w-[180px]', kind: 'record-status' },
+  { key: 'number', label: 'Número', visibility: 'visible', group: 'default', widthClass: 'w-[220px]', headerGroup: 'Documento' },
+  { key: 'document', label: 'Descripción', visibility: 'visible', group: 'default', widthClass: 'w-[300px]', headerGroup: 'Documento' },
 ];
 
 const filterCampoOptions: DocumentsRecordsFilterOption[] = [
@@ -62,6 +62,14 @@ export const ITEMS_ESTRATEGICOS_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
   createDocumentOptions: CREATE_DOCUMENT_OPTIONS,
   breadcrumbs: buildProcessBreadcrumbs(PROCESS_ID, PROCESS_ROUTE),
   documentRows: [],
+  // Bandeja sin solicitudes (Figma A.1-RC-009).
+  emptyState: {
+    title: 'Solicitudes de necesidades estratégicas',
+    listTitle: 'Bandeja de solicitudes',
+    heading: 'Sin solicitudes registradas',
+    description: 'Aún no hay solicitudes registradas. Presione «Crear documento» para iniciar una.',
+    readonlyDescription: 'Aún no hay solicitudes registradas.',
+  },
   recordRows: [],
   documentColumns,
   recordColumns,
@@ -69,18 +77,20 @@ export const ITEMS_ESTRATEGICOS_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
   recordTableMinWidthClass: 'min-w-[1100px]',
   recordTrackKey: 'recordId',
   recordHistoryDocumentLabel: NOMBRE_DOCUMENTO,
-  // El historial de un ítem es el de la solicitud que lo incluyó.
-  recordHistoryKind: 'documento',
+  // «Historial del registro» propio (Figma A.1-RC-050).
+  recordHistoryKind: 'personalizado',
+  recordSelection: true,
   statusFilterOptions: [ESTADO.ELABORADO, ESTADO.VERIFICADO, ESTADO.VALIDADO, ESTADO.OBSERVADO, ESTADO.APROBADO, ESTADO.RECHAZADO],
   actionTypeFilterOptions: [ETIQUETA_TIPO_ACCION],
   filterCampoOptions,
   filterValorOptions,
-  recordFilter1Label: 'Vigencia',
+  recordFilter1Label: 'Estado del registro',
   recordFilter1Key: 'status',
+  recordFilter1Default: 'Activo',
   recordFilter1Options: ['Activo', 'Inactivo'],
   recordFilterCampoOptions: [
-    { label: 'Vigencia', value: 'status' },
-    { label: 'Código', value: 'codigo' },
+    { label: 'Estado del registro', value: 'status' },
+    { label: 'Código CUBSO', value: 'codigo' },
     { label: 'Descripción', value: 'descripcion' },
   ],
   recordFilterValorOptions: [

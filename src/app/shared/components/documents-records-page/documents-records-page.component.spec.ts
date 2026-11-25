@@ -130,4 +130,48 @@ describe('DocumentsRecordsPageComponent', () => {
       });
     });
   });
+
+  describe('bandeja vacía', () => {
+    const emptyState = { title: 'Solicitudes', listTitle: 'Bandeja', heading: 'Sin solicitudes', description: 'Cree una', readonlyDescription: 'Sin datos' };
+    const vacia = (): HTMLElement | null => el().querySelector('[data-bandeja-vacia]');
+
+    it('sin documentos ni registros muestra el aviso y oculta las pestañas', () => {
+      configurar({ ...BANDEJA_CONFIG_DE_MUESTRA, documentRows: [], recordRows: [], emptyState });
+      expect(vacia()?.textContent).toContain('Sin solicitudes');
+      expect(el().querySelector('siaf-records-tabs')).toBeNull();
+    });
+
+    it('con alguna fila, o sin `emptyState`, queda la pantalla de siempre', () => {
+      configurar({ ...BANDEJA_CONFIG_DE_MUESTRA, documentRows: filas(1), recordRows: [], emptyState });
+      expect(vacia()).toBeNull();
+      configurar({ ...BANDEJA_CONFIG_DE_MUESTRA, documentRows: [], recordRows: [], emptyState: undefined });
+      expect(vacia()).toBeNull();
+      expect(el().querySelector('siaf-records-tabs')).not.toBeNull();
+    });
+  });
+
+  describe('registros con filtro inicial y selección', () => {
+    const recordRows: DocumentsRecordsRow[] = ['Activo', 'Activo', 'Inactivo'].map((status, i) => ({ recordId: `r-${i}`, documentId: 'doc-1', status }));
+    const config: DocumentsRecordsConfig = {
+      ...BANDEJA_CONFIG_DE_MUESTRA, recordRows, recordFilter1Label: 'Estado', recordFilter1Key: 'status',
+      recordFilter1Options: ['Activo', 'Inactivo'], recordFilter1Default: 'Activo', recordSelection: true,
+    };
+
+    it('abre filtrado y el filtro que quita el usuario no vuelve con el refresco', () => {
+      configurar(config);
+      pagina.selectTab('records');
+      expect(pagina.filteredRows.length).toBe(2);
+      pagina.onRecordFilter1Change('');
+      configurar({ ...config });
+      expect(pagina.filteredRows.length).toBe(3);
+    });
+
+    it('el refresco conserva solo el registro marcado, aunque otros vengan del mismo documento', () => {
+      configurar(config);
+      pagina.selectTab('records');
+      pagina.toggleRowSelection({ row: pagina.filteredRows[0], selected: true });
+      configurar({ ...config });
+      expect(pagina.registrosSeleccionados).toBe(1);
+    });
+  });
 });

@@ -5011,7 +5011,9 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-custom-filter",
       "siaf-document-history-panel",
       "siaf-documents-records-table",
+      "siaf-empty-state",
       "siaf-filter-pill",
+      "siaf-form-table-search",
       "siaf-icon",
       "siaf-icon-dropdown-menu",
       "siaf-modal",
@@ -5062,6 +5064,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "''",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "recordSelection",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Casilla de selección también en la pestaña Registros."
       },
       {
         "nombre": "recordTrackKey",

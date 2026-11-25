@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { first, map, skipWhile } from 'rxjs/operators';
 
 import { PermissionService } from '../../../../../core/auth/permission.service';
 import { respondeSolicitudes } from '../../../../../core/auth/role.model';
@@ -9,6 +11,7 @@ import { DocumentsRecordsPageComponent } from '../../../../../shared/components/
 import type { DocumentsQuery, DocumentsRecordsConfig, DocumentsRecordsRow } from '../../../../../shared/types/documents-records.types';
 import { createNewDocumentIdsSignal } from '../../../../../shared/utils/new-document-ids.util';
 import { ItemsEstrategicosApiService } from '../../api/items-estrategicos-api.service';
+import { HistorialRegistroItemPanelComponent } from '../../components/historial-registro-item-panel.component';
 import { ITEMS_ESTRATEGICOS_DOCUMENTS_CONFIG } from '../../config/items-estrategicos-documents.config';
 import { REQUEST_ROUTE } from '../../config/items-estrategicos.rutas';
 import {
@@ -27,13 +30,15 @@ import {
 @Component({
   selector: 'siaf-items-estrategicos-documents',
   standalone: true,
-  imports: [DocumentsRecordsPageComponent],
+  imports: [DocumentsRecordsPageComponent, HistorialRegistroItemPanelComponent],
   template: `
     <siaf-documents-records-page
       [config]="pageConfig()"
-      [loading]="cargando()"
+      [loading]="cargando() || !bandejaLista()"
       (documentsQueryChange)="onDocumentsQuery($event)"
+      (recordHistoryOpened)="abrirHistorial($event)"
     />
+    <siaf-historial-registro-item-panel [registro]="registroAbierto()" (closed)="registroAbierto.set(null)" />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -46,7 +51,13 @@ export class ItemsEstrategicosDocumentsComponent implements OnInit {
   private readonly nuevos = createNewDocumentIdsSignal();
 
   private readonly registros = signal<ItemEstrategicoRegistro[]>([]);
+  readonly registroAbierto = signal<ItemEstrategicoRegistro | null>(null);
   readonly cargando = signal(true);
+  /** La bandeja ya respondió una vez: antes no se sabe si está vacía (los refrescos siguientes no la vuelven a ocultar). */
+  readonly bandejaLista = toSignal(
+    toObservable(this.solicitudesFacade.isLoading).pipe(skipWhile((c) => !c), first((c) => !c), map(() => true)),
+    { initialValue: false },
+  );
 
   ngOnInit(): void {
     // Bandeja según el rol (el aprobador además refresca cada 30 s), solo con las solicitudes SIE.
@@ -55,6 +66,10 @@ export class ItemsEstrategicosDocumentsComponent implements OnInit {
       next: (registros) => { this.registros.set(registros); this.cargando.set(false); },
       error: () => this.cargando.set(false),
     });
+  }
+
+  abrirHistorial(fila: DocumentsRecordsRow): void {
+    this.registroAbierto.set(this.registros().find((r) => r.id === fila['recordId']) ?? null);
   }
 
   /** Búsqueda y paginación de la pestaña Documentos (Enter, lupa o cambio de página). */
@@ -99,8 +114,7 @@ export class ItemsEstrategicosDocumentsComponent implements OnInit {
       status: r.vigente ? 'Activo' : 'Inactivo',
       codigo: r.codigo,
       descripcion: r.descripcion,
-      fechaRegistro: new Date(r.fechaRegistro).toLocaleDateString('es-PE'),
-      // Para el historial del registro: la solicitud que lo incluyó.
+      // La solicitud que lo incluyó (columnas «Documento»).
       document: NOMBRE_DOCUMENTO,
       documentId: r.documentoId,
       number: r.numeroDocumento,

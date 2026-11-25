@@ -70,20 +70,33 @@ export type DocumentsRecordsSelectionChange = {
       <table class="w-full border-collapse text-left text-sm" [ngClass]="minWidthClass">
         <thead>
           <tr class="bg-surface-high text-[10px] font-bold uppercase text-text">
-            @if (activeTab === 'documents') {
-              <th class="w-10 rounded-l-siaf-sm px-siaf-sm py-siaf-sm"></th>
+            @if (conSeleccion) {
+              <th class="w-10 rounded-l-siaf-sm px-siaf-sm py-siaf-sm" [attr.rowspan]="conGrupos ? 2 : null"></th>
             }
-            @for (column of columns; track column.key) {
-              <!-- MFD RF-01: al superponer el mouse se muestra el texto completo de la columna -->
-              <th class="truncate px-siaf-md py-siaf-sm" siafTooltip [ngClass]="[column.widthClass || 'w-[180px]', column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left']">{{ column.label }}</th>
+            @for (celda of cabecera; track celda.key) {
+              @if (celda.column; as column) {
+                <!-- MFD RF-01: al superponer el mouse se muestra el texto completo de la columna -->
+                <th class="truncate px-siaf-md py-siaf-sm" siafTooltip [attr.rowspan]="conGrupos ? 2 : null" [ngClass]="[column.widthClass || 'w-[180px]', column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left']">{{ column.label }}</th>
+              } @else {
+                <th class="border-b border-l border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center" scope="colgroup" [attr.colspan]="celda.columnas.length">{{ celda.grupo }}</th>
+              }
             }
-            <th class="sticky right-0 w-14 rounded-r-siaf-sm border-l border-[var(--sys-color-divider-strong)] bg-surface-high px-siaf-sm py-siaf-sm"></th>
+            <th class="sticky right-0 w-14 rounded-r-siaf-sm border-l border-[var(--sys-color-divider-strong)] bg-surface-high px-siaf-sm py-siaf-sm" [attr.rowspan]="conGrupos ? 2 : null"></th>
           </tr>
+          @if (conGrupos) {
+            <tr class="bg-surface-high text-[10px] font-bold uppercase text-text">
+              @for (celda of cabecera; track celda.key) {
+                @for (column of celda.columnas; track column.key) {
+                  <th class="truncate px-siaf-md py-siaf-sm text-left" siafTooltip scope="col" [ngClass]="[column.widthClass || 'w-[180px]', $first ? 'border-l border-[var(--sys-color-divider-strong)]' : '']">{{ column.label }}</th>
+                }
+              }
+            </tr>
+          }
         </thead>
         <tbody>
           @for (row of rows; track rowTrackValue(row, $index)) {
             <tr class="border-b border-[var(--sys-color-divider-default)] bg-surface hover:bg-[var(--sys-color-bg-states-light-hover)]" [class.h-12]="activeTab === 'records'">
-              @if (activeTab === 'documents') {
+              @if (conSeleccion) {
                 <td class="h-[58px] px-siaf-sm py-siaf-xs">
                   <input
                     class="size-4 disabled:cursor-not-allowed"
@@ -120,7 +133,7 @@ export type DocumentsRecordsSelectionChange = {
                 </td>
               }
               <td class="sticky right-0 border-l border-[var(--sys-color-divider-strong)] bg-surface px-siaf-sm py-siaf-xs">
-                <button class="inline-flex size-8 items-center justify-center rounded-siaf-md transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)]" type="button" [attr.aria-label]="activeTab === 'records' ? 'Ver historial del registro' : 'Historial de documento'" [title]="activeTab === 'records' ? 'Ver historial del registro' : 'Historial de documento'" (click)="historyOpened.emit(row)">
+                <button class="inline-flex size-8 items-center justify-center rounded-siaf-md transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)]" type="button" [attr.aria-label]="activeTab === 'records' ? 'Historial de registro' : 'Historial de documento'" [title]="activeTab === 'records' ? 'Historial de registro' : 'Historial de documento'" (click)="historyOpened.emit(row)">
                   <siaf-icon name="history" [size]="20" />
                 </button>
               </td>
@@ -140,11 +153,34 @@ export class DocumentsRecordsTableComponent {
   @Input() rows: DocumentsRecordsRow[] = [];
   @Input() minWidthClass = '';
   @Input() recordTrackKey = '';
+  /** Casilla de selección también en la pestaña Registros. */
+  @Input() recordSelection = false;
   @Input() documentRoute: (row: DocumentsRecordsRow) => string = () => '';
   @Input() selectionDisabled: (row: DocumentsRecordsRow) => boolean = () => false;
 
   @Output() selectionChanged = new EventEmitter<DocumentsRecordsSelectionChange>();
   @Output() historyOpened = new EventEmitter<DocumentsRecordsRow>();
+
+  get conSeleccion(): boolean {
+    return this.activeTab === 'documents' || this.recordSelection;
+  }
+
+  /** Hay columnas agrupadas: la cabecera lleva dos filas. */
+  get conGrupos(): boolean {
+    return this.columns.some((c) => c.headerGroup);
+  }
+
+  /** Celdas de la primera fila de la cabecera: cada columna suelta, o un grupo con sus columnas contiguas. */
+  get cabecera(): { key: string; column: DocumentsRecordsColumn | null; grupo: string; columnas: DocumentsRecordsColumn[] }[] {
+    const celdas: { key: string; column: DocumentsRecordsColumn | null; grupo: string; columnas: DocumentsRecordsColumn[] }[] = [];
+    for (const c of this.columns) {
+      const ultima = celdas.at(-1);
+      if (!c.headerGroup) celdas.push({ key: c.key, column: c, grupo: '', columnas: [] });
+      else if (ultima?.grupo === c.headerGroup) ultima.columnas.push(c);
+      else celdas.push({ key: 'grupo-' + c.key, column: null, grupo: c.headerGroup, columnas: [c] });
+    }
+    return celdas;
+  }
 
   rowTrackValue(row: DocumentsRecordsRow, index: number): string | number {
     const key = this.activeTab === 'documents' ? 'number' : this.recordTrackKey;

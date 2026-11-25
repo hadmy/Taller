@@ -29,6 +29,15 @@
       </div>
     </header>
 
+    @if (sinModificaciones()) {
+      <siaf-alert
+        tone="warning"
+        title="No se realizó ninguna modificación"
+        description="Cambie al menos una fecha para poder grabar o use «Cancelar» para salir."
+        data-sin-modificaciones
+      />
+    }
+
     <div>
       <p class="m-0 mb-siaf-xs text-xs font-bold uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-high)]">Búsqueda por año</p>
       <div class="max-w-xs">

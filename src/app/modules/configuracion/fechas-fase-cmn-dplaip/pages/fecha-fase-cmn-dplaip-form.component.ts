@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
-import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { AlertComponent } from '../../../../shared/ui/alert/alert.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DateTimePickerComponent } from '../../../../shared/ui/date-time-picker/date-time-picker.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
@@ -10,6 +9,9 @@ import { TextFieldComponent, TextFieldOption } from '../../../../shared/ui/text-
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
+import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../shared/utils/form-snapshot.util';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { FechasFaseCmnDplaipApiService } from '../api/fechas-fase-cmn-dplaip-api.service';
 import { FECHAS_FASE_CMN_DPLAIP_ROUTE } from '../config/fechas-fase-cmn-dplaip.rutas';
 import { FaseFecha, FechaFaseCmnDplaip, faseFechaVacia } from '../models/fecha-fase-cmn.model';
@@ -17,13 +19,14 @@ import { FaseFecha, FechaFaseCmnDplaip, faseFechaVacia } from '../models/fecha-f
 /**
  * «+» / Editar de Configuración de fechas de fase del CMN - DPLAIP (Figma «CMN Programación · Configuración», nodos
  * 5205:126726 a 5214:171379): elige un año (desde el actual) y configura la fecha de inicio y fin de sus tres fases.
- * Si el año ya tenía fechas configuradas, las carga para editarlas; si es nuevo, lo crea «En Proceso». «Grabar» pide
- * confirmación («¿Grabar?») antes de guardar.
+ * Si el año ya tenía fechas configuradas, las carga para editarlas y, mientras ninguna cambie, avisa que no hay
+ * modificaciones y solo deja «Cancelar»; si es nuevo, lo crea «En Proceso». «Grabar» pide confirmación («¿Grabar?»)
+ * antes de guardar.
  */
 @Component({
   selector: 'siaf-fecha-fase-cmn-dplaip-form',
   standalone: true,
-  imports: [ConfiguracionTabsComponent, ButtonComponent, DateTimePickerComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TextFieldComponent],
+  imports: [AlertComponent, ButtonComponent, ConfiguracionTabsComponent, DateTimePickerComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TextFieldComponent],
   templateUrl: './fecha-fase-cmn-dplaip-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -57,7 +60,20 @@ export class FechaFaseCmnDplaipFormComponent implements OnInit {
     return anios;
   })();
 
-  readonly puedeGrabar = computed(() => !!this.anioSeleccionado() && !this.guardando());
+  /** Foto de las fechas grabadas del año elegido (`null` en un año nuevo). */
+  private readonly fotoGrabada = computed(() => {
+    const anio = this.anios().find((a) => String(a.anio) === this.anioSeleccionado());
+    return anio ? crearSnapshotFormulario({ fase1: anio.fase1, fase2: anio.fase2, fase3: anio.fase3 }) : null;
+  });
+  private readonly fotoActual = computed(() => crearSnapshotFormulario({ fase1: this.fase1(), fase2: this.fase2(), fase3: this.fase3() }));
+
+  /** Se edita un año ya grabado y ninguna fecha cambió: se avisa y no se puede grabar. */
+  readonly sinModificaciones = computed(() => {
+    const grabada = this.fotoGrabada();
+    return grabada !== null && !hayCambiosRespectoAlSnapshot(grabada, this.fotoActual());
+  });
+
+  readonly puedeGrabar = computed(() => !!this.anioSeleccionado() && !this.sinModificaciones() && !this.guardando());
 
   ngOnInit(): void {
     this.cargando.set(true);

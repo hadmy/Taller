@@ -27,7 +27,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 43;
+const VERSION = 44;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol en la entidad de la solicitud. */
@@ -103,9 +103,9 @@ export function nuevoId(datos: DatosTaller, prefijo: string): string {
   return `${prefijo}-${datos.secuencia}`;
 }
 
-/** Número de una Solicitud de Necesidades Estratégicas: serie propia del CMN. */
-export function numeroDocumentoItemsEstrategicos(correlativo: number, fecha: Date): string {
-  return `CMN-SIE-${String(correlativo).padStart(5, '0')}-${fecha.getFullYear()}-MEF-OGA`;
+/** Número de una Solicitud de Necesidades Estratégicas: correlativo propio de cuatro dígitos («0001», Figma A.1-RC-020). */
+export function numeroDocumentoItemsEstrategicos(correlativo: number): string {
+  return String(correlativo).padStart(4, '0');
 }
 
 /** Número de una Solicitud de CMN - Anexo N.º 02, Fase 1: correlativo propio de cuatro dígitos («0002», Figma EV-009). */
@@ -521,32 +521,32 @@ function crearDatosIniciales(): DatosTaller {
       ],
       filas: [
         {
-          id: nuevoId(datos, 'dipf'),
+          id: 'plantilla-titular',
           codigoOu: 'A.02.01.01.05-01',
           denominacion: 'Oficina General de Tecnologías de la Información',
           rol: 'AU titular',
           esTitular: true,
-          montos: { '3': 550000, '4': 100000, '7': 400000 },
+          montos: { '3': 200000, '4': 80000, '7': 400000 },
         },
         {
-          id: nuevoId(datos, 'dipf'),
+          id: 'plantilla-au-1',
           codigoOu: 'A.03.01.01.05.01-01',
           denominacion: 'Oficina de Infraestructura Tecnológica',
           rol: 'AU',
           esTitular: false,
-          montos: { '3': 0, '4': 0, '7': 0 },
+          montos: { '3': 500000, '4': 100000, '7': 200000 },
         },
         {
-          id: nuevoId(datos, 'dipf'),
+          id: 'plantilla-au-2',
           codigoOu: 'A.03.01.01.05.02-01',
           denominacion: 'Oficina de Sistemas de Información',
           rol: 'AU',
           esTitular: false,
-          montos: { '3': 0, '4': 0, '7': 0 },
+          montos: { '3': 500000, '4': 120000, '7': 300000 },
         },
         {
-          id: nuevoId(datos, 'dipf'),
-          codigoOu: 'A.04.01.01.05.02.01-01',
+          id: 'plantilla-ate-1',
+          codigoOu: 'A.03.01.01.05.02.01-01',
           denominacion: 'Unidad de Desarrollo de Sistemas',
           rol: 'ATE',
           esTitular: false,
@@ -577,7 +577,7 @@ function crearDatosIniciales(): DatosTaller {
     const id = nuevoId(datos, 'sol');
     datos.correlativoItemsEstrategicos += 1;
     const creada = enFecha(semilla.creada, 9);
-    const numero = numeroDocumentoItemsEstrategicos(datos.correlativoItemsEstrategicos, new Date(creada));
+    const numero = numeroDocumentoItemsEstrategicos(datos.correlativoItemsEstrategicos);
     const historial = historialSemilla(datos, semilla.creada, semilla.estado, semilla.comentario);
     const ultima = historial[historial.length - 1].createdAt;
     const items: ItemEstrategico[] = semilla.items.map((i) => ({

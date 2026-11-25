@@ -14,6 +14,9 @@ export const NOMBRE_DOCUMENTO = 'Solicitud de necesidades estratégicas';
 export const TIPO_ACCION = 'inclusion';
 export const ETIQUETA_TIPO_ACCION = 'Creación';
 
+/** Ente rector del sistema (cabecera de la solicitud, Figma A.1-RC-020). */
+export const ENTE_RECTOR = 'Dirección General de Abastecimiento';
+
 /** Sistema nacional al que pertenece el proceso (columna «Sistemas Nacionales»). */
 export const SISTEMA_NACIONAL = 'Sistema Nacional de Abastecimiento';
 

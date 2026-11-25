@@ -1,4 +1,4 @@
-﻿import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
@@ -26,13 +26,16 @@ import { ButtonComponent } from '../../../../../shared/ui/button/button.componen
 import { DocumentSummaryCardComponent } from '../../../../../shared/ui/document-summary-card/document-summary-card.component';
 import { FlowStatus } from '../../../../../shared/ui/flow-status-tag/flow-status-tag.component';
 import { MessageBoxComponent } from '../../../../../shared/ui/message-box/message-box.component';
+import { ModalComponent } from '../../../../../shared/ui/modal/modal.component';
 import { SnackbarVariant } from '../../../../../shared/ui/snackbar/snackbar.component';
 import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../../shared/utils/form-snapshot.util';
+import { fechaHora } from '../../../../../shared/utils/fecha-hora.util';
 import { ItemsEstrategicosApiService } from '../../api/items-estrategicos-api.service';
 import { PROCESS_ID, PROCESS_ROUTE, REQUEST_SEGMENT } from '../../config/items-estrategicos.rutas';
 import {
   CODIGO_DOCUMENTO,
+  ENTE_RECTOR,
   ETIQUETA_TIPO_ACCION,
   ItemEstrategico,
   ItemEstrategicoCatalogo,
@@ -41,14 +44,13 @@ import {
 } from '../../models/item-estrategico.model';
 
 /**
- * Solicitud de Necesidades Estratégicas (SIE) del CMN, armada sobre el patrón de solicitud del Figma «B.1 Rol Creador»
- * (Registro, Elaborada, Verificada y Observada).
+ * Solicitud de Necesidades Estratégicas (SIE) del CMN (Figma «A.1 Rol Creador», RC-017 a RC-046).
  *
- * El creador elige los ítems del catálogo en «Seleccionar necesidades estratégicas» (`siaf-selection-side-nav`), los quita de
- * a uno o en bloque. Con el «+» se abre la tarjeta «Agregar» (Cancelar / Aceptar) y, al aceptar, queda la tabla Año /
- * Cantidad de necesidades (Figma «2. Registro de solicitud»); no lleva justificación ni sustento. Grabar: crear la solicitud →
- * guardar los ítems → pasar a ELABORADO (genera el número). El creador edita, verifica o elimina; el aprobador aprueba,
- * observa o rechaza un documento VERIFICADO. Al aprobarse, los ítems pasan a los registros con la vigencia activa.
+ * La tarjeta «Necesidades estratégicas» muestra la tabla Código / Descripción. Al registrar o editar, el creador elige
+ * las necesidades del catálogo con la lupa (`siaf-selection-side-nav`) y las quita de a una o en bloque; no lleva
+ * justificación ni sustento. Grabar: crear la solicitud → guardar los ítems → pasar a ELABORADO (genera el número). El
+ * creador edita, verifica o elimina; el evaluador valida u observa y el aprobador aprueba u observa. Al aprobarse, los
+ * ítems pasan a los registros con la vigencia activa.
  */
 @Component({
   selector: 'siaf-item-estrategico-request',
@@ -60,6 +62,7 @@ import {
     DocumentSummaryCardComponent,
     FormTableSearchComponent,
     MessageBoxComponent,
+    ModalComponent,
     PaginationComponent,
     RequestApprovalModalsComponent,
     SelectionSideNavComponent,
@@ -104,7 +107,7 @@ export class ItemEstrategicoRequestComponent implements OnInit {
   readonly soloLectura = computed(() => this.elaborado() && !this.editando());
   /** En edición, solo sin cambios por grabar: verificar los descartaría. */
   readonly puedeVerificar = computed(() =>
-    ['ELABORADO', 'OBSERVADO'].includes(this.estado()) && !(this.editando() && (this.hayCambios() || this.modoAgregar())),
+    ['ELABORADO', 'OBSERVADO'].includes(this.estado()) && !(this.editando() && this.hayCambios()),
   );
   readonly numeroDocumento = computed(() => this.solicitud()?.numero ?? '');
 
@@ -135,11 +138,14 @@ export class ItemEstrategicoRequestComponent implements OnInit {
   });
 
   // ── Cabecera de la solicitud ──────────────────────────────────────
+  // Una solicitud grabada muestra su fecha de registro; una nueva, la de apertura (`captureOpenDate`).
   readonly camposEntidad = computed<SolicitudeInfoField[]>(() => {
     const usuario = this.currentUser.user();
+    const entidad = this.solicitud()?.entidadCreadora?.nombre ?? usuario.entidadNombre ?? usuario.office;
     return [
-      { label: 'Fecha', value: '' },
-      { label: 'Entidad', value: (usuario.entidadSiglas ?? usuario.office).toUpperCase() },
+      { label: 'Fecha', value: fechaHora(this.solicitud()?.createdAt) },
+      { label: 'Ente rector', value: ENTE_RECTOR.toUpperCase() },
+      { label: 'Entidad', value: entidad.toUpperCase() },
     ];
   });
 
@@ -211,21 +217,13 @@ export class ItemEstrategicoRequestComponent implements OnInit {
     () => this.elegiblesPaginaPanel().some((f) => this.seleccionPanel().includes(f.id)) && !this.paginaPanelCompleta(),
   );
 
-  // ── Modo «Agregar» y tabla Año / Cantidad de necesidades (Figma 2. Registro de solicitud) ──
-  /** Tarjeta «Agregar»: se eligen y quitan ítems; «Aceptar» los confirma y «Cancelar» vuelve a la lista anterior. */
-  readonly modoAgregar = signal(false);
-  private respaldoItems: ItemEstrategico[] = [];
-  /** Casilla de la única fila de la tabla Año / Cantidad: habilita «Editar». */
-  readonly resumenMarcado = signal(false);
-  /** Año de la tabla: el siguiente al actual (en 2026 se ve 2027). */
-  readonly anioResumen = new Date().getFullYear() + 1;
-
   // Grabar solo con cambios: la foto se toma al pulsar Editar; sin foto (documento nuevo) se asume que hay cambios.
   private readonly fotoEdicion = signal<string | null>(null);
   private readonly fotoActual = computed(() => crearSnapshotFormulario({ items: this.items().map((i) => i.codigo) }));
   private readonly hayCambios = computed(() => hayCambiosRespectoAlSnapshot(this.fotoEdicion(), this.fotoActual()));
 
-  readonly formValido = computed(() => !this.soloLectura() && !this.modoAgregar() && this.items().length > 0 && this.hayCambios());
+  readonly formValido = computed(() => !this.soloLectura() && this.items().length > 0 && this.hayCambios());
+
   // ── Historial y trazabilidad (del historial de estados) ───────────
   private readonly fuentesHistorial = computed<HistorialSource[]>(() =>
     (this.solicitud()?.historialEstados ?? []).map((h) => ({
@@ -355,31 +353,10 @@ export class ItemEstrategicoRequestComponent implements OnInit {
   }
 
   // ── Formulario ────────────────────────────────────────────────────
-  /** «+» de la tarjeta de ítems y «Editar» de la tabla: abre «Agregar» guardando la lista para poder cancelar. */
-  abrirAgregar(): void {
-    this.respaldoItems = [...this.items()];
-    this.itemsMarcados.set(new Set());
-    this.busquedaItems.set('');
-    this.paginaItems.set(1);
-    this.resumenMarcado.set(false);
-    this.modoAgregar.set(true);
-  }
-
-  cancelarAgregar(): void {
-    this.items.set([...this.respaldoItems]);
-    this.itemsMarcados.set(new Set());
-    this.modoAgregar.set(false);
-  }
-
-  aceptarAgregar(): void {
-    this.itemsMarcados.set(new Set());
-    this.modoAgregar.set(false);
-  }
   regresar(): void {
     if (this.editando()) {
       // Cancelar la edición vuelve a los datos grabados.
       this.editando.set(false);
-      this.modoAgregar.set(false);
       this.restaurarFormulario(this.solicitud());
       return;
     }
@@ -388,6 +365,7 @@ export class ItemEstrategicoRequestComponent implements OnInit {
 
   editar(): void {
     this.editando.set(true);
+    this.itemsMarcados.set(new Set());
     this.avisoAbierto.set(false);
     this.fotoEdicion.set(this.fotoActual());
   }
@@ -522,8 +500,6 @@ export class ItemEstrategicoRequestComponent implements OnInit {
     this.itemsMarcados.set(new Set());
     this.busquedaItems.set('');
     this.paginaItems.set(1);
-    this.modoAgregar.set(false);
-    this.resumenMarcado.set(false);
   }
 }
 

@@ -110,4 +110,8 @@
       (rowsPerPageChange)="cambiarFilasPorPagina($event)"
     />
   </div>
+
+  <div class="fixed bottom-siaf-lg left-1/2 z-50 w-[min(430px,calc(100vw-32px))] -translate-x-1/2">
+    <siaf-snackbar [open]="!!aviso()" tone="success" [message]="aviso() ?? ''" (closed)="aviso.set(null)" />
+  </div>
 </siaf-page-shell>

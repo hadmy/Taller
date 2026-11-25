@@ -35,8 +35,8 @@ function aFechaPe(iso: string): string {
 /**
  * «+» / Editar de Configuración de fechas de fase del CMN para la entidad (Figma «CMN Programación · Configuración»,
  * nodos 5110:410301 a 5110:410649): elige un año y, por cada una de sus tres fases, configura la fecha de inicio y fin
- * de sus tres etapas (Anexo 1 ATEs/No ATEs, Anexo 1 No ATEs, Anexo 2 consolidación). Si el año ya tenía fechas, las
- * carga para editarlas; si es nuevo, lo crea «En Proceso» al grabar. «Grabar» pide confirmación («¿Grabar?»).
+ * de sus tres etapas (programación, atención por las ATE y consolidación). Si el año ya tenía fechas, las carga para
+ * editarlas; si es nuevo, abre sin fechas y lo crea «En Proceso» al grabar. «Grabar» pide confirmación («¿Grabar?»).
  */
 @Component({
   selector: 'siaf-fecha-fase-cmn-entidad-form',
@@ -106,22 +106,10 @@ export class FechaFaseCmnEntidadFormComponent implements OnInit {
   seleccionarAnio(valor: string): void {
     this.anioSeleccionado.set(valor);
     const existente = this.anios().find((a) => String(a.anio) === valor);
-    if (existente) {
-      this.fase1.set(estructuraClonada(existente.fase1));
-      this.fase2.set(estructuraClonada(existente.fase2));
-      this.fase3.set(estructuraClonada(existente.fase3));
-      return;
-    }
-    // Año nuevo (Figma 5110:410243): propone el borrador del diseño; la Fase 3 queda sin fechas.
-    const fase1 = etapasFaseVacia();
-    fase1.etapa1.inicio = `${valor}-01-01`;
-    fase1.etapa3.fin = `${valor}-04-09`;
-    const fase2 = etapasFaseVacia();
-    fase2.etapa1.inicio = `${valor}-07-01`;
-    fase2.etapa3.fin = `${valor}-09-30`;
-    this.fase1.set(fase1);
-    this.fase2.set(fase2);
-    this.fase3.set(etapasFaseVacia());
+    // Un año nuevo abre sin fechas (Figma A.4-RC-008): se eligen todas.
+    this.fase1.set(existente ? estructuraClonada(existente.fase1) : etapasFaseVacia());
+    this.fase2.set(existente ? estructuraClonada(existente.fase2) : etapasFaseVacia());
+    this.fase3.set(existente ? estructuraClonada(existente.fase3) : etapasFaseVacia());
   }
 
   private faseSignal(fase: FaseForm['key']) {

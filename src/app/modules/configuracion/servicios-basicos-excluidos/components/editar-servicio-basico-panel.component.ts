@@ -12,7 +12,8 @@ import { EntidadServicioBasico, ServicioBasico, codigoServicioBasico } from '../
 /**
  * Panel «Editar servicio básico» de la configuración de servicios básicos excluidos de la ley: se abre con el lápiz de
  * una fila y edita solo las entidades de ese servicio. Muestra el ítem y la tabla CÓDIGO · ENTIDAD con la papelera para
- * quitar cada una; «Agregar entidades» abre la selección de municipalidades que aún no tiene. «Aceptar» (con cambios)
+ * quitar cada una; «Agregar entidades» abre la selección de municipalidades que aún no tiene, con una casilla para
+ * marcar todas (indeterminada con algunas). «Aceptar» (con cambios)
  * emite la lista final; «Cancelar», la X o Escape cierran sin cambios.
  */
 @Component({
@@ -22,7 +23,7 @@ import { EntidadServicioBasico, ServicioBasico, codigoServicioBasico } from '../
   template: `
     <siaf-side-panel
       [open]="!!servicio"
-      title="Editar servicio básico"
+      [title]="'Editar servicio básico'"
       [confirmDisabled]="!huboCambios()"
       (closed)="closed.emit()"
       (confirmed)="confirmed.emit(asignadas())"
@@ -93,16 +94,21 @@ import { EntidadServicioBasico, ServicioBasico, codigoServicioBasico } from '../
 
     <siaf-selection-side-nav
       [open]="agregarAbierto()"
-      title="Agregar entidades"
+      [title]="'Agregar entidades'"
       mode="multiple"
       [rows]="disponiblesFiltradas()"
       [columns]="columnas"
       [searchValue]="busqueda()"
       searchPlaceholder="Buscar entidad"
       [selectedIds]="elegidas()"
+      [showSelectAll]="true"
+      selectAllLabel="Seleccionar todas las entidades"
+      [selectAllChecked]="todasElegidas()"
+      [selectAllIndeterminate]="algunasElegidas()"
       emptyMessage="No se encontraron entidades."
       (searchChange)="busqueda.set($event)"
       (selectionChange)="elegidas.set($event)"
+      (selectAllChange)="elegirVisibles($event)"
       (closed)="agregarAbierto.set(false)"
       (accepted)="agregar($event)"
     />
@@ -162,6 +168,14 @@ export class EditarServicioBasicoPanelComponent {
     return this.disponibles().filter((e) => `${e.codigo} ${e.nombre}`.toLowerCase().includes(texto));
   });
 
+  /** Casilla bajo el buscador: marcada con todas las visibles elegidas; indeterminada con solo algunas. */
+  readonly todasElegidas = computed(() => {
+    const visibles = this.disponiblesFiltradas();
+    const ids = new Set(this.elegidas());
+    return visibles.length > 0 && visibles.every((e) => ids.has(e.id));
+  });
+  readonly algunasElegidas = computed(() => this.elegidas().length > 0 && !this.todasElegidas());
+
   readonly huboCambios = computed(() => {
     const antes = [...this.inicial()].sort().join('|');
     return antes !== [...this.asignadas()].sort().join('|');
@@ -171,6 +185,12 @@ export class EditarServicioBasicoPanelComponent {
     this.elegidas.set([]);
     this.busqueda.set('');
     this.agregarAbierto.set(true);
+  }
+
+  /** Marca o desmarca las entidades visibles; las elegidas que la búsqueda oculta se conservan. */
+  elegirVisibles(marcadas: boolean): void {
+    const visibles = new Set(this.disponiblesFiltradas().map((e) => e.id));
+    this.elegidas.update((ids) => [...ids.filter((id) => !visibles.has(id)), ...(marcadas ? visibles : [])]);
   }
 
   agregar(ids: string[]): void {

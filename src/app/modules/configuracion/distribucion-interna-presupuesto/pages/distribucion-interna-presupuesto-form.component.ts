@@ -15,25 +15,26 @@ import { PaginationComponent } from '../../../../shared/components/pagination/pa
 import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
 import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { DistribucionInternaPresupuestoApiService, PlantillaDistribucion } from '../api/distribucion-interna-presupuesto-api.service';
-import { DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE } from '../config/distribucion-interna-presupuesto.rutas';
+import { AVISO_DISTRIBUCION_GRABADA, DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE } from '../config/distribucion-interna-presupuesto.rutas';
 import {
   DistribucionFilaOu,
   DistribucionGenerica,
   DistribucionInternaPresupuesto,
   PRESUPUESTOS_FASE,
+  partesCodigoOu,
   totalAsignadoFila,
 } from '../models/distribucion-interna-presupuesto.model';
 
 /**
- * «+» de Distribución interna de presupuesto (Figma, nodos 4216:225574 y 4216:224375): elige un año y un
- * presupuesto de fase y, con el área usuaria titular que recibió la APM ya cargada, reparte el techo presupuestal
+ * «+» / Editar de Distribución interna de presupuesto (Figma A.6-RC-007 a RC-020): elige un año y un presupuesto de
+ * fase y, con el área usuaria titular que recibió la APM ya cargada, reparte el techo presupuestal
  * de cada genérica entre las áreas usuarias y ATE. Si el año y la fase ya tenían una distribución configurada, la
  * carga para editarla; si es nueva, arranca en 0 y se crea «En Proceso» al grabar.
  */
 @Component({
   selector: 'siaf-distribucion-interna-presupuesto-form',
   standalone: true,
-  imports: [ConfiguracionTabsComponent, AlertComponent, ButtonComponent, DecimalPipe, FormTableSearchComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TabsComponent, TextFieldComponent],
+  imports: [AlertComponent, ButtonComponent, ConfiguracionTabsComponent, DecimalPipe, FormTableSearchComponent, ModalComponent, PageHeaderComponent, PageShellComponent, PaginationComponent, TabsComponent, TextFieldComponent],
   templateUrl: './distribucion-interna-presupuesto-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -49,6 +50,9 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
 
   readonly cargando = signal(false);
   readonly guardando = signal(false);
+  readonly partesCodigo = partesCodigoOu;
+  /** Etiqueta del presupuesto de fase elegido: al editar se muestra fija. */
+  readonly etiquetaFase = computed(() => PRESUPUESTOS_FASE.find((p) => p.key === this.presupuestoFaseSeleccionado())?.label ?? '');
   readonly anios = signal<DistribucionInternaPresupuesto[]>([]);
   readonly plantilla = signal<PlantillaDistribucion | null>(null);
   readonly anioSeleccionado = signal('');
@@ -126,7 +130,9 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
         this.cargando.set(false);
         if (anioPreseleccionado) {
           this.anioSeleccionado.set(anioPreseleccionado);
-          const existente = anios.find((a) => String(a.anio) === anioPreseleccionado);
+          // Un año puede tener una distribución por fase: se edita la que se marcó en la lista.
+          const fase = this.route.snapshot.queryParamMap.get('fase');
+          const existente = anios.find((a) => String(a.anio) === anioPreseleccionado && (!fase || a.presupuestoFase === fase));
           if (existente) this.seleccionarPresupuestoFase(existente.presupuestoFase);
         }
       },
@@ -151,7 +157,7 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
     this.filas.set(
       this.conSaldoTitular(
         plantilla.filas.map((fila) => {
-          const existenteFila = existente?.filas.find((f) => f.id === fila.id);
+          const existenteFila = existente?.filas.find((f) => f.id === fila.id || f.denominacion === fila.denominacion);
           return { ...fila, montos: existenteFila ? { ...existenteFila.montos } : { ...fila.montos } };
         }),
       ),
@@ -179,6 +185,11 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
 
   totalAsignado(fila: DistribucionFilaOu): number {
     return totalAsignadoFila(fila);
+  }
+
+  /** Monto con dos decimales, como lo muestra el diseño («500000.00»). */
+  montoEditable(fila: DistribucionFilaOu, codigo: string): string {
+    return (fila.montos[codigo] || 0).toFixed(2);
   }
 
   actualizarMonto(filaId: string, codigoGenerica: string, valor: string): void {
@@ -212,7 +223,7 @@ export class DistribucionInternaPresupuestoFormComponent implements OnInit {
         next: () => {
           this.guardando.set(false);
           this.modalGrabarAbierto.set(false);
-          void this.router.navigateByUrl(DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE);
+          void this.router.navigateByUrl(DISTRIBUCION_INTERNA_PRESUPUESTO_ROUTE, { state: { aviso: AVISO_DISTRIBUCION_GRABADA } });
         },
         error: () => this.guardando.set(false),
       });

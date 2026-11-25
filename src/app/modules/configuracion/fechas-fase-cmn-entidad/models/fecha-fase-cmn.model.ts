@@ -31,9 +31,9 @@ export interface FechaFaseCmnEntidad {
 
 /** Etiqueta y anexo de cada una de las tres etapas, iguales en las tres fases (Figma 5110:410301). */
 export const ETAPAS_FASE: { key: keyof EtapasFase; titulo: string; anexo: string }[] = [
-  { key: 'etapa1', titulo: 'Etapa 1', anexo: 'Anexo 1: Registro de necesidades (ATEs / No ATEs)' },
-  { key: 'etapa2', titulo: 'Etapa 2', anexo: 'Anexo 1: Registro de necesidades (No ATEs)' },
-  { key: 'etapa3', titulo: 'Etapa 3', anexo: 'Anexo 2: Consolidación de necesidades de AU' },
+  { key: 'etapa1', titulo: 'Etapa 1', anexo: 'Anexo N° 01: Programación de necesidades' },
+  { key: 'etapa2', titulo: 'Etapa 2', anexo: 'Anexo N° 01: Atención de necesidades por las ATE' },
+  { key: 'etapa3', titulo: 'Etapa 3', anexo: 'Anexo N° 02: Consolidación de necesidades de AU' },
 ];
 
 /** Fechas de las tres etapas de una fase: para calcular el rango resumen de la fase. */

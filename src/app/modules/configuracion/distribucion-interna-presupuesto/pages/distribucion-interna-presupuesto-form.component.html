@@ -2,8 +2,8 @@
   [open]="modalGrabarAbierto()"
   variant="save"
   [showIllustration]="true"
-  title="¿Grabar techo presupuestal?"
-  description="Se grabarán los datos de distribución interna de presupuesto."
+  [title]="editando() ? '¿Grabar Configuración?' : '¿Grabar techo presupuestal?'"
+  [description]="editando() ? 'Los registros se grabarán en este configurador.' : 'Se grabarán los datos de distribución interna de presupuesto.'"
   confirmLabel="Aceptar"
   [confirmDisabled]="guardando()"
   (canceled)="modalGrabarAbierto.set(false)"
@@ -14,75 +14,77 @@
 <siaf-page-shell [breadcrumbs]="breadcrumbs">
   <siaf-page-header pageHeader [title]="titulo" />
 
-  <siaf-configuracion-tabs activa="distribucion-interna" />
+  <!-- Como el diseño: pestañas y tarjeta se desplazan juntas bajo la cabecera. -->
+  <div class="min-h-0 flex-1 overflow-auto">
+    <siaf-configuracion-tabs activa="distribucion-interna" />
 
-  <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg rounded-b-siaf-md bg-surface p-siaf-lg">
-    <header class="flex items-center justify-between">
-      <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-        {{ editando() ? 'Editar distribución interna de presupuesto' : 'Configurar distribución interna del techo presupuestal por genérica' }}
-      </h2>
-      <div class="flex gap-siaf-sm">
-        <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
-        <siaf-button variant="filled" [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="grabar()">
-          Grabar
-        </siaf-button>
-      </div>
-    </header>
-
-    <!--
-      pt-siaf-xs: la etiqueta flotante de siaf-input se dibuja con `top` negativo, por encima del propio campo: sin
-      este margen queda pegada al borde superior del contenedor con scroll y `overflow-y-auto` se la recorta.
-    -->
-    <div class="flex min-h-0 flex-1 flex-col gap-siaf-lg overflow-y-auto pt-siaf-xs">
-      @if (presupuestoFaseSeleccionado() && areaUsuariaTitular()) {
-        <!-- Figma 4683:1179228: datos del área titular en un recuadro, sobre los selectores. -->
-        <div class="flex flex-wrap gap-siaf-lg rounded-siaf-md border border-[var(--sys-color-divider-default)] p-siaf-md">
-          <div class="min-w-[260px] flex-[2]">
-            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-high)]">Área Usuaria titular que recibió el presupuesto</p>
-            <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ areaUsuariaTitular()!.codigo + ' - ' + areaUsuariaTitular()!.denominacion }}</p>
-          </div>
-          <div class="min-w-[180px] flex-1">
-            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-high)]">Entidad / UE</p>
-            <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ entidadUe() }}</p>
-          </div>
-          <div class="min-w-[100px]">
-            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-high)]">Periodo</p>
-            <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ periodo() }}</p>
-          </div>
-          <div class="min-w-[160px]">
-            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-high)]">Genéricas habilitadas</p>
-            <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ genericasHabilitadas() }}</p>
-          </div>
+    <div class="flex flex-col gap-siaf-lg rounded-b-siaf-md bg-surface p-siaf-lg">
+      <header class="flex items-center justify-between">
+        <h2 class="m-0 text-base font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+          {{ editando() ? 'Editar distribución interna de presupuesto' : 'Configurar distribución interna del techo presupuestal por genérica' }}
+        </h2>
+        <div class="flex gap-siaf-sm">
+          <siaf-button variant="outline" (click)="cancelar()">Cancelar</siaf-button>
+          <siaf-button variant="filled" data-grabar [disabled]="!puedeGrabar()" [loading]="guardando()" (click)="grabar()">Grabar</siaf-button>
         </div>
+      </header>
+
+      @if (presupuestoFaseSeleccionado() && areaUsuariaTitular()) {
+        <!-- Datos del área titular en un recuadro (Figma A.6-RC-011). -->
+        <dl class="m-0 grid gap-siaf-lg rounded-siaf-md border border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-lg text-sm text-[var(--sys-color-text-neutral-high)] sm:grid-cols-2 lg:grid-cols-[510fr_320fr_180fr_170fr]">
+          <div>
+            <dt>Área Usuaria titular que recibió el presupuesto</dt>
+            <dd class="m-0 font-bold">{{ areaUsuariaTitular()!.codigo + ' - ' + areaUsuariaTitular()!.denominacion }}</dd>
+          </div>
+          <div>
+            <dt>Entidad / UE</dt>
+            <dd class="m-0 font-bold">{{ entidadUe() }}</dd>
+          </div>
+          <div>
+            <dt>Periodo</dt>
+            <dd class="m-0 font-bold">{{ periodo() }}</dd>
+          </div>
+          <div>
+            <dt>Genéricas habilitadas</dt>
+            <dd class="m-0 font-bold">{{ genericasHabilitadas() }}</dd>
+          </div>
+        </dl>
       }
 
-      <!-- Figma 4683:1179194 / 4683:1179273: «Año» y «Presupuesto de fase» con su leyenda encima, siempre visibles. -->
-      <div class="flex flex-wrap gap-siaf-lg">
-        <div class="max-w-xs flex-1">
-          <p class="m-0 mb-siaf-xs text-xs font-bold uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-high)]">Año</p>
-          <siaf-input
-            [label]="anioSeleccionado() ? 'Año' : ''"
-            [hideLabel]="true"
-            placeholder="Selecciona"
-            type="select"
-            [disabled]="editando()"
-            [options]="opcionesAnio"
-            [value]="anioSeleccionado()"
-            (valueChange)="seleccionarAnio($any($event).toString())"
-          />
+      <!-- «Año» y «Presupuesto de fase» con su leyenda encima, siempre visibles; al editar quedan fijos (A.6-RC-015). -->
+      <div class="grid gap-siaf-lg md:grid-cols-2">
+        <div class="max-w-xs">
+          <p class="m-0 mb-siaf-sm text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Año</p>
+          @if (editando()) {
+            <siaf-input label="Año" [hideLabel]="true" [disabled]="true" [value]="anioSeleccionado()" />
+          } @else {
+            <siaf-input
+              [label]="anioSeleccionado() ? 'Año' : ''"
+              [hideLabel]="true"
+              placeholder="Selecciona"
+              type="select"
+              [options]="opcionesAnio"
+              [value]="anioSeleccionado()"
+              (valueChange)="seleccionarAnio($any($event).toString())"
+            />
+          }
         </div>
-        <div class="max-w-xs flex-1">
-          <p class="m-0 mb-siaf-xs text-xs font-bold uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-high)]">Presupuesto de fase</p>
-          <siaf-input
-            [label]="presupuestoFaseSeleccionado() ? 'Presupuesto de fase' : ''"
-            [hideLabel]="true"
-            placeholder="Selecciona"
-            type="select"
-            [disabled]="editando() || cargando() || !anioSeleccionado()"
-            [options]="opcionesPresupuestoFase"
-            [value]="presupuestoFaseSeleccionado()"
-            (valueChange)="seleccionarPresupuestoFase($any($event).toString())"
-          />
+        <div class="max-w-xs">
+          <p class="m-0 mb-siaf-sm text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Presupuesto de fase</p>
+          @if (editando()) {
+            <siaf-input label="Presupuesto de fase" [hideLabel]="true" [disabled]="true" [value]="etiquetaFase()" />
+          } @else {
+            <siaf-input
+              [label]="presupuestoFaseSeleccionado() ? 'Presupuesto de fase' : ''"
+              [hideLabel]="true"
+              placeholder="Selecciona"
+              type="select"
+              [disabled]="cargando() || !anioSeleccionado()"
+              [options]="opcionesPresupuestoFase"
+              [value]="presupuestoFaseSeleccionado()"
+              (valueChange)="seleccionarPresupuestoFase($any($event).toString())"
+            />
+          }
         </div>
       </div>
 
@@ -90,16 +92,23 @@
         <div class="border-t border-[var(--sys-color-divider-default)]"></div>
       }
 
-      <!-- Figma: pestañas con los tres años siguientes al elegido («-» mientras no hay año). -->
-      <siaf-tabs [tabs]="tabsAnios()" [activeId]="tabAnioActiva()" (activeIdChange)="tabAnioElegida.set($event)" [fullWidth]="true" ariaLabel="Años de la distribución" />
+      <!-- Pestañas con los tres años siguientes al elegido («-» mientras no hay año). -->
+      <siaf-tabs
+        [border]="false"
+        [fullWidth]="true"
+        [tabs]="tabsAnios()"
+        [activeId]="tabAnioActiva()"
+        ariaLabel="Años de la distribución"
+        (activeIdChange)="tabAnioElegida.set($event)"
+      />
 
       @if (presupuestoFaseSeleccionado() && areaUsuariaTitular()) {
-        <div class="flex flex-wrap gap-siaf-md">
+        <div class="grid gap-siaf-xs md:grid-cols-3">
           @for (generica of genericas(); track generica.codigo) {
-            <div class="min-w-[220px] flex-1 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-lowest)] p-siaf-md">
+            <div class="rounded-siaf-md bg-[var(--sys-color-bg-states-light-selected)] p-siaf-md">
               <p class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">Genérica {{ generica.codigo }}</p>
               <p class="m-0 mt-siaf-xs text-xs text-[var(--sys-color-text-neutral-medium)]">Presupuesto recibido</p>
-              <p class="m-0 mt-siaf-xxs text-lg font-bold text-[var(--sys-color-text-neutral-high)]">S/ {{ generica.presupuestoRecibido | number: '1.2-2' }}</p>
+              <p class="m-0 text-base font-bold text-[var(--sys-color-text-neutral-high)]">S/ {{ generica.presupuestoRecibido | number: '1.2-2' }}</p>
             </div>
           }
         </div>
@@ -112,40 +121,51 @@
           <siaf-form-table-search [value]="busqueda()" placeholder="Buscar" ariaLabel="Buscar área usuaria" (valueChange)="buscar($event)" />
         }
 
-        <!-- shrink-0: en la columna con scroll, sin esto la tabla se encoge hasta quedar solo el encabezado. -->
-        <div class="shrink-0 overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
-          <table class="w-full min-w-[720px] border-collapse text-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[1100px] table-fixed border-collapse text-sm">
             <thead>
               <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código OU</th>
+                <th class="w-[210px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código OU</th>
                 <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Denominación</th>
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Rol</th>
+                <th class="w-[105px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Rol</th>
                 @for (generica of genericas(); track generica.codigo) {
-                  <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Genérica {{ generica.codigo }}</th>
+                  <th class="w-[158px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Genérica {{ generica.codigo }}</th>
                 }
-                <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Total asignado</th>
+                <th class="w-[167px] border-b border-l border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Total asignado</th>
               </tr>
             </thead>
             <tbody>
               @for (fila of filasFiltradas(); track fila.id) {
-                <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0">
-                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.codigoOu }}</td>
-                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.denominacion }}</td>
-                  <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ fila.rol }}</td>
+                <tr class="border-b border-[var(--sys-color-divider-default)] text-[var(--sys-color-text-neutral-medium)]" [attr.data-fila]="fila.id">
+                  <td class="break-words px-siaf-md py-siaf-sm">{{ partesCodigo(fila.codigoOu)[0] }}<strong>{{ partesCodigo(fila.codigoOu)[1] }}</strong></td>
+                  <td class="px-siaf-md py-siaf-sm">{{ fila.denominacion }}</td>
+                  <td class="px-siaf-md py-siaf-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ fila.rol }}</td>
                   @for (generica of genericas(); track generica.codigo) {
                     <td class="px-siaf-md py-siaf-sm">
-                      <siaf-input
-                        type="decimal"
-                        placeholder="0.00"
-                        [hideLabel]="true"
-                        [disabled]="fila.esTitular"
-                        [value]="fila.montos[generica.codigo]"
-                        (valueChange)="actualizarMonto(fila.id, generica.codigo, $any($event).toString())"
-                      />
+                      @if (fila.esTitular) {
+                        <!-- El área titular se queda con el saldo de cada genérica: no se edita. -->
+                        <div class="flex h-10 items-center whitespace-nowrap rounded-siaf-md border border-[var(--sys-color-border-states-disabled)] bg-[var(--sys-color-bg-surfaces-disabled)] px-siaf-sm">
+                          S/ {{ fila.montos[generica.codigo] | number: '1.2-2' }}
+                        </div>
+                      } @else {
+                        <siaf-input
+                          type="decimal"
+                          placeholder="0.00"
+                          [label]="'Genérica ' + generica.codigo + ' de ' + fila.denominacion"
+                          [hideLabel]="true"
+                          [autoSuccess]="false"
+                          [value]="montoEditable(fila, generica.codigo)"
+                          (valueChange)="actualizarMonto(fila.id, generica.codigo, $any($event).toString())"
+                        />
+                      }
                     </td>
                   }
-                  <td class="px-siaf-md py-siaf-sm">
-                    <div class="flex h-10 items-center rounded-siaf-md border border-[var(--sys-color-border-states-disabled)] bg-[var(--sys-color-bg-surfaces-disabled)] px-siaf-md text-sm font-bold text-[var(--sys-color-text-neutral-high)]">
+                  <td class="border-l border-[var(--sys-color-divider-default)] px-siaf-md py-siaf-sm">
+                    <div
+                      class="flex h-10 items-center whitespace-nowrap rounded-siaf-md border px-siaf-sm text-xs font-bold"
+                      [class]="fila.esTitular ? 'border-[var(--sys-color-border-states-disabled)] bg-[var(--sys-color-bg-surfaces-disabled)]' : 'border-[var(--sys-color-divider-strong)]'"
+                      data-total
+                    >
                       S/ {{ totalAsignado(fila) | number: '1.2-2' }}
                     </div>
                   </td>

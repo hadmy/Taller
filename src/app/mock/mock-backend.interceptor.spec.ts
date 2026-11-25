@@ -113,7 +113,7 @@ describe('mockBackendInterceptor', () => {
 
     esperar(http.post(`${API}/solicitudes/${id}/items-estrategicos`, { items: ITEMS }, { headers: ana }));
     const elaborada = esperar(http.patch<{ numero: string }>(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
-    expect(elaborada.valor?.numero).toMatch(/^CMN-SIE-00008-\d{4}-MEF-OGA$/);
+    expect(elaborada.valor?.numero).toBe('0008');
 
     // El creador no puede aprobar.
     expect(esperar(http.patch(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'APROBADO' }, { headers: ana })).error?.status).toBe(409);
@@ -172,7 +172,7 @@ describe('mockBackendInterceptor', () => {
     const elegidos = catalogo.slice(14, 16).map(({ codigo, descripcion }) => ({ codigo, descripcion }));
     esperar(http.post(`${API}/solicitudes/${id}/items-estrategicos`, { items: elegidos }, { headers: ana }));
     const elaborada = esperar(http.patch<{ numero: string }>(`${API}/solicitudes/${id}/estado`, { estadoNuevo: 'ELABORADO' }, { headers: ana }));
-    expect(elaborada.valor?.numero).toMatch(/^CMN-SIE-00008-\d{4}-MEF-OGA$/);
+    expect(elaborada.valor?.numero).toBe('0008');
 
     // Cada proceso tiene su bandeja.
     const bandeja = esperar(http.get<SolicitudResponse[]>(`${API}/solicitudes/bandeja-creador?tipos=SIE`, { headers: ana }));

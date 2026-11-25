@@ -543,7 +543,7 @@ const cambiarEstado: Manejador = ({ req, datos, params, sesion }) => {
     // Cada tipo de documento lleva su propia serie.
     if (items) {
       datos.correlativoItemsEstrategicos += 1;
-      s.numero = numeroDocumentoItemsEstrategicos(datos.correlativoItemsEstrategicos, new Date());
+      s.numero = numeroDocumentoItemsEstrategicos(datos.correlativoItemsEstrategicos);
     } else if (anexo2) {
       datos.correlativoAnexo2Fase1 += 1;
       s.numero = numeroDocumentoAnexo2Fase1(datos.correlativoAnexo2Fase1);
@@ -972,7 +972,7 @@ function plantillaBaseDistribucion() {
       },
       {
         id: 'plantilla-ate-1',
-        codigoOu: 'A.04.01.01.05.02.01-01',
+        codigoOu: 'A.03.01.01.05.02.01-01',
         denominacion: 'Unidad de Desarrollo de Sistemas',
         rol: 'ATE' as const,
         esTitular: false,
@@ -1027,7 +1027,8 @@ const guardarDistribucionInternaPresupuesto: Manejador = ({ req, datos }) => {
     entidadUe: contexto.entidadUe,
     periodo: contexto.periodo,
     genericas: contexto.genericas,
-    filas: filas.map((f) => ({ ...f, id: nuevoId(datos, 'dipf') })),
+    // Conservan el id de la plantilla: con él, «Editar» carga los montos grabados.
+    filas,
   };
   datos.distribucionInternaPresupuesto.push(nuevo);
   guardarDatos(datos);

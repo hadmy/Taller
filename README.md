@@ -69,7 +69,7 @@ verificación es `123456`.
 2. **Procesos → Gestión de abastecimiento → Cuadro Multianual de Necesidades → Documentos y Registros → Necesidades estratégicas** (Documentos y registros). La pestaña Documentos es la bandeja; Registros,
    los ítems ya aprobados (con el historial de la solicitud que los incluyó).
 3. **Crear documento → Solicitud de necesidades estratégicas**: elegir los ítems y **Grabar**. La solicitud recibe su
-   número (`CMN-SIE-00008-2026-MEF-OGA`) y queda Elaborada; luego **Verificar**.
+   número (`0008`) y queda Elaborada; luego **Verificar**.
 4. **Cerrar sesión** y entrar como Marta: tiene la notificación «Solicitud por validar». Abrir la solicitud y
    **Validar** (pide comentario de evaluación), **Observar** o **Rechazar**.
 5. Entrar como Luis: tiene la notificación «Solicitud por aprobar». Abrir la solicitud y **Aprobar** (los ítems aparecen

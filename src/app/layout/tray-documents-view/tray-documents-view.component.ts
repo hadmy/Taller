@@ -29,7 +29,7 @@ const DOCUMENTOS_BANDEJA: Record<string, { ruta: string; sistema: string }> = {
 };
 
 /** Tipo de acción como lo muestran las pantallas («creacion» → «Creación»). */
-const ETIQUETAS_TIPO_ACCION: Record<string, string> = { creacion: 'Creación', modificacion: 'Modificación', eliminacion: 'Eliminación' };
+const ETIQUETAS_TIPO_ACCION: Record<string, string> = { creacion: 'Creación', inclusion: 'Creación', modificacion: 'Modificación', eliminacion: 'Eliminación' };
 
 /** Fecha con dos dígitos, como en el Figma: «19/8/2026» → «19/08/2026». */
 const fechaDosDigitos = (fecha: string): string => fecha.split('/').map((parte) => parte.padStart(2, '0')).join('/');

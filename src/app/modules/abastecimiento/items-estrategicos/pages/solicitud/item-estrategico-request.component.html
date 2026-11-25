@@ -1,4 +1,4 @@
-﻿<div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
+<div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
   <!-- La cabecera (migas, título, estado y botones según rol y estado) la pinta el layout de solicitudes. -->
   <siaf-solicitude-page-layout
     [breadcrumbs]="breadcrumbs"
@@ -40,35 +40,32 @@
         <siaf-solicitude-info-card [fields]="camposEntidad()" [captureOpenDate]="true" />
       }
 
-      <!-- ── Necesidades estratégicas (Figma «2. Registro de solicitud»: «+», tarjeta Agregar y tabla Año / Cantidad de necesidades) ── -->
-      @if (modoAgregar()) {
-        <siaf-solicitude-form-card title="Agregar">
-          <div card-actions class="flex gap-siaf-sm">
-            <siaf-button variant="outline" size="md" (click)="cancelarAgregar()">Cancelar</siaf-button>
-            <siaf-button variant="accent" size="md" [disabled]="items().length === 0" (click)="aceptarAgregar()">Aceptar</siaf-button>
-          </div>
-
+      <!-- ── Necesidades estratégicas (Figma A.1-RC-020 y RC-021): tabla Código / Descripción ── -->
+      <siaf-solicitude-form-card title="Necesidades estratégicas">
+        <div class="flex flex-col gap-siaf-md">
           <div class="flex min-h-10 items-center justify-between gap-siaf-md">
-            <h3 class="m-0 text-sm font-bold uppercase text-text">Necesidades estratégicas</h3>
-            <siaf-button variant="accent" size="md" icon="search" [iconOnly]="true" ariaLabel="Seleccionar necesidades estratégicas" (click)="abrirPanelItems()" />
+            <h3 class="m-0 text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Seleccionar necesidades estratégicas</h3>
+            @if (!soloLectura()) {
+              <siaf-button variant="filled" icon="search" [iconOnly]="true" ariaLabel="Seleccionar necesidades estratégicas" data-abrir-panel (click)="abrirPanelItems()" />
+            }
           </div>
 
           @if (items().length === 0) {
-            <message-box text="No se ha seleccionado ninguna necesidad. Haga clic en el botón para realizar una selección." />
+            <message-box text="No se ha seleccionado ningún tipo. Haga clic en el botón para realizar una selección." />
           } @else {
             <siaf-form-table-search
               [value]="busquedaItems()"
               placeholder="Buscar"
               ariaLabel="Buscar necesidades de la solicitud"
-              [showActions]="false"
               (valueChange)="buscarItems($event)"
             />
 
             <siaf-table-controls
+              [showSelection]="!soloLectura()"
               [checked]="paginaItemsCompleta()"
               [indeterminate]="paginaItemsParcial()"
-              [selectedCount]="itemsMarcados().size"
-              [showDeleteAction]="true"
+              [selectedCount]="soloLectura() ? 0 : itemsMarcados().size"
+              [showDeleteAction]="!soloLectura()"
               selectAllLabel="Seleccionar las necesidades de la página"
               deleteLabel="Quitar las necesidades seleccionadas"
               [page]="paginaItems()"
@@ -81,21 +78,24 @@
               (next)="paginaItemsSiguiente()"
             />
 
-            <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
+            <div class="overflow-x-auto">
               <table class="w-full min-w-[640px] border-collapse text-sm">
                 <thead>
                   <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
                     <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Selección</span></th>
-                    <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código</th>
+                    <th class="w-60 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Código</th>
                     <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Descripción</th>
-                    <th class="w-20 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-center">Acción</th>
+                    @if (!soloLectura()) {
+                      <th class="w-20 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm"><span class="sr-only">Acción</span></th>
+                    }
                   </tr>
                 </thead>
                 <tbody>
                   @for (item of itemsPaginados(); track item.codigo) {
                     <tr
-                      class="border-b border-[var(--sys-color-divider-default)] last:border-b-0"
+                      class="h-12 border-b border-[var(--sys-color-divider-default)] text-[var(--sys-color-text-neutral-medium)]"
                       [class.bg-[var(--sys-color-bg-states-light-selected)]]="itemsMarcados().has(item.codigo)"
+                      [attr.data-necesidad]="item.codigo"
                     >
                       <td class="p-siaf-sm text-center">
                         <input
@@ -106,11 +106,13 @@
                           (change)="marcarItem(item.codigo, $any($event.target).checked)"
                         />
                       </td>
-                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.codigo }}</td>
-                      <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ item.descripcion }}</td>
-                      <td class="px-siaf-md py-siaf-xs text-center">
-                        <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" [ariaLabel]="'Quitar la necesidad ' + item.descripcion" (click)="quitarItem(item.codigo)" />
-                      </td>
+                      <td class="px-siaf-md py-siaf-sm">{{ item.codigo }}</td>
+                      <td class="px-siaf-md py-siaf-sm">{{ item.descripcion }}</td>
+                      @if (!soloLectura()) {
+                        <td class="px-siaf-md py-siaf-xs text-center">
+                          <siaf-button variant="text" size="sm" icon="delete" [iconOnly]="true" [ariaLabel]="'Quitar la necesidad ' + item.descripcion" (click)="quitarItem(item.codigo)" />
+                        </td>
+                      }
                     </tr>
                   } @empty {
                     <tr>
@@ -136,74 +138,8 @@
               (rowsPerPageChange)="cambiarFilasItems($event)"
             />
           }
-        </siaf-solicitude-form-card>
-      } @else {
-        <siaf-solicitude-form-card title="Necesidades estratégicas">
-          @if (!soloLectura()) {
-            <siaf-button
-              card-actions
-              variant="accent"
-              size="md"
-              icon="add"
-              [iconOnly]="true"
-              ariaLabel="Agregar necesidades estratégicas"
-              [disabled]="items().length > 0"
-              (click)="abrirAgregar()"
-            />
-          }
-
-          @if (items().length === 0) {
-            <message-box text="Por favor, haga clic en el botón (+) para seleccionar una opción." />
-          } @else {
-            <siaf-table-controls
-              [showSelection]="!soloLectura()"
-              [checked]="resumenMarcado()"
-              [selectedCount]="resumenMarcado() ? 1 : 0"
-              [showEditAction]="!soloLectura()"
-              [editDisabled]="!resumenMarcado()"
-              selectAllLabel="Seleccionar la fila"
-              editLabel="Editar las necesidades del año"
-              [page]="1"
-              [pageSize]="25"
-              [totalItems]="1"
-              [totalPages]="1"
-              (selectionChange)="resumenMarcado.set($event)"
-              (edit)="abrirAgregar()"
-            />
-
-            <div class="overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)]">
-              <table class="w-full min-w-[480px] border-collapse text-sm">
-                <thead>
-                  <tr class="bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
-                    @if (!soloLectura()) {
-                      <th class="w-12 border-b border-[var(--sys-color-divider-strong)] p-siaf-sm"><span class="sr-only">Selección</span></th>
-                    }
-                    <th class="w-56 border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Año</th>
-                    <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm text-left">Cantidad de necesidades</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr class="border-b border-[var(--sys-color-divider-default)] last:border-b-0" [class.bg-[var(--sys-color-bg-states-light-selected)]]="resumenMarcado()">
-                    @if (!soloLectura()) {
-                      <td class="p-siaf-sm text-center">
-                        <input
-                          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
-                          type="checkbox"
-                          [attr.aria-label]="'Seleccionar el año ' + anioResumen"
-                          [checked]="resumenMarcado()"
-                          (change)="resumenMarcado.set($any($event.target).checked)"
-                        />
-                      </td>
-                    }
-                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ anioResumen }}</td>
-                    <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ items().length }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          }
-        </siaf-solicitude-form-card>
-      }
+        </div>
+      </siaf-solicitude-form-card>
 
       <!-- ── Comentarios del aprobador y trazabilidad ── -->
       @if (historial().length > 0 || comentarioActual()) {
@@ -249,10 +185,33 @@
     (accepted)="agregarSeleccionados($event)"
   />
 
+  <siaf-modal
+    [open]="modalGrabar()"
+    variant="save"
+    [showIllustration]="true"
+    title="¿Grabar documento?"
+    [description]="elaborado() ? 'Los registros se grabarán en esta solicitud.' : 'Al confirmar, se asignará un número a la solicitud y su estado cambiará a Elaborado.'"
+    confirmLabel="Aceptar"
+    [confirmDisabled]="saving()"
+    (canceled)="modalGrabar.set(false)"
+    (closed)="modalGrabar.set(false)"
+    (confirmed)="onConfirmarGrabar()"
+  />
+
+  <siaf-modal
+    [open]="modalVerificar()"
+    variant="verify"
+    [showIllustration]="true"
+    title="¿Verificar documento?"
+    description="El documento será verificado."
+    confirmLabel="Aceptar"
+    [confirmDisabled]="saving()"
+    (canceled)="modalVerificar.set(false)"
+    (closed)="modalVerificar.set(false)"
+    (confirmed)="onConfirmarVerificar()"
+  />
 
   <siaf-request-approval-modals
-    [saveOpen]="modalGrabar()"
-    [verifyOpen]="modalVerificar()"
     [deleteOpen]="modalEliminar()"
     [validateOpen]="modalValidar()"
     [approveOpen]="modalAprobar()"
@@ -266,15 +225,11 @@
     [snackbarOpen]="avisoAbierto()"
     requestType="creación"
     [requestNumber]="numeroDocumento()"
-    (saveConfirmed)="onConfirmarGrabar()"
-    (verifyConfirmed)="onConfirmarVerificar()"
     (deleteConfirmed)="onConfirmarEliminar()"
     (validateConfirmed)="onConfirmarValidar()"
     (approveConfirmed)="onConfirmarAprobar()"
     (observeConfirmed)="onConfirmarObservar()"
     (rejectConfirmed)="onConfirmarRechazar()"
-    (saveClosed)="modalGrabar.set(false)"
-    (verifyClosed)="modalVerificar.set(false)"
     (deleteClosed)="modalEliminar.set(false)"
     (approvalClosed)="cerrarModalesAprobador()"
     (reasonChange)="comentario.set($event)"

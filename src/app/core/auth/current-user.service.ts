@@ -9,6 +9,8 @@ export type CurrentUser = {
   // ── Identificadores ricos (modelo refactor v2) ──
   /** Id (uuid) de la entidad/pliego — para acotar consultas por ámbito propio. */
   entidadId?: string | null;
+  /** Nombre completo de la entidad (ej. «Ministerio de Educación»). */
+  entidadNombre?: string | null;
   /** Sigla corta de la entidad (ej. MEF, GR-LIM). */
   entidadSiglas?: string | null;
   /** Código MEF de la entidad (ej. 0001). */

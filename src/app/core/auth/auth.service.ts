@@ -179,6 +179,7 @@ export class AuthService {
       name: p.rol,
       office: buildOfficeLabel(p),
       entidadId: p.entidadId ?? null,
+      entidadNombre: p.entidad ?? null,
       entidadSiglas: p.entidadSiglas ?? null,
       entidadCodigo: p.entidadCodigo ?? null,
       ue: p.ue ?? null,

@@ -1,8 +1,8 @@
-/** Catálogo fijo de presupuestos de fase que puede distribuirse (Figma, nodo 4216:225574). */
+/** Presupuestos de fase que se pueden distribuir (Figma A.6-RC-010). */
 export const PRESUPUESTOS_FASE: { key: string; label: string }[] = [
   { key: 'fase1', label: 'Fase 1: APM año anterior' },
-  { key: 'fase2', label: 'Fase 2: Techo presupuestal preliminar' },
-  { key: 'fase3', label: 'Fase 3: Techo presupuestal final' },
+  { key: 'fase2', label: 'Fase 2: APM actual' },
+  { key: 'fase3', label: 'Fase 3: PIA' },
 ];
 
 /** Presupuesto recibido de una genérica de gasto, sobre el que se reparte el monto asignado por área usuaria. */
@@ -33,6 +33,12 @@ export interface DistribucionInternaPresupuesto {
   periodo: number;
   genericas: DistribucionGenerica[];
   filas: DistribucionFilaOu[];
+}
+
+/** Código de la OU en dos partes: la última va en negrita en la grilla («A.03.01.01.» + «05-01»). */
+export function partesCodigoOu(codigo: string): [string, string] {
+  const corte = codigo.lastIndexOf('.') + 1;
+  return [codigo.slice(0, corte), codigo.slice(corte)];
 }
 
 /** Suma de los montos asignados de una fila en sus genéricas: el «Total asignado» de la grilla. */

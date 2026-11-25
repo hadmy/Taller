@@ -150,6 +150,7 @@ export type SelectionMode = 'single' | 'multiple';
                   [showEditAction]="false"
                   [showDeleteAction]="false"
                   [showMenuAction]="false"
+                  [showTopPagination]="paginated"
                   [page]="page"
                   [pageSize]="pageSize"
                   [totalItems]="totalItems"

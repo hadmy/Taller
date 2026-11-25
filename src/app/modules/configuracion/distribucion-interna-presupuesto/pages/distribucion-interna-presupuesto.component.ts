@@ -1,18 +1,19 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
-import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { RecordStatusTagComponent } from '../../../../shared/ui/record-status-tag/record-status-tag.component';
+import { SnackbarComponent } from '../../../../shared/ui/snackbar/snackbar.component';
 import { StatusTagComponent } from '../../../../shared/ui/status-tag/status-tag.component';
 import { TooltipDirective } from '../../../../shared/ui/tooltip/tooltip.directive';
 import { FormTableSearchComponent } from '../../../../shared/components/form-table-search/form-table-search.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../shared/components/page-shell/page-shell.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
+import { CONFIGURACION_BREADCRUMBS, TITULO_CONFIGURACION } from '../../shared/configuracion.const';
+import { ConfiguracionTabsComponent } from '../../shared/configuracion-tabs.component';
 import { DistribucionInternaPresupuestoApiService } from '../api/distribucion-interna-presupuesto-api.service';
 import { DISTRIBUCION_INTERNA_PRESUPUESTO_FORM_ROUTE } from '../config/distribucion-interna-presupuesto.rutas';
 import { DistribucionInternaPresupuesto } from '../models/distribucion-interna-presupuesto.model';
@@ -25,14 +26,16 @@ import { DistribucionInternaPresupuesto } from '../models/distribucion-interna-p
 @Component({
   selector: 'siaf-distribucion-interna-presupuesto',
   standalone: true,
-  imports: [ConfiguracionTabsComponent, 
+  imports: [
     ButtonComponent,
+    ConfiguracionTabsComponent,
     FormTableSearchComponent,
     ModalComponent,
     PageHeaderComponent,
     PageShellComponent,
     PaginationComponent,
     RecordStatusTagComponent,
+    SnackbarComponent,
     StatusTagComponent,
     TooltipDirective,
   ],
@@ -52,6 +55,7 @@ export class DistribucionInternaPresupuestoComponent implements OnInit {
   readonly anios = signal<DistribucionInternaPresupuesto[]>([]);
   readonly seleccionados = signal<Set<string>>(new Set());
   readonly modalEliminarAbierto = signal(false);
+  readonly aviso = signal<string | null>(null);
 
   readonly page = signal(1);
   readonly rowsPerPage = signal(25);
@@ -99,6 +103,8 @@ export class DistribucionInternaPresupuestoComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // Al volver de grabar, el aviso de éxito llega en el estado de la navegación.
+    this.aviso.set((history.state as { aviso?: string } | null)?.aviso ?? null);
     this.cargar();
   }
 
@@ -158,7 +164,7 @@ export class DistribucionInternaPresupuestoComponent implements OnInit {
   editarSeleccionado(): void {
     const anio = this.anioParaEditar();
     if (!anio) return;
-    void this.router.navigate([DISTRIBUCION_INTERNA_PRESUPUESTO_FORM_ROUTE], { queryParams: { anio: anio.anio } });
+    void this.router.navigate([DISTRIBUCION_INTERNA_PRESUPUESTO_FORM_ROUTE], { queryParams: { anio: anio.anio, fase: anio.presupuestoFase } });
   }
 
   abrirModalEliminar(): void {

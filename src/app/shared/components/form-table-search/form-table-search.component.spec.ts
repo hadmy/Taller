@@ -22,6 +22,12 @@ describe('FormTableSearchComponent', () => {
     component.valueChange.subscribe(v => (emitted = v));
   });
 
+  /** OnPush: los suscriptores de la prueba llegan después del primer pintado. */
+  function repintar(): void {
+    fixture.componentRef.setInput('placeholder', 'Buscar ');
+    fixture.detectChanges();
+  }
+
   function input(): HTMLInputElement {
     return fixture.debugElement.query(By.css('input')).nativeElement as HTMLInputElement;
   }
@@ -63,6 +69,7 @@ describe('FormTableSearchComponent', () => {
   it('los botones de filtro y más opciones siguen emitiendo aparte', () => {
     let filtro = false;
     component.filter.subscribe(() => (filtro = true));
+    repintar();
 
     const btn = fixture.debugElement.query(By.css('button[aria-label="Filtrar"]')).nativeElement as HTMLButtonElement;
     btn.click();
@@ -71,11 +78,23 @@ describe('FormTableSearchComponent', () => {
     expect(emitted).toBeUndefined();
   });
 
+  it('sin quien escuche filter, more ni columns no pinta sus botones', () => {
+    const nombres = (): (string | null)[] => Array.from<Element>(fixture.nativeElement.querySelectorAll('button[aria-label]')).map((b) => b.getAttribute('aria-label'));
+    expect(nombres()).toEqual(['Buscar']);
+    component.filter.subscribe();
+    repintar();
+    expect(nombres()).toEqual(['Buscar', 'Filtrar']);
+    fixture.componentRef.setInput('showActions', false);
+    fixture.detectChanges();
+    expect(nombres()).toEqual(['Buscar']);
+  });
+
   const iconoDe = (boton: HTMLElement): string => boton.querySelector('siaf-icon')?.textContent?.trim() ?? '';
 
   it('por defecto el segundo botón es Más opciones (more_vert) y emite more', () => {
     let mas = false;
     component.more.subscribe(() => (mas = true));
+    repintar();
     const segundo = fixture.nativeElement.querySelector('button[data-accion]') as HTMLButtonElement;
 
     expect(segundo.getAttribute('aria-label')).toBe('Mas opciones');
@@ -87,6 +106,7 @@ describe('FormTableSearchComponent', () => {
   it('variant="reports" (Consultas y reportes): Filtrar y Columnas, que emite columns y no more', () => {
     let columnas = false;
     let mas = false;
+    component.filter.subscribe();
     component.columns.subscribe(() => (columnas = true));
     component.more.subscribe(() => (mas = true));
     fixture.componentRef.setInput('variant', 'reports');

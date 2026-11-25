@@ -4,9 +4,9 @@ import { IconComponent } from '../../ui/icon/icon.component';
 import { TextFieldComponent } from '../../ui/text-field/text-field.component';
 
 /**
- * Buscador de tabla: un `siaf-input` con lupa a todo el ancho y, a la derecha, dos botones de ícono: Filtrar y Más
- * opciones, que emiten `filter` y `more`. Con `[showActions]="false"` se ocultan los dos botones (Configuración de
- * áreas usuarias).
+ * Buscador de tabla: un `siaf-input` con lupa a todo el ancho y, a la derecha, los botones de ícono Filtrar y Más
+ * opciones, que emiten `filter` y `more`. Cada botón aparece solo si la pantalla escucha su evento; con
+ * `[showActions]="false"` se ocultan aunque lo escuche.
  *
  * Con `variant="reports"` es el buscador de Consultas y reportes (Figma «Guía de Estructura de Pantallas», nodo
  * 22402:16457 «Search for table»): el segundo botón pasa a ser Columnas (`view_column`), que emite `columns`.
@@ -30,8 +30,8 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
  * @evitar
  * - En las pestañas Documentos / Registros y en la Bandeja de Documentos, con menús a la derecha:
  *   `siaf-records-search-toolbar`, que los proyecta.
- * - Esperar que los botones hagan algo por sí solos: emiten `filter`, `more` y `columns`, y si la pantalla no los escucha
- *   se pintan y no hacen nada (hoy ninguna consulta escucha Filtrar ni Columnas).
+ * - Esperar que los botones hagan algo por sí solos: emiten `filter`, `more` y `columns`, y sin quien los escuche no se
+ *   pintan.
  * - Para filtrar por opciones cerradas o por condiciones: `siaf-filter-pill` o `siaf-custom-filter` junto al buscador.
  * @teclado
  * - **Tab**: recorre el campo, la lupa, Filtrar y Más opciones (o Columnas); con `disabled` quedan todos fuera.
@@ -72,8 +72,9 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
         (trailingAction)="onLupa()"
       />
 
-      @if (showActions) {
+      @if (showActions && (filter.observed || conSegundo)) {
       <div class="flex shrink-0 items-start gap-siaf-xs">
+        @if (filter.observed) {
         <button
           class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
           type="button"
@@ -83,7 +84,9 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
         >
           <siaf-icon name="filter_list" [size]="24" />
         </button>
+        }
         <!-- Segundo botón según la variante: Más opciones o, en Consultas y reportes, Columnas. -->
+        @if (conSegundo) {
         <button
           class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
           type="button"
@@ -94,6 +97,7 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
         >
           <siaf-icon [name]="variant === 'reports' ? 'view_column' : 'more_vert'" [size]="24" />
         </button>
+        }
       </div>
       }
     </div>
@@ -120,7 +124,7 @@ export class FormTableSearchComponent implements OnChanges {
   /** Nombre accesible del botón Columnas de la variante `reports`. */
   @Input() columnsLabel = 'Ocultar o mostrar columnas';
   @Input() disabled = false;
-  /** Con `false` el buscador queda solo: sin los botones Filtrar y Más opciones (o Columnas). */
+  /** Con `false` el buscador queda solo, aunque la pantalla escuche Filtrar, Más opciones o Columnas. */
   @Input() showActions = true;
 
   @Output() valueChange = new EventEmitter<string>();
@@ -130,6 +134,11 @@ export class FormTableSearchComponent implements OnChanges {
   @Output() more = new EventEmitter<void>();
   /** Botón Columnas de la variante `reports`. */
   @Output() columns = new EventEmitter<void>();
+
+  /** La pantalla escucha el segundo botón de la variante. */
+  get conSegundo(): boolean {
+    return this.variant === 'reports' ? this.columns.observed : this.more.observed;
+  }
 
   /** Último texto tecleado; se emite recién al confirmar (Enter o lupa). */
   private lastTyped: string | null = null;

@@ -1,4 +1,7 @@
-﻿import type { FavoritoReporte } from '../modules/consultas/favoritos/favorito-reporte.model';
+﻿import type { AlertaCmn } from '../modules/configuracion/alertas/models/alerta-cmn.model';
+import type { AmpliacionPlazo } from '../modules/configuracion/ampliacion-plazo/models/ampliacion-plazo.model';
+import type { ParametrosCmn } from '../modules/configuracion/parametros-cmn/models/parametros-cmn.model';
+import type { FavoritoReporte } from '../modules/consultas/favoritos/favorito-reporte.model';
 import type { NotificacionResponse } from '../core/api/notificaciones-api.service';
 import type { HistorialItem, SolicitudResponse } from '../core/api/solicitudes-api.service';
 import type { EstadoDocumento } from '../core/models/documento.model';
@@ -50,6 +53,10 @@ export interface DatosTaller {
   preciosDiferenciados: PrecioDiferenciado[];
   serviciosBasicosExcluidos: ServicioBasico[];
   notificaciones: NotificacionMock[];
+  /** Alertas, ampliaciones de plazo y parámetros generales del CMN. Opcionales: los datos guardados antes no los traen. */
+  alertasCmn?: AlertaCmn[];
+  ampliacionesPlazo?: (AmpliacionPlazo & { usuarioId: string })[];
+  parametrosCmn?: ParametrosCmn;
   /** Favoritos de los reportes, por usuario. Opcional: los datos guardados antes no lo traen. */
   favoritosReporte?: (FavoritoReporte & { usuarioId: string; reporte: string })[];
   /** Correlativo propio de las Solicitudes de Necesidades Estratégicas (su número tiene otra serie). */

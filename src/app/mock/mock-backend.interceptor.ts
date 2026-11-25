@@ -51,9 +51,14 @@ import {
   vigenteDeFase,
 } from './anexo-2-registros';
 import { filtrarFilasDashboard } from './dashboard-cmn';
+import { alertasIniciales, ampliacionesIniciales, parametrosIniciales } from './configuracion-cmn';
 import { seguimientoEntidad } from './seguimiento-entidad-cmn';
 import { seguimientoNacional } from './seguimiento-nacional-cmn';
 import type { FavoritoReporte } from '../modules/consultas/favoritos/favorito-reporte.model';
+import { AlertaCmn, DatosAlerta, camposFaltantes, esUnSoloDia } from '../modules/configuracion/alertas/models/alerta-cmn.model';
+import { MAXIMO_MOTIVO, errorFechaAmpliacion } from '../modules/configuracion/ampliacion-plazo/models/ampliacion-plazo.model';
+import { MAXIMO_ADICIONALES, MAXIMO_PREDEFINIDOS, type ParametrosCmn } from '../modules/configuracion/parametros-cmn/models/parametros-cmn.model';
+import { etapaCmn, hoyIso } from '../modules/configuracion/shared/etapas-cmn';
 import { CONTRASENA_DEMO, USUARIOS_DEMO, UsuarioDemo, buscarUsuarioPorPerfil } from './usuarios-demo';
 
 /**
@@ -892,6 +897,98 @@ const eliminarFechaFaseCmnDplaip: Manejador = ({ datos, params }) => {
   return ok(null, 204);
 };
 
+// ─── Configuración: alertas, ampliaciones de plazo y parámetros generales ───
+
+const listarAlertas: Manejador = ({ datos }) => ok((datos.alertasCmn ??= alertasIniciales()));
+
+const guardarAlerta: Manejador = ({ req, datos }) => {
+  const { id, ...cuerpo } = req.body as DatosAlerta & { id: string | null };
+  if (camposFaltantes(cuerpo).length || !etapaCmn(cuerpo.etapaId)) return error(400, 'Complete los campos obligatorios.');
+  const campos: DatosAlerta = esUnSoloDia(cuerpo.momento) ? { ...cuerpo, tiempo: '', unidad: '', frecuencia: '' } : cuerpo;
+  const alertas = (datos.alertasCmn ??= alertasIniciales());
+  const existente = alertas.find((a) => a.id === id);
+  if (id && !existente) return error(404, 'La alerta no existe.');
+  const alerta: AlertaCmn = existente
+    ? Object.assign(existente, campos)
+    : { ...campos, id: nuevoId(datos, 'alerta'), fechaRegistro: hoyIso(), motivo: `Alerta nueva: ${campos.nombre.trim()}`, estado: 'Activo' };
+  if (!existente) alertas.unshift(alerta);
+  guardarDatos(datos);
+  return ok(alerta, existente ? 200 : 201);
+};
+
+const inactivarAlerta: Manejador = ({ datos, params }) => {
+  const alerta = (datos.alertasCmn ??= alertasIniciales()).find((a) => a.id === params[0]);
+  if (!alerta) return error(404, 'La alerta no existe.');
+  alerta.estado = 'Inactivo';
+  guardarDatos(datos);
+  return ok(alerta);
+};
+
+const eliminarAlerta: Manejador = ({ datos, params }) => {
+  datos.alertasCmn = (datos.alertasCmn ?? alertasIniciales()).filter((a) => a.id !== params[0]);
+  guardarDatos(datos);
+  return ok(null, 204);
+};
+
+/** El creador (en el taller, el Área usuaria) ve las suyas; quien evalúa (Abastecimiento), todas. */
+const listarAmpliaciones: Manejador = ({ datos, sesion }) => {
+  const todas = (datos.ampliacionesPlazo ??= ampliacionesIniciales());
+  return ok(sesion?.perfil.rolCodigo === 'CREADOR' ? todas.filter((a) => a.usuarioId === sesion.usuario.id) : todas);
+};
+
+const registrarAmpliacion: Manejador = ({ req, datos, sesion }) => {
+  const { etapaId, motivo } = req.body as { etapaId: string; motivo: string };
+  const etapa = etapaCmn(etapaId);
+  if (!sesion || sesion.perfil.rolCodigo !== 'CREADOR') return error(403, 'Solo el Área usuaria registra solicitudes.');
+  if (!etapa || !motivo?.trim() || motivo.length > MAXIMO_MOTIVO) return error(400, 'Ingrese el motivo de la ampliación.');
+  const nueva = {
+    id: nuevoId(datos, 'ampliacion'),
+    usuarioId: sesion.usuario.id,
+    areaUsuaria: sesion.perfil.unidad ?? '',
+    etapa: etapa.nombre,
+    fechaFinEtapa: etapa.fin,
+    fechaRegistro: hoyIso(),
+    fechaAmpliacion: '',
+    motivo: motivo.trim(),
+    motivoRechazo: '',
+    situacion: 'Pendiente' as const,
+  };
+  (datos.ampliacionesPlazo ??= ampliacionesIniciales()).push(nueva);
+  guardarDatos(datos);
+  return ok(nueva, 201);
+};
+
+/** Acepta (con la fecha de ampliación) o rechaza (con el motivo) una solicitud pendiente. */
+const evaluarAmpliacion: Manejador = ({ req, datos, sesion, params }) => {
+  const ampliacion = (datos.ampliacionesPlazo ??= ampliacionesIniciales()).find((a) => a.id === params[0]);
+  if (!ampliacion) return error(404, 'La solicitud no existe.');
+  if (sesion?.perfil.rolCodigo === 'CREADOR') return error(403, 'Solo Abastecimiento evalúa las solicitudes.');
+  if (ampliacion.situacion !== 'Pendiente') return error(409, 'La solicitud ya fue evaluada.');
+  const { fechaAmpliacion = '', motivoRechazo = '' } = req.body as { fechaAmpliacion?: string; motivoRechazo?: string };
+  if (params[1] === 'aceptar') {
+    const problema = errorFechaAmpliacion(fechaAmpliacion, ampliacion);
+    if (problema) return error(400, problema);
+    Object.assign(ampliacion, { fechaAmpliacion, situacion: 'Aceptado' });
+  } else {
+    if (!motivoRechazo.trim()) return error(400, 'Ingrese el motivo del rechazo.');
+    Object.assign(ampliacion, { motivoRechazo: motivoRechazo.trim().slice(0, MAXIMO_MOTIVO), situacion: 'Rechazado' });
+  }
+  guardarDatos(datos);
+  return ok(ampliacion);
+};
+
+const obtenerParametrosCmn: Manejador = ({ datos }) => ok((datos.parametrosCmn ??= parametrosIniciales()));
+
+const guardarParametrosCmn: Manejador = ({ req, datos }) => {
+  const nuevos: ParametrosCmn = { ...(datos.parametrosCmn ?? parametrosIniciales()), ...(req.body as Partial<ParametrosCmn>) };
+  const enRango = (n: number, hasta: number): boolean => Number.isInteger(n) && n >= 1 && n <= hasta;
+  if (nuevos.aniosPredefinidos !== null && !enRango(nuevos.aniosPredefinidos, MAXIMO_PREDEFINIDOS)) return error(400, 'Los años predefinidos van de 1 a 5.');
+  if (!enRango(nuevos.maximoAdicionales, MAXIMO_ADICIONALES)) return error(400, 'El máximo de años adicionales va de 1 a 20.');
+  datos.parametrosCmn = nuevos;
+  guardarDatos(datos);
+  return ok(nuevos);
+};
+
 // ─── Configuración: distribución interna de presupuesto ────────────
 
 const listarDistribucionInternaPresupuesto: Manejador = ({ datos }) =>
@@ -1220,6 +1317,15 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['DELETE', /^\/configuracion\/fechas-fase-cmn-entidad\/([^/]+)$/, eliminarFechaFaseCmnEntidad],
   ['GET', /^\/configuracion\/fechas-fase-cmn-dplaip$/, listarFechasFaseCmnDplaip],
   ['PUT', /^\/configuracion\/fechas-fase-cmn-dplaip$/, guardarFechaFaseCmnDplaip],
+  ['GET', /^\/configuracion\/alertas$/, listarAlertas],
+  ['POST', /^\/configuracion\/alertas$/, guardarAlerta],
+  ['POST', /^\/configuracion\/alertas\/([^/]+)\/inactivar$/, inactivarAlerta],
+  ['DELETE', /^\/configuracion\/alertas\/([^/]+)$/, eliminarAlerta],
+  ['GET', /^\/configuracion\/ampliaciones-plazo$/, listarAmpliaciones],
+  ['POST', /^\/configuracion\/ampliaciones-plazo$/, registrarAmpliacion],
+  ['POST', /^\/configuracion\/ampliaciones-plazo\/([^/]+)\/(aceptar|rechazar)$/, evaluarAmpliacion],
+  ['GET', /^\/configuracion\/parametros-cmn$/, obtenerParametrosCmn],
+  ['PUT', /^\/configuracion\/parametros-cmn$/, guardarParametrosCmn],
   ['DELETE', /^\/configuracion\/fechas-fase-cmn-dplaip\/([^/]+)$/, eliminarFechaFaseCmnDplaip],
   ['GET', /^\/configuracion\/distribucion-interna-presupuesto\/plantilla$/, plantillaDistribucionInternaPresupuesto],
   ['GET', /^\/configuracion\/distribucion-interna-presupuesto$/, listarDistribucionInternaPresupuesto],

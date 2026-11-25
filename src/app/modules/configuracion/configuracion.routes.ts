@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { ALERTAS_FORM_ROUTE, ALERTAS_ROUTE } from './alertas/config/alertas.rutas';
+import { AMPLIACION_PLAZO_FORM_ROUTE, AMPLIACION_PLAZO_ROUTE } from './ampliacion-plazo/config/ampliacion-plazo.rutas';
 import { AREAS_USUARIAS_ROUTE } from './areas-usuarias/config/areas-usuarias.rutas';
 import {
   DISTRIBUCION_INTERNA_PRESUPUESTO_FORM_ROUTE,
@@ -8,6 +10,7 @@ import {
 import { FECHAS_FASE_CMN_DPLAIP_FORM_ROUTE, FECHAS_FASE_CMN_DPLAIP_ROUTE } from './fechas-fase-cmn-dplaip/config/fechas-fase-cmn-dplaip.rutas';
 import { FECHAS_FASE_CMN_ENTIDAD_FORM_ROUTE, FECHAS_FASE_CMN_ENTIDAD_LISTA_ROUTE, FECHAS_FASE_CMN_ENTIDAD_ROUTE } from './fechas-fase-cmn-entidad/config/fechas-fase-cmn-entidad.rutas';
 import { SERVICIOS_BASICOS_EXCLUIDOS_ROUTE } from './servicios-basicos-excluidos/config/servicios-basicos-excluidos.rutas';
+import { PARAMETROS_DPLAIP_ROUTE, PARAMETROS_ENTIDAD_ROUTE } from './parametros-cmn/config/parametros-cmn.rutas';
 import { PRECIOS_DIFERENCIADOS_ROUTE } from './precios-diferenciados/config/precios-diferenciados.rutas';
 
 /** Módulo de pantallas de configuración transversales (no siguen el ciclo de una solicitud). */
@@ -94,5 +97,29 @@ export const CONFIGURACION_ROUTES: Routes = [
       import('./precios-diferenciados/pages/precio-diferenciado-editar.component').then(
         (m) => m.PrecioDiferenciadoEditarComponent,
       ),
+  },
+  {
+    path: ALERTAS_ROUTE.slice(1),
+    loadComponent: () => import('./alertas/pages/alertas.component').then((m) => m.AlertasComponent),
+  },
+  {
+    path: ALERTAS_FORM_ROUTE.slice(1),
+    loadComponent: () => import('./alertas/pages/alerta-form.component').then((m) => m.AlertaFormComponent),
+  },
+  {
+    path: AMPLIACION_PLAZO_ROUTE.slice(1),
+    loadComponent: () => import('./ampliacion-plazo/pages/ampliacion-plazo.component').then((m) => m.AmpliacionPlazoComponent),
+  },
+  {
+    path: AMPLIACION_PLAZO_FORM_ROUTE.slice(1),
+    loadComponent: () => import('./ampliacion-plazo/pages/ampliacion-plazo-form.component').then((m) => m.AmpliacionPlazoFormComponent),
+  },
+  {
+    path: PARAMETROS_DPLAIP_ROUTE.slice(1),
+    loadComponent: () => import('./parametros-cmn/pages/parametros-dplaip.component').then((m) => m.ParametrosDplaipComponent),
+  },
+  {
+    path: PARAMETROS_ENTIDAD_ROUTE.slice(1),
+    loadComponent: () => import('./parametros-cmn/pages/parametros-entidad.component').then((m) => m.ParametrosEntidadComponent),
   },
 ];

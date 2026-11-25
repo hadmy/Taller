@@ -13,7 +13,6 @@ import {
   GuardarModificacionRequest,
   ModificacionAnexo2,
   RegistroAnexo2,
-  SolicitudEscritorioCmn,
   VigenteAnexo2,
 } from '../models/anexo-2-fase-1.model';
 
@@ -49,11 +48,6 @@ export class Anexo2Fase1ApiService {
   /** Guarda (o reemplaza) los cambios de una solicitud de Modificación. */
   guardarModificacion(solicitudId: string, cambios: GuardarModificacionRequest): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.base}/solicitudes/${solicitudId}/anexo-2-fase-1/modificacion`, cambios);
-  }
-
-  /** «Bandeja de solicitudes» del escritorio de CMN Programación: las solicitudes del Anexo N.º 02 de la entidad. */
-  listarEscritorio(): Observable<SolicitudEscritorioCmn[]> {
-    return this.http.get<SolicitudEscritorioCmn[]>(`${this.base}/cmn/anexo-2/escritorio`);
   }
 
   /** Guarda (o reemplaza) las áreas usuarias incluidas en la solicitud, con la fase del CMN de la solicitud. */

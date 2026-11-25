@@ -17,7 +17,6 @@ import {
   faseCmn,
   nombreDocumentoFase,
   type GuardarModificacionRequest,
-  type SolicitudEscritorioCmn,
   type VigenteAnexo2,
 } from '../modules/abastecimiento/anexo-2-fase-1/models/anexo-2-fase-1.model';
 import { armarConsolidado } from '../modules/abastecimiento/anexo-2-fase-1/utils/consolidado-anexo-2.util';
@@ -656,43 +655,6 @@ const guardarModificacion: Manejador = ({ req, datos, params, sesion }) => {
   return ok({ message: 'Modificación guardada' });
 };
 
-/**
- * «Bandeja de solicitudes» del escritorio de CMN Programación: las Solicitudes de CMN - Anexo N.º 02 de la entidad de la
- * sesión (sin las eliminadas), las más recientes primero, con su fase, sus áreas y necesidades y quién la tiene ahora:
- * el creador mientras está nueva, elaborada u observada; el evaluador de la entidad si está verificada; el aprobador si
- * está validada; nadie cuando ya fue aprobada o rechazada.
- */
-const escritorioCmn: Manejador = ({ datos, sesion }) => {
-  const rolResponsable: Partial<Record<string, 'EVALUADOR' | 'APROBADOR'>> = { VERIFICADO: 'EVALUADOR', VALIDADO: 'APROBADOR' };
-  const nombreDe = (u: Pick<UsuarioDemo, 'nombres' | 'apellidoPaterno'>) => `${u.nombres} ${u.apellidoPaterno}`.trim();
-  const filas: SolicitudEscritorioCmn[] = datos.solicitudes
-    .filter((s) => esAnexo2Fase1(s) && s.estado !== 'ELIMINADO' && (!sesion || s.entidadCreadora?.id === sesion.perfil.entidadId))
-    .map((s) => {
-      const areas = s.detalleAnexo2Fase1?.areas ?? [];
-      let responsable: SolicitudEscritorioCmn['responsable'] = null;
-      if (['NUEVO', 'ELABORADO', 'OBSERVADO'].includes(s.estado)) {
-        responsable = { nombre: s.creador ? `${s.creador.nombres} ${s.creador.apellidoPaterno}`.trim() : '—', rol: 'Creador' };
-      } else if (rolResponsable[s.estado]) {
-        const rol = rolResponsable[s.estado]!;
-        const encargado = USUARIOS_DEMO.find((u) => u.perfiles.some((p) => p.rolCodigo === rol && p.entidadId === s.entidadCreadora?.id));
-        responsable = { nombre: encargado ? nombreDe(encargado) : '—', rol: rol === 'EVALUADOR' ? 'Evaluador' : 'Aprobador' };
-      }
-      return {
-        id: s.id,
-        numero: s.numero ?? '',
-        fase: faseDe(s),
-        tipoAccion: s.tipoAccion,
-        fecha: s.createdAt,
-        areas: areas.length,
-        necesidades: areas.reduce((suma, a) => suma + a.items, 0),
-        estado: s.estado,
-        responsable,
-      };
-    })
-    .sort((a, b) => b.fecha.localeCompare(a.fecha));
-  return ok(filas);
-};
-
 // ─── Configuración: áreas usuarias del CMN ─────────────────────────
 
 const listarAreasUsuarias: Manejador = ({ datos }) => ok(datos.areasUsuarias.filter((a) => !a.pendiente));
@@ -1240,7 +1202,6 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1\/modificacion$/, obtenerModificacion],
   ['POST', /^\/solicitudes\/([^/]+)\/anexo-2-fase-1\/modificacion$/, guardarModificacion],
   ['GET', /^\/cmn\/anexo-2\/vigente$/, vigenteAnexo2],
-  ['GET', /^\/cmn\/anexo-2\/escritorio$/, escritorioCmn],
   ['GET', /^\/configuracion\/areas-usuarias$/, listarAreasUsuarias],
   ['PUT', /^\/configuracion\/areas-usuarias$/, guardarAreasUsuarias],
   ['POST', /^\/configuracion\/areas-usuarias\/sincronizar$/, sincronizarAreasUsuarias],

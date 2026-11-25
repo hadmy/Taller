@@ -58,11 +58,6 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
             label: 'Documentos y Registros',
             children: [
               {
-                id: 'cmn-programacion-escritorio',
-                label: 'Escritorio virtual CMN',
-                moduleRoute: '/procesos/cmn-programacion/escritorio',
-              },
-              {
                 id: 'cmn-programacion',
                 label: 'CMN Programación',
                 moduleRoute: '/procesos/cmn-programacion',

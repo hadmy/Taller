@@ -22,15 +22,6 @@ export const REQUEST_ROUTE_POR_FASE: Record<FaseCmn, string> = {
 /** Hoja «CMN Programación» del árbol de procesos: arma las migas de pan. */
 export const PROCESS_ID = 'cmn-programacion';
 
-/** «Escritorio virtual» de CMN Programación: entrada a las fases y bandeja de solicitudes (hoja propia del menú). */
-export const ESCRITORIO_ROUTE = `${PROCESS_ROUTE}/escritorio`;
-export const ESCRITORIO_PROCESS_ID = 'cmn-programacion-escritorio';
-/**
- * Query param con que el escritorio abre una solicitud (`?desde=escritorio`): la flecha de regreso de la solicitud
- * vuelve al escritorio en vez de a «Documentos y registros». Va en la URL para sobrevivir a recargar y a grabar.
- */
-export const DESDE_ESCRITORIO = { desde: 'escritorio' } as const;
-
 /** Nombre del proceso: título de Documentos y registros y columna «Sistema». */
 export const NOMBRE_PROCESO = 'CMN Programación';
 

@@ -43,7 +43,7 @@ import { Anexo2Fase1ApiService } from '../../api/anexo-2-fase-1-api.service';
 import { Anexo1PanelComponent } from '../../components/anexo-1-panel.component';
 import { ConsolidadoAnexo2TablaComponent } from '../../components/consolidado-anexo-2-tabla.component';
 import { DetalleResumen, ResumenDetallePanelComponent } from '../../components/resumen-detalle-panel.component';
-import { DESDE_ESCRITORIO, ESCRITORIO_ROUTE, PROCESS_ID, PROCESS_ROUTE, REQUEST_ROUTE_POR_FASE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
+import { PROCESS_ID, PROCESS_ROUTE, REQUEST_ROUTE_POR_FASE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
 import {
   AreaUsuariaAnexo1,
   CODIGO_DOCUMENTO,
@@ -136,19 +136,13 @@ export class Anexo2Fase1RequestComponent implements OnInit {
   readonly formatearSoles = formatearSoles;
 
   private solicitudId: string | null = null;
-  /** Se entró desde el escritorio de CMN Programación (`?desde=escritorio`): la flecha de regreso vuelve ahí. */
-  private desdeEscritorio = false;
-  /** Query params que conservan el origen al pasar de la solicitud nueva a la grabada. */
-  private paramsOrigen(): Record<string, string> | undefined {
-    return this.desdeEscritorio ? { ...DESDE_ESCRITORIO } : undefined;
-  }
   private tiposDocumento: TipoDocumentoResponse[] = [];
 
   /** Anexo 02 aprobado de la fase al crear: ya no se crea otro, se modifica ese. */
   readonly vigente = signal<ModificacionAnexo2 | null>(null);
 
   irAModificar(): void {
-    void this.router.navigate([REQUEST_ROUTE_POR_FASE[this.fase()]], { queryParams: { actionType: TIPO_ACCION_MODIFICACION, ...this.paramsOrigen() } });
+    void this.router.navigate([REQUEST_ROUTE_POR_FASE[this.fase()]], { queryParams: { actionType: TIPO_ACCION_MODIFICACION } });
   }
 
   // ── Pestañas de la tarjeta de registros ───────────────────────────
@@ -441,7 +435,6 @@ export class Anexo2Fase1RequestComponent implements OnInit {
     this.catalogosApi.listarTiposDocumento().subscribe((tipos) => (this.tiposDocumento = tipos));
     this.anexoApi.obtenerContexto().subscribe((contexto) => this.contexto.set(contexto));
     this.fase.set(faseCmn(this.route.snapshot.data['fase']));
-    this.desdeEscritorio = this.route.snapshot.queryParamMap.get('desde') === DESDE_ESCRITORIO.desde;
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.cargar(id);
     else this.anexoApi.obtenerVigente(this.fase()).subscribe((v) => this.vigente.set(v.modificacion));
@@ -590,8 +583,7 @@ export class Anexo2Fase1RequestComponent implements OnInit {
       this.restaurarFormulario(this.solicitud());
       return;
     }
-    // Vuelve a donde se entró: el escritorio de CMN Programación o «Documentos y registros».
-    void this.router.navigate([this.desdeEscritorio ? ESCRITORIO_ROUTE : PROCESS_ROUTE]);
+    void this.router.navigate([PROCESS_ROUTE]);
   }
 
   editar(): void {
@@ -636,11 +628,11 @@ export class Anexo2Fase1RequestComponent implements OnInit {
     ).subscribe({
       next: (id) => {
         this.saving.set(false);
-        void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id], { state: { fromSave: true }, queryParams: this.paramsOrigen() });
+        void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id], { state: { fromSave: true } });
       },
       error: () => {
         this.saving.set(false);
-        if (this.solicitudId) void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, this.solicitudId], { queryParams: this.paramsOrigen() });
+        if (this.solicitudId) void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, this.solicitudId]);
       },
     });
   }

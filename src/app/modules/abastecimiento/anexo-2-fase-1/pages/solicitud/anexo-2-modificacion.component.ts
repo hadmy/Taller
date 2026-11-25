@@ -34,7 +34,7 @@ import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../
 import { Anexo2Fase1ApiService } from '../../api/anexo-2-fase-1-api.service';
 import { ConsolidadoAnexo2TablaComponent } from '../../components/consolidado-anexo-2-tabla.component';
 import { NecesidadesAreaPanelComponent } from '../../components/necesidades-area-panel.component';
-import { DESDE_ESCRITORIO, ESCRITORIO_ROUTE, PROCESS_ID, PROCESS_ROUTE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
+import { PROCESS_ID, PROCESS_ROUTE, REQUEST_SEGMENT } from '../../config/anexo-2-fase-1.rutas';
 import {
   AreaModificacion,
   CODIGO_DOCUMENTO,
@@ -128,7 +128,6 @@ export class Anexo2ModificacionComponent implements OnInit {
   readonly breadcrumbs = computed(() => buildProcessBreadcrumbs(PROCESS_ID, PROCESS_ROUTE, this.heading()));
 
   private solicitudId: string | null = null;
-  private desdeEscritorio = false;
   private tiposDocumento: TipoDocumentoResponse[] = [];
 
   // ── Documento ─────────────────────────────────────────────────────
@@ -300,7 +299,6 @@ export class Anexo2ModificacionComponent implements OnInit {
   ngOnInit(): void {
     this.catalogosApi.listarTiposDocumento().subscribe((tipos) => (this.tiposDocumento = tipos));
     this.anexoApi.obtenerContexto().subscribe((contexto) => this.datos.set(contexto.datos));
-    this.desdeEscritorio = this.route.snapshot.queryParamMap.get('desde') === DESDE_ESCRITORIO.desde;
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.cargar(id);
@@ -381,7 +379,7 @@ export class Anexo2ModificacionComponent implements OnInit {
       this.ponerModificacion(this.modificacion());
       return;
     }
-    void this.router.navigate([this.desdeEscritorio ? ESCRITORIO_ROUTE : PROCESS_ROUTE]);
+    void this.router.navigate([PROCESS_ROUTE]);
   }
 
   editar(): void {
@@ -391,7 +389,7 @@ export class Anexo2ModificacionComponent implements OnInit {
   }
 
   verEnCurso(id: string): void {
-    void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id], { queryParams: this.paramsOrigen() });
+    void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id]);
   }
 
   onConfirmarGrabar(): void {
@@ -426,7 +424,7 @@ export class Anexo2ModificacionComponent implements OnInit {
     ).subscribe({
       next: (id) => {
         this.saving.set(false);
-        void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id], { state: { fromSave: true }, queryParams: this.paramsOrigen() });
+        void this.router.navigate([PROCESS_ROUTE, REQUEST_SEGMENT, id], { state: { fromSave: true } });
       },
       error: (err) => this.mostrarError(err),
     });
@@ -531,10 +529,6 @@ export class Anexo2ModificacionComponent implements OnInit {
     this.busqueda.set('');
     this.pestana.set('areas');
     this.foto.set(null);
-  }
-
-  private paramsOrigen(): Record<string, string> | undefined {
-    return this.desdeEscritorio ? { ...DESDE_ESCRITORIO } : undefined;
   }
 
   private etiqueta(estado: string): string {

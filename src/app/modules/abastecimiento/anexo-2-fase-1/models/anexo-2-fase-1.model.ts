@@ -273,25 +273,6 @@ export interface RegistroAnexo2 {
   versiones: VersionRegistroAnexo2[];
 }
 
-/** Fila de la «Bandeja de solicitudes» del escritorio de CMN Programación: una Solicitud de CMN - Anexo N.º 02. */
-export interface SolicitudEscritorioCmn {
-  id: string;
-  /** Número del documento («0004»); vacío mientras no se elabora. */
-  numero: string;
-  fase: FaseCmn;
-  /** `creacion` o `modificacion`. */
-  tipoAccion: string;
-  /** Fecha de registro (ISO). */
-  fecha: string;
-  /** Áreas usuarias incluidas y la suma de sus necesidades. */
-  areas: number;
-  necesidades: number;
-  /** Estado del flujo (`NUEVO`, `ELABORADO`, `VERIFICADO`…). */
-  estado: string;
-  /** Quién tiene la solicitud ahora (creador, evaluador o aprobador); `null` cuando el flujo terminó. */
-  responsable: { nombre: string; rol: string } | null;
-}
-
 /** Datos de cabecera del Anexo 02 («Datos del Anexo 02»). */
 export interface DatosAnexo2 {
   entidad: string;

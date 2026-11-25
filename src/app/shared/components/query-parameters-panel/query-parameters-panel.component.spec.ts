@@ -92,4 +92,33 @@ describe('QueryParametersPanelComponent', () => {
     expect(panel.lista('entidades')).toEqual(['mincetur']);
     expect(boton('Aplicar consulta').disabled).toBeFalse();
   });
+
+  it('un campo obligatorio que se deja vacío dice «Campo obligatorio»; con valor deja de decirlo', () => {
+    fixture.componentRef.setInput('fields', [{ key: 'fase', label: 'Fase', type: 'select', required: true, icon: 'timeline', options: [{ label: 'Fase 1', value: '1' }] }]);
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+    const campo = el().querySelector<HTMLElement>('[data-parametro="fase"]')!;
+    campo.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    fixture.detectChanges();
+    expect(campo.textContent).toContain('Campo obligatorio');
+    panel.cambiar('fase', '1');
+    fixture.detectChanges();
+    expect(campo.textContent).not.toContain('Campo obligatorio');
+  });
+
+  it('`optionsFor`: las opciones siguen a lo elegido y un valor que ya no está se quita', () => {
+    const subgrupos: Record<string, string> = { local: 'Municipalidades', nacional: 'Ministerios' };
+    const dependientes: QueryReportParameterField[] = [
+      { key: 'nivel', label: 'Nivel', type: 'select', icon: 'map', options: [{ label: 'Local', value: 'local' }, { label: 'Nacional', value: 'nacional' }] },
+      { key: 'subgrupo', label: 'Subgrupo', type: 'select', icon: 'map', optionsFor: (v) => (v['nivel'] ? [{ label: subgrupos[String(v['nivel'])], value: subgrupos[String(v['nivel'])] }] : []) },
+    ];
+    fixture.componentRef.setInput('fields', dependientes);
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+    panel.cambiar('nivel', 'local');
+    expect(panel.opciones(dependientes[1]).map((o) => o.value)).toEqual(['Municipalidades']);
+    panel.cambiar('subgrupo', 'Municipalidades');
+    panel.cambiar('nivel', 'nacional');
+    expect(panel.texto('subgrupo')).toBe('');
+  });
 });

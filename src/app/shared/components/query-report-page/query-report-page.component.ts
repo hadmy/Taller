@@ -23,7 +23,7 @@ import { KpiCardComponent } from '../../ui/kpi-card/kpi-card.component';
 import { LineChartComponent } from '../../ui/line-chart/line-chart.component';
 import { MessageBoxComponent } from '../../ui/message-box/message-box.component';
 import { ReportSummaryCardComponent } from '../../ui/report-summary-card/report-summary-card.component';
-import { ReportTableColumn, ReportTableComponent } from '../../ui/report-table/report-table.component';
+import { ReportTableColumn, ReportTableComponent, ReportTableSort } from '../../ui/report-table/report-table.component';
 import { TableSkeletonComponent } from '../../ui/table-skeleton/table-skeleton.component';
 import { TagComponent } from '../../ui/tag/tag.component';
 import { TabsComponent } from '../../ui/tabs/tabs.component';
@@ -71,6 +71,21 @@ const FORMATOS_EXPORTACION: readonly QueryReportExportFormat[] = ['excel', 'csv'
 
 /** Sin mayúsculas ni tildes, para buscar «credito» y encontrar «Crédito». */
 const normalizar = (texto: string): string => texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
+/** Valor de una celda para ordenar: importe («1,031.00»), avance («4 / 29») o fecha («30/06/2026»); `null` si es texto. */
+function numeroDeCelda(texto: string): number | null {
+  // Con o sin nota: «15/07/2026 (ampliada)».
+  const fecha = /^(\d{2})\/(\d{2})\/(\d{4})(?: .*)?$/.exec(texto);
+  if (fecha) return Number(fecha[3] + fecha[2] + fecha[1]);
+  const avance = /^(\d+) \/ (\d+)$/.exec(texto);
+  if (avance) return Number(avance[2]) ? Number(avance[1]) / Number(avance[2]) : 0;
+  return /^-?[\d,]+(\.\d+)?( %)?$/.test(texto) ? Number(texto.replace(/[,% ]/g, '')) : null;
+}
+
+function compararCeldas(a: string, b: string): number {
+  const [x, y] = [numeroDeCelda(a), numeroDeCelda(b)];
+  return x !== null && y !== null ? x - y : a.localeCompare(b, 'es');
+}
 
 /** aaaa-mm-dd → dd/mm/aaaa, como lo muestra el selector de fecha. */
 const fechaVisible = (valor: string): string => {
@@ -180,7 +195,7 @@ let siguienteId = 0;
   ],
   template: `
     <siaf-page-shell [breadcrumbs]="configuracion().breadcrumbs">
-      <siaf-page-header pageHeader [title]="configuracion().title">
+      <siaf-page-header pageHeader [title]="configuracion().title" [subtitle]="configuracion().subtitle ?? ''">
         <div actions class="flex flex-wrap items-center justify-end gap-siaf-sm">
           <siaf-button variant="outline" icon="bookmark_border" [disabled]="!parametros()" (click)="favoritesRequested.emit()">Favoritos</siaf-button>
           <siaf-button variant="filled" icon="manage_search" (click)="panelAbierto.set(true)">Parámetros</siaf-button>
@@ -208,7 +223,7 @@ let siguienteId = 0;
                 {{ configuracion().resultTitle ?? 'Resultado de reporte' }}
               </h2>
               <div class="flex flex-wrap items-center gap-siaf-md">
-                @if (configuracion().charts) {
+                @if (tieneGraficas()) {
                   <siaf-buttons-group
                     [items]="opcionesVista"
                     [value]="vistaActiva()"
@@ -232,6 +247,9 @@ let siguienteId = 0;
             </header>
 
             <div class="flex flex-col gap-siaf-lg px-siaf-lg pb-siaf-md pt-siaf-md">
+              @if (configuracion().resultNote; as nota) {
+                <p class="m-0 text-xs leading-normal text-[var(--sys-color-text-neutral-medium)]" data-nota-resultado>{{ nota }}</p>
+              }
               <!-- Filtros rápidos de la pantalla (combos), bajo el título del resultado y en las dos vistas. -->
               <ng-content select="[reportFilters]" />
               @if (configuracion().tabs?.length) {
@@ -245,8 +263,13 @@ let siguienteId = 0;
                 />
               }
 
+              <!-- Vista de gráficas propia de la pantalla (customCharts). -->
+              <ng-content select="[reportCharts]" />
+
               @if (loading) {
                 <siaf-table-skeleton [columns]="configuracion().columns.length" [rows]="6" ariaLabel="Cargando el resultado del reporte" />
+              } @else if (vistaActiva() === 'graficas' && configuracion().customCharts) {
+                <!-- La pinta la pantalla en el espacio de arriba. -->
               } @else if (vistaActiva() === 'graficas') {
                 <!-- Los gráficos (y Chart.js) llegan en su propio chunk la primera vez que se abre la vista. -->
                 @defer (on immediate) {
@@ -369,8 +392,11 @@ let siguienteId = 0;
                   />
                 }
 
+                <ng-content select="[reportSummary]" />
+
                 <siaf-form-table-search
                   variant="reports"
+                  [placeholder]="configuracion().searchPlaceholder ?? 'Buscar'"
                   [value]="busqueda()"
                   ariaLabel="Buscar en el resultado"
                   (valueChange)="buscar($event)"
@@ -388,10 +414,17 @@ let siguienteId = 0;
                         (selectedValueChange)="filtrar(filtro.key, $event)"
                       />
                     }
+                    <ng-content select="[reportPills]" />
                   </div>
                 }
 
                 <siaf-report-table
+                  [sortable]="!!configuracion().sortable"
+                  [sort]="orden()"
+                  (sortChange)="ordenarPor($event)"
+                  [selectable]="!!configuracion().selectable"
+                  [selectedKeys]="marcadas()"
+                  (selectionChange)="marcar($event.key, $event.selected)"
                   [columns]="columnasVisibles()"
                   [rows]="filasPagina()"
                   [rowKey]="configuracion().rowKey"
@@ -473,12 +506,17 @@ export class QueryReportPageComponent {
    * `result` (no se emite `queried`).
    */
   @Input() set parameters(valor: QueryReportParameters | null) {
-    if (valor) this.parametros.set(valor);
+    if (!valor) return;
+    // Otros parámetros (un favorito): la búsqueda y los filtros de la consulta anterior no siguen.
+    if (valor !== this.parametros()) this.limpiarVista();
+    this.parametros.set(valor);
   }
 
   /** «Aplicar consulta»: la pantalla consulta con estos parámetros y entrega `result`. */
   @Output() queried = new EventEmitter<QueryReportParameters>();
   @Output() tabChanged = new EventEmitter<string>();
+  /** Cambio entre la vista de datos y la de gráficas. */
+  @Output() viewChanged = new EventEmitter<QueryReportView>();
   /** Un formato de «Exportar»: la pantalla genera el archivo con las filas recibidas. */
   @Output() exported = new EventEmitter<QueryReportExportEvent>();
   @Output() favoritesRequested = new EventEmitter<void>();
@@ -536,6 +574,9 @@ export class QueryReportPageComponent {
   readonly vista = signal<QueryReportView>('datos');
   readonly busqueda = signal('');
   readonly filtros = signal<Record<string, string>>({});
+  readonly orden = signal<ReportTableSort | null>(null);
+  /** Claves de las filas marcadas (`selectable`). */
+  readonly marcadas = signal<ReadonlySet<string>>(new Set());
   readonly pagina = signal(1);
   readonly tamanoPagina = signal(25);
   readonly opcionesTamano = [10, 25, 50, 100];
@@ -558,21 +599,31 @@ export class QueryReportPageComponent {
   ];
 
   /** Sin `charts` en la configuración no hay selector y siempre se ve la tabla. */
-  readonly vistaActiva = computed<QueryReportView>(() => (this.configuracion().charts ? this.vista() : 'datos'));
+  readonly tieneGraficas = computed(() => !!this.configuracion().charts || !!this.configuracion().customCharts);
+  readonly vistaActiva = computed<QueryReportView>(() => (this.tieneGraficas() ? this.vista() : 'datos'));
 
   readonly parametrosAplicados = computed<ParametroAplicado[]>(() => {
     const valores = this.parametros() ?? {};
+    const vacio = this.configuracion().emptyParameterLabel;
     return this.configuracion()
-      .parameterFields.filter((campo) => tieneValor(valores[campo.key]))
+      .parameterFields.filter((campo) => !campo.hideApplied && (tieneValor(valores[campo.key]) || (!!vacio && !campo.hideWhenEmpty)))
       .map((campo) => {
         const valor = valores[campo.key];
+        const otro = this.configuracion().parameterFields.find((c) => c.key === campo.appliedWith);
+        const valorOtro = otro ? valores[otro.key] : undefined;
+        if (otro && (tieneValor(valor) || tieneValor(valorOtro))) {
+          const partes = [[campo, valor] as const, [otro, valorOtro] as const].filter(([, v]) => tieneValor(v));
+          const value = partes.map(([c, v]) => (c.optionsFor?.(valores) ?? c.options ?? []).find((o) => o.value === v)?.label ?? String(v)).join(' · ');
+          return { label: campo.appliedLabel ?? campo.label, value, icon: campo.icon };
+        }
+        if (!tieneValor(valor)) return { label: campo.appliedLabel ?? campo.label, value: campo.emptyLabel ?? vacio ?? '', icon: campo.icon };
         const etiqueta = (v: string): string => campo.options?.find((o) => o.value === v)?.label ?? v;
         const texto = Array.isArray(valor)
           ? valor.map(etiqueta).join(', ')
           : campo.type === 'date'
             ? fechaVisible(valor)
             : etiqueta(valor);
-        return { label: campo.label, value: texto, icon: campo.icon };
+        return { label: campo.appliedLabel ?? campo.label, value: texto, icon: campo.icon };
       });
   });
 
@@ -588,6 +639,12 @@ export class QueryReportPageComponent {
     );
   });
 
+  readonly filasOrdenadas = computed<QueryReportRow[]>(() => {
+    const orden = this.orden();
+    const filas = this.filasFiltradas();
+    return orden ? [...filas].sort((a, b) => compararCeldas(a[orden.key] ?? '', b[orden.key] ?? '') * orden.dir) : filas;
+  });
+
   readonly hayBusquedaOFiltros = computed(() => !!this.busqueda().trim() || Object.values(this.filtros()).some((valor) => !!valor));
 
   readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.filasFiltradas().length / this.tamanoPagina())));
@@ -595,7 +652,7 @@ export class QueryReportPageComponent {
   readonly filasPagina = computed(() => {
     const pagina = Math.min(this.pagina(), this.totalPaginas());
     const inicio = (pagina - 1) * this.tamanoPagina();
-    return this.filasFiltradas().slice(inicio, inicio + this.tamanoPagina());
+    return this.filasOrdenadas().slice(inicio, inicio + this.tamanoPagina());
   });
 
   readonly anuncio = computed(() => {
@@ -683,9 +740,7 @@ export class QueryReportPageComponent {
 
   aplicar(valores: QueryReportParameters): void {
     this.parametros.set(valores);
-    this.busqueda.set('');
-    this.filtros.set({});
-    this.pagina.set(1);
+    this.limpiarVista();
     this.panelAbierto.set(false);
     this.queried.emit(valores);
   }
@@ -698,6 +753,26 @@ export class QueryReportPageComponent {
 
   cambiarVista(valor: string): void {
     this.vista.set(valor === 'graficas' ? 'graficas' : 'datos');
+    this.viewChanged.emit(this.vista());
+  }
+
+  private limpiarVista(): void {
+    this.busqueda.set('');
+    this.filtros.set({});
+    this.marcadas.set(new Set());
+    this.pagina.set(1);
+  }
+
+  marcar(clave: string, marcada: boolean): void {
+    const actual = new Set(this.marcadas());
+    if (marcada) actual.add(clave);
+    else actual.delete(clave);
+    this.marcadas.set(actual);
+  }
+
+  ordenarPor(orden: ReportTableSort): void {
+    this.orden.set(orden);
+    this.pagina.set(1);
   }
 
   buscar(termino: string): void {
@@ -718,7 +793,9 @@ export class QueryReportPageComponent {
   exportar(formato: string): void {
     const format = FORMATOS_EXPORTACION.find((f) => f === formato);
     if (!format) return;
-    this.exported.emit({ format, parameters: this.parametros() ?? {}, rows: this.filasFiltradas() });
+    const filas = this.filasOrdenadas();
+    const marcadas = filas.filter((f) => this.marcadas().has(f[this.configuracion().rowKey]));
+    this.exported.emit({ format, parameters: this.parametros() ?? {}, rows: marcadas.length ? marcadas : filas });
   }
 }
 

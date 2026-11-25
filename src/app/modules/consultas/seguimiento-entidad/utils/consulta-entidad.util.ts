@@ -1,160 +1,185 @@
 /**
- * Filas de cada pestaña de la consulta «Seguimiento del CMN – Entidad» (vista de la Oficina de Abastecimiento), a partir
- * del seguimiento de la Entidad que entrega el backend simulado. Funciones puras, sin Angular.
+ * Cálculos del reporte «Seguimiento de la programación del CMN» (Entidad, Figma C.2): vista de la Oficina de
+ * Abastecimiento y, con un área usuaria elegida, la de esa área. Funciones puras, sin Angular.
  */
 import type { QueryReportParameters, QueryReportRow } from '../../../../shared/types/query-report.types';
 import type { TextFieldOption } from '../../../../shared/ui/text-field/text-field.component';
-import { ORDENES_PRELACION } from '../../../reportes/seguimiento-nacional/models/seguimiento-nacional.model';
+import { ESTADOS_ANEXO_01, FaseEntidad, REVISIONES_OA, SeguimientoEntidad, SituacionAnexo01 } from '../../../reportes/seguimiento-nacional/models/seguimiento-entidad.model';
 import {
-  ANEXO_01_APROBADO,
-  ESTADOS_ANEXO_01,
-  ESTADOS_REMISION,
-  GENERICAS_ENTIDAD,
-  NecesidadEntidad,
-  REMISION_ACEPTADA,
-  REVISIONES_OA,
-  SIN_ANEXO_01,
-  SeguimientoEntidad,
-} from '../../../reportes/seguimiento-nacional/models/seguimiento-entidad.model';
-import { PENDIENTES_OA, situacionDe, tienePendiente } from '../../../reportes/seguimiento-nacional/utils/seguimiento-entidad.util';
-import { fechaVisible, formatoMonto } from '../../../reportes/seguimiento-nacional/utils/seguimiento-nacional.util';
-
-export type PestanaEntidad = 'anexos' | 'techo' | 'remitidas' | 'prelacion' | 'pendientes' | 'necesidades';
-
-export const PESTANAS_ENTIDAD: { id: PestanaEntidad; label: string }[] = [
-  { id: 'anexos', label: 'Anexos N.º 01 por área usuaria' },
-  { id: 'techo', label: 'Uso del techo' },
-  { id: 'remitidas', label: 'Remitidas a las ATE' },
-  { id: 'prelacion', label: 'Orden de prelación' },
-  { id: 'pendientes', label: 'Pendientes de la OA' },
-  { id: 'necesidades', label: 'Necesidades programadas' },
-];
-
-/** Etiqueta del estado del Anexo N.º 01 de un área, con «Sin Anexo N.º 01» si no lo registró. */
-export const etiquetaEstadoAnexo01 = (estado: number): string => (estado === SIN_ANEXO_01 ? 'Sin Anexo N.º 01' : ESTADOS_ANEXO_01[estado]);
+  FiltrosEntidad,
+  SeleccionEntidad,
+  areasFiltradas,
+  avancePorArea,
+  esAprobado,
+  necesidadesRemitidas,
+  situacionDe,
+  tienePendiente,
+} from '../../../reportes/seguimiento-nacional/utils/seguimiento-entidad.util';
+import { diasEntre, fechaVisible, formatoMonto, porcentaje, sumarDias } from '../../../reportes/seguimiento-nacional/utils/seguimiento-nacional.util';
 
 /** «Año 1 (2027)»: el periodo 2026 programa 2027 a 2029. */
 export const etiquetaAnioEntidad = (k: number): string => `Año ${k + 1} (${2027 + k})`;
 
-function lista(valor: string | string[] | undefined): string[] {
-  return Array.isArray(valor) ? valor : valor ? [valor] : [];
+/** Estado del Anexo N° 01 de un área; sin registrarlo está «Pendiente». */
+export const estadoAnexo01 = (s: SituacionAnexo01): string => (s.estado < 0 ? 'Pendiente' : ESTADOS_ANEXO_01[s.estado]);
+
+/** Qué hizo la OA con el Anexo N° 01 aprobado o, si no lo está, en qué quedó su ampliación de etapa. */
+export function revisionOa(s: SituacionAnexo01): string {
+  if (esAprobado(s) && s.revision !== null) return s.revision === 2 ? `${REVISIONES_OA[2]} · v${s.version}` : REVISIONES_OA[s.revision];
+  return s.ampliacion ? `Ampliación ${s.ampliacion.toLowerCase()}` : '–';
 }
 
-/** Lo que piden los parámetros: fase y año (uno), y áreas usuarias, ATE y genéricas (varias; vacío es «todas»). */
-export function leerParametros(parametros: QueryReportParameters): { fase: number; anio: number; areas: string[]; ates: string[]; genericas: string[] } {
+export function leerFiltros(p: QueryReportParameters): FiltrosEntidad {
+  const area = String(p['area'] ?? '');
   return {
-    fase: Number(parametros['fase'] || 2),
-    anio: Number(parametros['anio'] || 0),
-    areas: lista(parametros['areas']),
-    ates: lista(parametros['ates']),
-    genericas: lista(parametros['genericas']),
+    fase: Number(p['fase'] || 2),
+    vista: area ? 'AU' : 'OA',
+    areaVista: area,
+    area: '',
+    ate: String(p['ate'] ?? ''),
+    generica: String(p['generica'] ?? ''),
+    anio: Number(p['anio'] || 0),
   };
 }
 
-/** Opciones de los parámetros que dependen de los datos: todas las áreas usuarias y solo las ATE. */
-export function opcionesDeAreas(datos: SeguimientoEntidad | null): { areas: TextFieldOption[]; ates: TextFieldOption[] } {
-  const opcion = (a: { codigo: string; nombre: string }): TextFieldOption => ({ label: `${a.codigo} ${a.nombre}`, value: a.codigo });
-  return { areas: (datos?.areas ?? []).map(opcion), ates: (datos?.areas ?? []).filter((a) => a.esAte).map(opcion) };
+/** Solo las áreas con el «Estado del anexo» pedido; vacío es todas. */
+export function conEstado(datos: SeguimientoEntidad, p: QueryReportParameters): SeguimientoEntidad {
+  const estado = p['estado'];
+  if (!estado) return datos;
+  const fase = Number(p['fase'] || 2);
+  return { ...datos, areas: datos.areas.filter((a) => estadoAnexo01(situacionDe(datos, fase, a.codigo)) === estado) };
 }
 
-const nombreArea = (datos: SeguimientoEntidad, codigo: string | null): string => {
+export const faseEntidad = (datos: SeguimientoEntidad, numero: number): FaseEntidad => datos.fases.find((f) => f.numero === numero) ?? datos.fases[0];
+
+/** Opciones de los parámetros que dependen de los datos. */
+export function opcionesDeAreas(datos: SeguimientoEntidad | null): { areas: TextFieldOption[]; ates: TextFieldOption[] } {
+  const todas = { label: 'Todas', value: '' };
+  const opcion = (a: { codigo: string; nombre: string }): TextFieldOption => ({ label: `${a.codigo} ${a.nombre}`, value: a.codigo });
+  return { areas: [todas, ...(datos?.areas ?? []).map(opcion)], ates: [todas, ...(datos?.areas ?? []).filter((a) => a.esAte).map(opcion)] };
+}
+
+export const nombreArea = (datos: SeguimientoEntidad, codigo: string): string => {
   const area = datos.areas.find((a) => a.codigo === codigo);
-  return area ? `${area.codigo} ${area.nombre}` : '–';
+  return area ? `${area.codigo} ${area.nombre}` : codigo;
 };
 
-/** Filas de la pestaña, ya formateadas como textos de la tabla. */
-export function filasDePestanaEntidad(pestana: PestanaEntidad, datos: SeguimientoEntidad, parametros: QueryReportParameters): QueryReportRow[] {
-  const p = leerParametros(parametros);
-  const enAreas = (codigo: string | null): boolean => !p.areas.length || (!!codigo && p.areas.includes(codigo));
-  const enAte = (codigo: string | null): boolean => !p.ates.length || (!!codigo && p.ates.includes(codigo));
-  const enGenerica = (g: string): boolean => !p.genericas.length || p.genericas.includes(g);
-  const areas = datos.areas.filter((a) => enAreas(a.codigo));
-  const deLaFase = datos.necesidades.filter((n) => n.fase === p.fase && enGenerica(n.generica));
-  /** A cargo de un área: las propias sin ATE y las aceptadas como ATE. */
-  const aCargoDe = (codigo: string) => (n: NecesidadEntidad): boolean =>
-    (n.area === codigo && !n.ate) || (n.ate === codigo && n.remision === REMISION_ACEPTADA);
-  const aCargo = deLaFase.filter((n) => areas.some((a) => aCargoDe(a.codigo)(n)));
+export function notaEntidad(datos: SeguimientoEntidad, f: FiltrosEntidad): string {
+  const corte = `fecha de corte ${fechaVisible(datos.fechaCorte)}`;
+  if (f.vista === 'AU') return `${datos.entidad} · vista del Área usuaria ${nombreArea(datos, f.areaVista)} · ${corte}`;
+  const fase = faseEntidad(datos, f.fase);
+  return `${datos.entidad} · vista de la Oficina de Abastecimiento · ${corte} · Fase ${f.fase}: ${fechaVisible(fase.inicio)} al ${fechaVisible(fase.fin)}`;
+}
 
-  switch (pestana) {
-    case 'anexos':
-      return areas.map((a) => {
-        const s = situacionDe(datos, p.fase, a.codigo);
-        const monto = deLaFase.filter(aCargoDe(a.codigo)).reduce((suma, n) => suma + n.montos[p.anio], 0);
-        const techo = Object.values(datos.techos[a.codigo] ?? {}).reduce((x, y) => x + y, 0);
-        return {
-          codigo: a.codigo,
-          area: a.nombre,
-          ate: a.esAte ? 'ATE' : '–',
-          estado: etiquetaEstadoAnexo01(s.estado),
-          revision: s.estado === ANEXO_01_APROBADO && s.revision !== null ? REVISIONES_OA[s.revision] : '–',
-          necesidades: String(deLaFase.filter((n) => n.area === a.codigo).length),
-          monto: formatoMonto(monto),
-          uso: techo ? ((monto / techo) * 100).toFixed(1) : '0.0',
-        };
-      });
-    case 'techo':
-      return GENERICAS_ENTIDAD.filter((g) => enGenerica(g.codigo)).map((g) => {
-        const programado = aCargo.filter((n) => n.generica === g.codigo).reduce((suma, n) => suma + n.montos[p.anio], 0);
-        // El techo crece 2 % por año, como en el resumen de la Entidad.
-        const techo = areas.reduce((suma, a) => suma + (datos.techos[a.codigo]?.[g.codigo] ?? 0), 0) * (1 + p.anio * 0.02);
-        return {
-          generica: g.nombre,
-          programado: formatoMonto(programado),
-          techo: formatoMonto(techo),
-          uso: techo ? ((programado / techo) * 100).toFixed(1) : '0.0',
-        };
-      });
-    case 'remitidas':
-      return deLaFase
-        .filter((n) => !!n.ate && (enAreas(n.area) || enAreas(n.ate)) && enAte(n.ate))
-        .map((n, i) => ({
-          id: String(i),
-          item: n.item,
-          descripcion: n.descripcion,
-          area: nombreArea(datos, n.area),
-          ate: nombreArea(datos, n.ate),
-          estado: n.remision === null ? '–' : ESTADOS_REMISION[n.remision],
-        }));
-    case 'prelacion':
-      return aCargo.map((n, i) => ({
-        id: String(i),
-        item: n.item,
-        descripcion: n.descripcion,
-        area: nombreArea(datos, n.ate && n.remision === REMISION_ACEPTADA ? n.ate : n.area),
-        orden: ORDENES_PRELACION[n.orden],
-        generica: GENERICAS_ENTIDAD.find((g) => g.codigo === n.generica)?.corto ?? n.generica,
-        monto: formatoMonto(n.montos[p.anio]),
-      }));
-    case 'pendientes': {
-      const situaciones = areas.map((a) => situacionDe(datos, p.fase, a.codigo));
-      const fase = datos.fases.find((f) => f.numero === p.fase) ?? datos.fases[0];
-      const plazos = [
-        `Hasta ${fechaVisible(fase.etapas[2].fin)} (Etapa 3)`,
-        `Etapa 2 vence ${fechaVisible(fase.etapas[1].fin)}`,
-        `Etapa 2 vence ${fechaVisible(fase.etapas[1].fin)}`,
-        '–',
-      ];
-      return PENDIENTES_OA.map((pendiente, i) => {
-        const cantidad = i === 3 ? (p.fase === 2 ? 1 : 0) : situaciones.filter((s) => tienePendiente(s, i)).length;
-        return { pendiente, cantidad: String(cantidad), plazo: plazos[i], urgente: i === 2 && cantidad > 0 ? 'Sí' : 'No' };
-      });
-    }
-    case 'necesidades':
-      return deLaFase
-        .filter((n) => enAreas(n.area) && enAte(n.ate))
-        .map((n, i) => ({
-          id: String(i),
-          area: nombreArea(datos, n.area),
-          item: n.item,
-          descripcion: n.descripcion,
-          unidad: n.unidad,
-          tipo: n.tipo === 'B' ? 'Bien' : 'Servicio',
-          generica: GENERICAS_ENTIDAD.find((g) => g.codigo === n.generica)?.corto ?? n.generica,
-          orden: ORDENES_PRELACION[n.orden],
-          ate: n.ate ? nombreArea(datos, n.ate) : '–',
-          anio1: formatoMonto(n.montos[0]),
-          anio2: formatoMonto(n.montos[1]),
-          anio3: formatoMonto(n.montos[2]),
-        }));
+export interface KpiEntidad {
+  title: string;
+  amount: string;
+  /** `null`: sin barra, no es parte de un total. */
+  progress: number | null;
+}
+
+export function kpisEntidad(datos: SeguimientoEntidad, f: FiltrosEntidad, s: SeleccionEntidad, anexo: string): KpiEntidad[] {
+  const situaciones = areasFiltradas(datos, f, s).map((a) => situacionDe(datos, f.fase, a.codigo));
+  const aprobadas = situaciones.filter(esAprobado);
+  const remitidas = necesidadesRemitidas(datos, f, s).filter((n) => !s.ate || n.ate === s.ate);
+  const ajustes: KpiEntidad = { title: 'Anexos N° 01 con ajustes', amount: String(situaciones.filter((x) => x.ajustado).length), progress: null };
+  const ate: KpiEntidad = {
+    title: 'Necesidades remitidas a ATE',
+    amount: String(remitidas.length),
+    progress: remitidas.length ? porcentaje(remitidas.filter((n) => n.remision === 1).length, remitidas.length) : null,
+  };
+  if (f.vista === 'AU') {
+    return [
+      ajustes,
+      ate,
+      { title: 'Ampliaciones de etapa', amount: String(situaciones.filter((x) => x.ampliacion).length), progress: null },
+      { title: 'Mi Anexo N° 01', amount: situaciones[0] ? estadoAnexo01(situaciones[0]) : '–', progress: null },
+    ];
   }
+  const revisadas = aprobadas.filter((x) => (x.revision ?? 0) > 0).length;
+  return [
+    { title: 'Anexos N° 01 aprobados', amount: `${aprobadas.length} / ${situaciones.length}`, progress: porcentaje(aprobadas.length, situaciones.length) },
+    ajustes,
+    ate,
+    { title: `Anexo N° ${anexo}`, amount: ['Aprobado', 'Elaborado', 'Pendiente'][f.fase - 1] ?? 'Pendiente', progress: porcentaje(revisadas, aprobadas.length) },
+  ];
+}
+
+export interface EtapaCalendario {
+  nombre: string;
+  detalle: string;
+  texto: string;
+  situacion: 'concluida' | 'en-curso' | 'por-iniciar';
+  /** Posición y ancho dentro de la fase, de 0 a 100. */
+  desde: number;
+  ancho: number;
+  consolidacion: boolean;
+}
+
+export interface CalendarioFase {
+  rango: string;
+  etapas: EtapaCalendario[];
+  marcas: { texto: string; en: number }[];
+  /** Fecha de corte dentro de la fase; `null` si cae fuera. */
+  hoy: { texto: string; en: number } | null;
+}
+
+const NOMBRES = ['Etapa 1 · Programación de necesidades', 'Etapa 2 · ATE y aprobación del Anexo N° 01', 'Etapa 3 · Consolidación del Anexo N° 02'];
+const corta = (s: string): string => fechaVisible(s).slice(0, 5);
+
+/** Las tres etapas de la fase sobre su periodo rector. */
+export function calendarioDeFase(fase: FaseEntidad, corte: string): CalendarioFase {
+  // Cada etapa dura hasta el final de su último día: por eso el día siguiente.
+  const largo = diasEntre(fase.inicio, fase.fin) + 1;
+  const en = (s: string): number => (diasEntre(fase.inicio, s) / largo) * 100;
+  const etapas = fase.etapas.map((e, i): EtapaCalendario => {
+    const dias = diasEntre(e.inicio, e.fin) + 1;
+    const situacion = diasEntre(e.fin, corte) > 0 ? 'concluida' : diasEntre(e.inicio, corte) >= 0 ? 'en-curso' : 'por-iniciar';
+    return {
+      nombre: NOMBRES[i],
+      detalle: situacion === 'concluida' ? 'Concluida' : situacion === 'en-curso' ? `En curso · vence ${corta(e.fin)}` : `Por iniciar · ${corta(e.inicio)}`,
+      texto: `${corta(e.inicio)} – ${corta(e.fin)} · ${dias} días`,
+      situacion,
+      desde: en(e.inicio),
+      ancho: en(sumarDias(e.fin, 1)) - en(e.inicio),
+      consolidacion: i === 2,
+    };
+  });
+  const fechas = [...new Set([fase.inicio, ...fase.etapas.map((e) => e.fin), fase.fin])].sort();
+  const dentro = diasEntre(fase.inicio, corte) >= 0 && diasEntre(corte, fase.fin) >= 0;
+  return {
+    rango: `Fase ${fase.numero} · periodo rector ${fechaVisible(fase.inicio)} – ${fechaVisible(fase.fin)}`,
+    etapas,
+    marcas: fechas.map((s) => ({ texto: corta(s), en: s === fase.inicio ? 0 : en(sumarDias(s, 1)) })),
+    hoy: dentro ? { texto: `Hoy ${fechaVisible(corte)}`, en: en(corte) } : null,
+  };
+}
+
+/** Pendientes de la Oficina de Abastecimiento. */
+export function pendientesOa(datos: SeguimientoEntidad, f: FiltrosEntidad, s: SeleccionEntidad): { total: number; partes: { texto: string; cantidad: number }[]; vence: string } {
+  const situaciones = areasFiltradas(datos, f, s).map((a) => situacionDe(datos, f.fase, a.codigo));
+  const cuantas = (i: number): number => situaciones.filter((x) => tienePendiente(x, i)).length;
+  const partes = [
+    { texto: 'Anexos N° 01 aprobados por revisar', cantidad: cuantas(0) },
+    { texto: 'Ampliaciones de plazo de etapa por evaluar', cantidad: cuantas(1) },
+    { texto: 'Áreas usuarias sin Anexo N° 01 aprobado', cantidad: cuantas(2) },
+    { texto: 'Necesidades estratégicas por aprobar', cantidad: f.fase === 2 ? 1 : 0 },
+  ];
+  return { total: partes.reduce((t, p) => t + p.cantidad, 0), partes, vence: `Etapa 2 vence ${fechaVisible(faseEntidad(datos, f.fase).etapas[1].fin)}` };
+}
+
+/** Filas del avance por área usuaria, de mayor a menor monto. */
+export function filasAreas(datos: SeguimientoEntidad, f: FiltrosEntidad, s: SeleccionEntidad): QueryReportRow[] {
+  return avancePorArea(datos, f, s)
+    .sort((a, b) => b.monto - a.monto)
+    .map((x) => ({
+      codigo: x.area.codigo,
+      area: `${x.area.codigo} ${x.area.nombre}`,
+      ate: x.area.esAte ? 'ATE' : '–',
+      estado: estadoAnexo01(x.situacion),
+      revision: revisionOa(x.situacion),
+      necesidades: String(x.necesidades),
+      monto: formatoMonto(x.monto),
+      uso: `${Math.round(x.uso * 100)} %`,
+    }));
 }

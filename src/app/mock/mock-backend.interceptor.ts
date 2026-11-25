@@ -54,6 +54,7 @@ import {
 import { filtrarFilasDashboard } from './dashboard-cmn';
 import { seguimientoEntidad } from './seguimiento-entidad-cmn';
 import { seguimientoNacional } from './seguimiento-nacional-cmn';
+import type { FavoritoReporte } from '../modules/consultas/favoritos/favorito-reporte.model';
 import { CONTRASENA_DEMO, USUARIOS_DEMO, UsuarioDemo, buscarUsuarioPorPerfil } from './usuarios-demo';
 
 /**
@@ -1056,6 +1057,38 @@ const seguimientoNacionalCmn: Manejador = ({ query }) => {
   return respuesta ? ok(respuesta) : error(404, 'El periodo o la fase no existen.');
 };
 
+const favoritosDe = ({ datos, sesion, params }: Contexto): FavoritoReporte[] =>
+  (datos.favoritosReporte ?? [])
+    .filter((f) => f.usuarioId === sesion?.usuario.id && f.reporte === params[0])
+    .map(({ id, nombre, predeterminado, parametros, condiciones }) => ({ id, nombre, predeterminado, parametros, condiciones }));
+
+/** Favoritos que guardó el usuario en el reporte. */
+const listarFavoritos: Manejador = (ctx) => ok(favoritosDe(ctx));
+
+/** Guarda (o reemplaza, si trae id) un favorito; solo uno por reporte queda predeterminado. */
+const guardarFavorito: Manejador = (ctx) => {
+  const { datos, sesion, params, req } = ctx;
+  if (!sesion) return error(401, 'Sesión expirada.');
+  const f = req.body as FavoritoReporte;
+  if (!f.nombre?.trim()) return error(400, 'Ingrese la descripción del favorito.');
+  const lista = (datos.favoritosReporte ??= []);
+  const propios = lista.filter((x) => x.usuarioId === sesion.usuario.id && x.reporte === params[0]);
+  if (f.predeterminado) propios.forEach((x) => (x.predeterminado = false));
+  const campos = { nombre: f.nombre.trim(), predeterminado: f.predeterminado, parametros: f.parametros, condiciones: f.condiciones };
+  const existente = propios.find((x) => x.id === f.id);
+  if (existente) Object.assign(existente, campos);
+  else lista.push({ ...campos, id: nuevoId(datos, 'fav'), usuarioId: sesion.usuario.id, reporte: params[0] });
+  guardarDatos(datos);
+  return ok(favoritosDe(ctx));
+};
+
+const eliminarFavorito: Manejador = (ctx) => {
+  const { datos, sesion, params } = ctx;
+  datos.favoritosReporte = (datos.favoritosReporte ?? []).filter((f) => !(f.id === params[1] && f.usuarioId === sesion?.usuario.id));
+  guardarDatos(datos);
+  return ok(favoritosDe(ctx));
+};
+
 /** «Resumen de la Entidad» del seguimiento del CMN: áreas usuarias, Anexos N.º 01 y necesidades de las tres fases. */
 const seguimientoEntidadCmn: Manejador = () => ok(seguimientoEntidad());
 
@@ -1239,6 +1272,9 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['DELETE', /^\/configuracion\/precios-diferenciados\/([^/]+)$/, eliminarPrecioDiferenciado],
   ['GET', /^\/reportes\/dashboard-cmn$/, filasDashboard],
   ['GET', /^\/reportes\/seguimiento-nacional-cmn$/, seguimientoNacionalCmn],
+  ['GET', /^\/reportes\/([^/]+)\/favoritos$/, listarFavoritos],
+  ['POST', /^\/reportes\/([^/]+)\/favoritos$/, guardarFavorito],
+  ['DELETE', /^\/reportes\/([^/]+)\/favoritos\/([^/]+)$/, eliminarFavorito],
   ['GET', /^\/reportes\/seguimiento-entidad-cmn$/, seguimientoEntidadCmn],
 ];
 

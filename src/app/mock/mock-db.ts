@@ -1,4 +1,5 @@
-﻿import type { NotificacionResponse } from '../core/api/notificaciones-api.service';
+﻿import type { FavoritoReporte } from '../modules/consultas/favoritos/favorito-reporte.model';
+import type { NotificacionResponse } from '../core/api/notificaciones-api.service';
 import type { HistorialItem, SolicitudResponse } from '../core/api/solicitudes-api.service';
 import type { EstadoDocumento } from '../core/models/documento.model';
 import type { ItemEstrategico, ItemEstrategicoCatalogo, ItemEstrategicoRegistro } from '../modules/abastecimiento/items-estrategicos/models/item-estrategico.model';
@@ -49,6 +50,8 @@ export interface DatosTaller {
   preciosDiferenciados: PrecioDiferenciado[];
   serviciosBasicosExcluidos: ServicioBasico[];
   notificaciones: NotificacionMock[];
+  /** Favoritos de los reportes, por usuario. Opcional: los datos guardados antes no lo traen. */
+  favoritosReporte?: (FavoritoReporte & { usuarioId: string; reporte: string })[];
   /** Correlativo propio de las Solicitudes de Necesidades Estratégicas (su número tiene otra serie). */
   correlativoItemsEstrategicos: number;
   /** Correlativo propio de las Solicitudes de CMN - Anexo N.º 02, Fase 1. */

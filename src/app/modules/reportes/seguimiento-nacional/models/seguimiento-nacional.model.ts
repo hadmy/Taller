@@ -39,6 +39,7 @@ export const NOMBRES_FASE = ['Identificación', 'Clasificación y Priorización'
 export const PERIODOS_SEGUIMIENTO = [
   { valor: '2026', etiqueta: '2026 (programa 2027 - 2029)', faseVigente: 2 },
   { valor: '2025', etiqueta: '2025 (programa 2026 - 2028)', faseVigente: 3 },
+  { valor: '2024', etiqueta: '2024 (programa 2025 - 2027)', faseVigente: 3 },
 ] as const;
 
 /** Una Entidad del Clasificador Institucional y su situación en la fase consultada. */

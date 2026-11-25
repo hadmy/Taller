@@ -1,76 +1,180 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 
-import {
-  QueryReportExportEvent,
-  QueryReportPageComponent,
-} from '../../../../shared/components/query-report-page/query-report-page.component';
-import type { QueryReportParameters, QueryReportResult } from '../../../../shared/types/query-report.types';
+import { FilterPillComponent } from '../../../../shared/components/filter-pill/filter-pill.component';
+import { QueryReportExportEvent, QueryReportPageComponent } from '../../../../shared/components/query-report-page/query-report-page.component';
+import type { QueryReportConfig, QueryReportParameters, QueryReportResult } from '../../../../shared/types/query-report.types';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { TagComponent } from '../../../../shared/ui/tag/tag.component';
 import { SeguimientoNacionalApiService } from '../../../reportes/seguimiento-nacional/api/seguimiento-nacional-api.service';
-import { SeguimientoNacional } from '../../../reportes/seguimiento-nacional/models/seguimiento-nacional.model';
-import { configSeguimientoDplaip } from '../config/seguimiento-dplaip.config';
-import { PESTANAS_DPLAIP, PestanaDplaip, filasDePestana } from '../utils/seguimiento-dplaip.util';
+import { DEPARTAMENTOS, NIVELES_GOBIERNO, SeguimientoNacional } from '../../../reportes/seguimiento-nacional/models/seguimiento-nacional.model';
+import { cumpleCondiciones } from '../../favoritos/favorito-reporte.model';
+import { FavoritosPanelComponent } from '../../favoritos/favoritos-panel.component';
+import { FiltrosAvanzadosPanelComponent } from '../../favoritos/filtros-avanzados-panel.component';
+import { ReporteConFavoritos } from '../../favoritos/reporte-con-favoritos';
+import { FichaEntidadComponent } from '../components/ficha-entidad.component';
+import { GraficasDplaipComponent } from '../components/graficas-dplaip.component';
+import { ResumenAmpliacionesComponent } from '../components/resumen-ampliaciones.component';
+import { PARAMETROS_DPLAIP, camposCondicion, configDplaip } from '../config/seguimiento-dplaip.config';
+import { ESTADOS_AMPLIACION_REPORTE, ESTADOS_REPORTE, SeleccionReporte, aplicarSeleccion, entidadesDeParametros, filasDetalle, notaDeCorte } from '../utils/seguimiento-dplaip.util';
 
-/** Al entrar: el periodo 2026 en su fase vigente (la 2), sin filtros de nivel, departamento ni estado. */
-const PARAMETROS_INICIALES: QueryReportParameters = { periodo: '2026', fase: '2' };
+const opciones = (valores: readonly string[]) => valores.map((v) => ({ label: v, value: v }));
 
 /**
- * «Seguimiento del CMN – DPLAIP» de la sección «Consultas y reportes»: los tableros del seguimiento nacional (estado del
- * Anexo N.º 02, avance acumulado, orden de prelación, ampliaciones, departamentos y detalle) como una pantalla de
- * consulta (`siaf-query-report-page`, Figma 2435:45049). Abre ya consultada y en la vista de gráficas; cada pestaña
- * tiene su tabla y sus gráficos, interactivos. Periodo y fase traen otros datos del backend; niveles, departamentos y
- * estados filtran los ya traídos. «Exportar» baja el CSV de la pestaña o imprime el PDF.
+ * Reporte DPLAIP «Seguimiento nacional del CMN Programación» (Figma «C.1 Reporte DPLAIP»), con `siaf-query-report-page`:
+ * abre sin consultar (o con el favorito predeterminado); con los parámetros aplicados muestra la vista gráfica —un clic en
+ * los gráficos filtra todo el informe— y el detalle por Entidad, con filtros avanzados y la ficha de cada Entidad. Los
+ * textos siguen al anexo consultado. «Favoritos» guarda los parámetros y los filtros avanzados.
  */
 @Component({
   selector: 'siaf-seguimiento-dplaip',
   standalone: true,
-  imports: [QueryReportPageComponent],
+  imports: [
+    ButtonComponent,
+    FavoritosPanelComponent,
+    FichaEntidadComponent,
+    FilterPillComponent,
+    FiltrosAvanzadosPanelComponent,
+    GraficasDplaipComponent,
+    QueryReportPageComponent,
+    ResumenAmpliacionesComponent,
+    TagComponent,
+  ],
   template: `
-    <siaf-query-report-page
-      [config]="config()"
-      [parameters]="parametros()"
-      initialView="graficas"
-      [activeTab]="pestana()"
-      [result]="resultado()"
-      [loading]="cargando()"
-      (queried)="consultar($event)"
-      (tabChanged)="cambiarPestana($event)"
-      (exported)="exportar($event)"
+    @if (ficha() && datos(); as d) {
+      <siaf-ficha-entidad [codigo]="ficha()" [anexo]="anexo()" [datos]="d" (volver)="ficha.set('')" />
+    }
+
+    <!-- Se oculta, no se quita: al volver de la ficha siguen la página, la búsqueda y los filtros. -->
+    <div [class.hidden]="!!ficha()">
+      <siaf-query-report-page
+        [config]="config()"
+        [parameters]="parametros()"
+        initialView="graficas"
+        [result]="resultado()"
+        [loading]="cargando()"
+        (queried)="consultar($event)"
+        (viewChanged)="vista.set($event)"
+        (favoritesRequested)="panelFavoritos.set(true)"
+        (advancedFiltersRequested)="panelFiltros.set(true)"
+        (linkClicked)="ficha.set($event.row['codigo'])"
+        (exported)="exportar($event)"
+      >
+        @if (pildoras().length) {
+          <div reportFilters class="flex flex-wrap items-center gap-siaf-xs" data-filtros-seleccion>
+            <span class="text-xs text-[var(--sys-color-text-neutral-medium)]">Filtros por selección:</span>
+            @for (p of pildoras(); track p.clave) {
+              <siaf-filter-pill [label]="p.label" [options]="p.options" [selectedValue]="p.valor" (selectedValueChange)="cambiarSeleccion(p.clave, $event)" />
+            }
+            <siaf-button variant="text" size="sm" (click)="seleccion.set({})">Quitar filtros</siaf-button>
+          </div>
+        }
+
+        <div reportCharts class="contents">
+          @if (vista() === 'graficas' && !cargando() && !ficha() && datos(); as d) {
+            @defer (on immediate) {
+              <siaf-graficas-dplaip [datos]="d" [anexo]="anexo()" [entidades]="entidades()" [seleccion]="seleccion()" (seleccionCambio)="seleccion.set($event)" />
+            }
+          }
+        </div>
+
+        <div reportSummary class="contents">
+          @if (datos(); as d) {
+            <siaf-resumen-ampliaciones [datos]="d" [entidades]="seleccionadas()" />
+          }
+        </div>
+
+        <div reportPills class="contents">
+          @for (texto of textosCondicion(); track $index; let i = $index) {
+            <siaf-tag variant="input" [selected]="true" [removable]="true" [removeLabel]="'Quitar el filtro ' + texto" (removed)="quitarCondicion(i)">{{ texto }}</siaf-tag>
+          }
+        </div>
+      </siaf-query-report-page>
+    </div>
+
+    <siaf-filtros-avanzados-panel
+      [campos]="campos()"
+      [condiciones]="condiciones()"
+      [abierto]="panelFiltros()"
+      mensaje="Agregue una o más condiciones para refinar las Entidades de la tabla."
+      (aplicado)="aplicarCondiciones($event)"
+      (cerrado)="panelFiltros.set(false)"
+    />
+    <siaf-favoritos-panel
+      [abierto]="panelFavoritos()"
+      [favoritos]="favoritos()"
+      [aplicadoId]="favorito()?.id ?? ''"
+      [totalParametros]="8"
+      [parametros]="parametrosFavorito()"
+      [condiciones]="textosCondicion()"
+      (aplicado)="aplicarFavorito($event)"
+      (guardado)="guardarFavorito($event)"
+      (eliminado)="eliminarFavorito($event)"
+      (cerrado)="panelFavoritos.set(false)"
     />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SeguimientoDplaipComponent implements OnInit {
+export class SeguimientoDplaipComponent extends ReporteConFavoritos implements OnInit {
   private readonly api = inject(SeguimientoNacionalApiService);
 
-  readonly pestana = signal<PestanaDplaip>('estado');
-  readonly parametros = signal<QueryReportParameters>(PARAMETROS_INICIALES);
+  protected readonly reporte = 'seguimiento-nacional-cmn';
+  readonly anexo = computed(() => String(this.parametros()?.['anexo'] ?? '01'));
+  readonly campos = computed(() => camposCondicion(this.anexo()));
+  protected readonly camposParametro = () => PARAMETROS_DPLAIP;
+
   readonly datos = signal<SeguimientoNacional | null>(null);
   readonly cargando = signal(false);
+  /** Código de la Entidad con la ficha abierta. */
+  readonly ficha = signal('');
+  readonly seleccion = signal<SeleccionReporte>({});
 
-  readonly config = computed(() => configSeguimientoDplaip(this.pestana(), String(this.parametros()['periodo'] || '2026')));
+  private readonly baseConfig = computed(() => configDplaip(this.anexo()));
+  readonly config = computed<QueryReportConfig>(() => {
+    const datos = this.datos();
+    return {
+      ...this.baseConfig(),
+      subtitle: this.subtitulo(),
+      resultNote: datos && !this.cargando() ? notaDeCorte(datos, this.vista() === 'graficas') : undefined,
+    };
+  });
+
+  /** Entidades de los parámetros, y de ellas las de la selección en los gráficos. */
+  readonly entidades = computed(() => {
+    const datos = this.datos();
+    return datos ? entidadesDeParametros(datos, this.parametros() ?? {}) : [];
+  });
+  readonly seleccionadas = computed(() => aplicarSeleccion(this.entidades(), this.seleccion()));
+
   readonly resultado = computed<QueryReportResult | null>(() => {
     const datos = this.datos();
-    return datos ? { rows: filasDePestana(this.pestana(), datos, this.parametros()) } : null;
+    if (!datos) return null;
+    return { rows: filasDetalle(this.seleccionadas(), datos).filter((f) => cumpleCondiciones(f, this.condiciones())) };
+  });
+
+  readonly pildoras = computed(() => {
+    const s = this.seleccion();
+    const todas: { clave: keyof SeleccionReporte; label: string; options: { label: string; value: string }[] }[] = [
+      { clave: 'nivel', label: 'Nivel', options: opciones(NIVELES_GOBIERNO) },
+      { clave: 'estado', label: 'Estado', options: opciones(ESTADOS_REPORTE) },
+      { clave: 'departamento', label: 'Departamento', options: opciones(DEPARTAMENTOS) },
+      { clave: 'ampliacion', label: 'Ampliación', options: opciones(ESTADOS_AMPLIACION_REPORTE.map((a) => a.estado)) },
+    ];
+    return todas.filter((p) => s[p.clave]).map((p) => ({ ...p, valor: s[p.clave] ?? '' }));
   });
 
   ngOnInit(): void {
-    this.cargar();
+    this.cargarFavoritos();
   }
 
-  consultar(parametros: QueryReportParameters): void {
-    const antes = this.parametros();
-    this.parametros.set(parametros);
-    if (parametros['periodo'] !== antes['periodo'] || parametros['fase'] !== antes['fase'] || !this.datos()) this.cargar();
-  }
-
-  cambiarPestana(id: string): void {
-    if (PESTANAS_DPLAIP.some((p) => p.id === id)) this.pestana.set(id as PestanaDplaip);
+  protected alCambiarParametros(parametros: QueryReportParameters, antes: QueryReportParameters | null): void {
+    this.seleccion.set({});
+    if (parametros['periodo'] !== antes?.['periodo'] || parametros['fase'] !== antes?.['fase'] || !this.datos()) this.cargar();
   }
 
   private cargar(): void {
-    const p = this.parametros();
+    const p = this.parametros() ?? {};
     this.cargando.set(true);
-    this.api.obtener(String(p['periodo'] || '2026'), Number(p['fase'] || 2)).subscribe({
+    this.api.obtener(String(p['periodo']), Number(p['fase'])).subscribe({
       next: (datos) => {
         this.datos.set(datos);
         this.cargando.set(false);
@@ -82,21 +186,11 @@ export class SeguimientoDplaipComponent implements OnInit {
     });
   }
 
-  /** CSV y Excel bajan el CSV de la pestaña (con BOM, para que Excel respete las tildes); PDF abre la impresión. */
-  exportar({ format, rows }: QueryReportExportEvent): void {
-    if (format === 'pdf') {
-      window.print();
-      return;
-    }
-    const columnas = this.config().columns;
-    const celda = (v: string): string => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const lineas = [columnas.map((c) => celda(c.label)).join(','), ...rows.map((r) => columnas.map((c) => celda(r[c.key] ?? '')).join(','))];
-    const blob = new Blob(['﻿' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const enlace = document.createElement('a');
-    enlace.href = url;
-    enlace.download = `seguimiento-dplaip-${this.pestana()}.csv`;
-    enlace.click();
-    URL.revokeObjectURL(url);
+  cambiarSeleccion(clave: keyof SeleccionReporte, valor: string): void {
+    this.seleccion.update((s) => ({ ...s, [clave]: valor || undefined }));
+  }
+
+  exportar(evento: QueryReportExportEvent): void {
+    this.exportarCsv(evento, this.config().columns);
   }
 }

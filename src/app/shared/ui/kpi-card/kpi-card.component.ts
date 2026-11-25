@@ -56,21 +56,25 @@ const CLASES_TONO: Record<KpiCardTone, string> = {
   host: { class: 'block' },
   template: `
     <article
-      class="flex flex-col rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] bg-surface"
+      class="flex h-full flex-col rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] bg-surface"
       [class]="compact ? 'gap-siaf-xs px-siaf-md py-siaf-sm' : 'gap-siaf-sm p-siaf-lg'"
       [attr.aria-label]="title || null"
     >
       <div class="flex items-center justify-between gap-siaf-xs">
         <p class="m-0 min-w-0 truncate font-medium leading-[normal] text-[var(--sys-color-text-neutral-low)]" [class]="compact ? 'text-xs' : 'text-sm'" siafTooltip>{{ title }}</p>
-        <span class="flex shrink-0 rounded-siaf-sm p-siaf-xxs" [ngClass]="claseTono">
-          <siaf-icon [name]="icon" [size]="compact ? 14 : 16" />
-        </span>
+        @if (showIcon) {
+          <span class="flex shrink-0 rounded-siaf-sm p-siaf-xxs" [ngClass]="claseTono">
+            <siaf-icon [name]="icon" [size]="compact ? 14 : 16" />
+          </span>
+        }
       </div>
       <p class="m-0 font-bold leading-[normal] tracking-[-0.19px] text-[var(--sys-color-text-neutral-high)]" [class]="compact ? 'text-lg' : 'text-[22px]'">{{ amount }}</p>
-      <div class="flex items-center gap-siaf-md">
-        <siaf-loading-progress class="block min-w-0 flex-1" variant="bar" [value]="porcentaje" [label]="progressLabel || title" />
-        <span class="shrink-0 text-sm leading-[normal] tracking-[0.025px] text-[var(--sys-color-text-neutral-medium)]" aria-hidden="true">{{ porcentaje }}%</span>
-      </div>
+      @if (showProgress) {
+        <div class="flex items-center gap-siaf-md">
+          <siaf-loading-progress class="block min-w-0 flex-1" variant="bar" [value]="porcentaje" [label]="progressLabel || title" />
+          <span class="shrink-0 text-sm leading-[normal] tracking-[0.025px] text-[var(--sys-color-text-neutral-medium)]" aria-hidden="true">{{ porcentaje }}%</span>
+        </div>
+      }
       @if (description) {
         <p class="m-0 text-xs leading-[normal] text-[var(--sys-color-text-neutral-low)]">{{ description }}</p>
       }
@@ -90,6 +94,10 @@ export class KpiCardComponent {
   @Input() tone: KpiCardTone = 'informative';
   /** Ícono de Material Icons de la caja; por defecto la flecha del Figma. */
   @Input() icon = 'arrow_outward';
+  /** Sin la caja del ícono. */
+  @Input() showIcon = true;
+  /** Sin la barra ni su porcentaje: un dato que no es parte de un total. */
+  @Input() showProgress = true;
   /** Línea opcional bajo la barra con el detalle del dato («1,234 sin iniciar · 567 en elaboración»). */
   @Input() description = '';
   /** Versión compacta, para tableros con muchas tarjetas: menos relleno, y título, ícono y monto más chicos. */

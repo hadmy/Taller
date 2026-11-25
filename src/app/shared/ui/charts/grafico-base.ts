@@ -11,6 +11,8 @@ export interface ChartSeries {
   name: string;
   /** Un valor por categoría, en el mismo orden que `categories`. */
   values: readonly number[];
+  /** Token de color propio («--sys-color-bg-…»); sin él, el de su posición en la paleta. Lo usa `siaf-bar-chart`. */
+  token?: string;
 }
 
 /** Serie tal como la pinta un gráfico: nombre, un valor por categoría (`null`: sin barra ni punto) y token de color. */

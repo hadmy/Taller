@@ -2764,7 +2764,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "usa": [],
-    "sinUso": true
+    "sinUso": false
   },
   {
     "selector": "siaf-collapsible-card",
@@ -5652,7 +5652,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-icon",
       "siaf-icon-dropdown-menu"
     ],
-    "sinUso": true
+    "sinUso": false
   },
   {
     "selector": "siaf-filter-pill",
@@ -6550,6 +6550,20 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "''",
         "requerida": false,
         "descripcion": "Nombre de la barra para el lector de pantalla; por defecto, el título."
+      },
+      {
+        "nombre": "showIcon",
+        "tipo": "boolean",
+        "porDefecto": "true",
+        "requerida": false,
+        "descripcion": "Sin la caja del ícono."
+      },
+      {
+        "nombre": "showProgress",
+        "tipo": "boolean",
+        "porDefecto": "true",
+        "requerida": false,
+        "descripcion": "Sin la barra ni su porcentaje: un dato que no es parte de un total."
       },
       {
         "nombre": "title",
@@ -9459,6 +9473,11 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "nombre": "tabChanged",
         "tipo": "string",
         "descripcion": null
+      },
+      {
+        "nombre": "viewChanged",
+        "tipo": "'datos' | 'graficas'",
+        "descripcion": "Cambio entre la vista de datos y la de gráficas."
       }
     ],
     "usar": "- Para una pantalla «Consultas y reportes» de un proceso: título, migas, campos de parámetros, columnas (con grupos y\n  la última fija), pestañas y filtros predeterminados en la configuración.\n- `tabs` cuando el reporte tiene varias vistas del mismo resultado: la pantalla recibe `tabChanged` y entrega el\n  resultado de esa pestaña.\n- `charts` para la vista de gráficas: cada KPI suma una columna (o cuenta filas), con un filtro opcional por valor, y\n  cada gráfico agrupa por una columna (o por mes, con una fecha), en valores, índice respecto de la primera categoría\n  (`index`) o variación respecto de ella (`change`). `width: 'narrow'` pone un gráfico en la columna de 336 px a la\n  derecha del anterior, como en el Figma.\n- Un elemento con el atributo `reportFilters` (por ejemplo, una fila de combos) para filtros rápidos bajo el título del\n  resultado, en las dos vistas: la pantalla filtra las filas y entrega el `result` filtrado.\n- `charts.interactive` para un tablero: el clic en una barra filtra los KPI (y los gráficos de otra dimensión) por esa\n  categoría, la resalta en los que agrupan igual y muestra un chip para quitarla.\n- `initialView=\"graficas\"` y `parameters` para un tablero que abre ya consultado y en la vista de gráficas: la pantalla\n  consulta al entrar con esos parámetros.\n- `exported` para generar el archivo: trae el formato elegido y las filas que quedaron tras buscar y filtrar.\n- «Columnas» del buscador abre `siaf-column-visibility-panel`: la primera columna queda fija y las demás se ocultan o se\n  muestran al «Aplicar» (en todas las pestañas). `favoritesRequested`, `advancedFiltersRequested` y `columnsRequested`\n  avisan a la pantalla de lo que resuelve por su cuenta.",
@@ -10115,12 +10134,50 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "[]",
         "requerida": false,
         "descripcion": "Filas de la página visible: cada clave de columna con su texto ya formateado."
+      },
+      {
+        "nombre": "selectable",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Casilla por fila; necesita `rowKey`."
+      },
+      {
+        "nombre": "selectedKeys",
+        "tipo": "ReadonlySet<string>",
+        "porDefecto": null,
+        "requerida": false,
+        "descripcion": "Claves (`rowKey`) de las filas marcadas."
+      },
+      {
+        "nombre": "sort",
+        "tipo": "ReportTableSort | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "sortable",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Títulos que ordenan al pulsarlos; la pantalla ordena las filas y entrega `sort`."
       }
     ],
     "eventos": [
       {
         "nombre": "linkClicked",
         "tipo": "{ row: ReportTableRow; column: ReportTableColumn; }",
+        "descripcion": null
+      },
+      {
+        "nombre": "selectionChange",
+        "tipo": "{ key: string; selected: boolean; }",
+        "descripcion": null
+      },
+      {
+        "nombre": "sortChange",
+        "tipo": "ReportTableSort",
         "descripcion": null
       }
     ],
@@ -10140,7 +10197,8 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "status"
       ],
       "atributos": [
-        "aria-label"
+        "aria-label",
+        "aria-sort"
       ]
     },
     "tokens": [
@@ -10195,6 +10253,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-sm",
         "via": [
+          "px-siaf-sm",
           "py-siaf-sm"
         ]
       },
@@ -10202,6 +10261,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-gap-base-xl",
         "via": [
           "py-siaf-xl"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-xxs",
+        "via": [
+          "gap-siaf-xxs"
         ]
       },
       {
@@ -10218,7 +10283,10 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       }
     ],
-    "usa": [],
+    "usa": [
+      "siaf-icon",
+      "siaf-status-tag"
+    ],
     "sinUso": false
   },
   {
@@ -11034,6 +11102,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "'Cancelar'",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "closeOnCancel",
+        "tipo": "boolean",
+        "porDefecto": "true",
+        "requerida": false,
+        "descripcion": "Con `false`, el botón de cancelar solo emite `canceled` (por ejemplo «Limpiar todo»)."
       },
       {
         "nombre": "confirmDisabled",

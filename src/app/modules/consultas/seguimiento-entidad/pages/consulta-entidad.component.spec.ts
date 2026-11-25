@@ -1,71 +1,72 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { mockBackendInterceptor } from '../../../../mock/mock-backend.interceptor';
+import { calendarioDeFase, faseEntidad, kpisEntidad, leerFiltros, pendientesOa } from '../utils/consulta-entidad.util';
 import { ConsultaEntidadComponent } from './consulta-entidad.component';
 
+const PARAMETROS = { periodo: '2026', anexo: '01', fase: '2' };
+
 describe('ConsultaEntidadComponent', () => {
-  const crear = () => {
+  let fixture: ComponentFixture<ConsultaEntidadComponent>;
+  const pagina = (): ConsultaEntidadComponent => fixture.componentInstance;
+  const el = (): HTMLElement => fixture.nativeElement;
+  const pasar = (): void => {
+    fixture.detectChanges();
+    tick(300);
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+  };
+
+  beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [ConsultaEntidadComponent],
       providers: [provideRouter([]), provideHttpClient(withInterceptors([mockBackendInterceptor]))],
     });
-    const fixture = TestBed.createComponent(ConsultaEntidadComponent);
-    fixture.detectChanges();
-    tick(300);
-    fixture.detectChanges();
-    // Al llegar los datos cambian también las opciones de los parámetros: un ciclo más para pintar el resultado.
-    tick();
-    fixture.detectChanges();
-    return fixture;
-  };
+    fixture = TestBed.createComponent(ConsultaEntidadComponent);
+  });
 
-  it('abre consultada en «Anexos N.º 01 por área usuaria»: 24 áreas, cuatro KPI y seis pestañas', fakeAsync(() => {
-    const fixture = crear();
-    const pagina = fixture.componentInstance;
-    expect(pagina.config().tabs?.length).toBe(6);
-    expect(pagina.resultado()?.rows.length).toBe(24);
-    expect(fixture.nativeElement.querySelectorAll('siaf-kpi-card').length).toBe(4);
-    // Las áreas y las ATE del parámetro llegan con los datos.
-    const campo = (clave: string) => pagina.config().parameterFields.find((p) => p.key === clave)!;
-    expect(campo('areas').options?.length).toBe(24);
-    expect(campo('ates').options?.length).toBeGreaterThan(0);
+  it('abre sin consultar; consultada, es la vista de la OA con sus 24 áreas, de mayor a menor monto', fakeAsync(() => {
+    pasar();
+    expect(el().querySelector('[data-consulta-vacia]')).not.toBeNull();
+
+    pagina().consultar(PARAMETROS);
+    pasar();
+    expect(pagina().resultado()?.rows.length).toBe(24);
+    expect(pagina().resultado()?.rows[0]['area']).toContain('0034');
+    expect(el().querySelector('[data-nota-resultado]')?.textContent).toContain('vista de la Oficina de Abastecimiento');
+    expect(el().querySelector('[data-parametros]')?.textContent).toContain('Año 1 (2027)');
   }));
 
-  it('áreas, genéricas y año filtran y recalculan sin volver a consultar', fakeAsync(() => {
-    const fixture = crear();
-    const pagina = fixture.componentInstance;
-    const datos = pagina.datos();
-
-    pagina.parametros.set({ fase: '2', anio: '0', areas: ['0021'] });
-    expect(pagina.resultado()?.rows.map((f) => f['codigo'])).toEqual(['0021']);
-
-    pagina.cambiarPestana('techo');
-    pagina.parametros.set({ fase: '2', anio: '0', genericas: ['2.3'] });
-    expect(pagina.resultado()?.rows.length).toBe(1);
-    const anio1 = pagina.resultado()?.rows[0]['techo'];
-    pagina.parametros.set({ fase: '2', anio: '2', genericas: ['2.3'] });
-    expect(pagina.resultado()?.rows[0]['techo']).not.toBe(anio1);
-    expect(pagina.datos()).toBe(datos);
-  }));
-
-  it('pendientes marca el urgente y la pestaña de necesidades no tiene gráficos', fakeAsync(() => {
-    const fixture = crear();
-    const pagina = fixture.componentInstance;
-
-    pagina.cambiarPestana('pendientes');
-    const filas = pagina.resultado()!.rows;
-    expect(filas.map((f) => f['pendiente'])).toEqual([
-      'Anexos N.º 01 por revisar',
-      'Ampliaciones por evaluar',
-      'Áreas sin Anexo N.º 01 aprobado',
-      'Necesidades estratégicas por aprobar',
+  it('KPI, pendientes y calendario de la fase 2 como en el prototipo', fakeAsync(() => {
+    pasar();
+    const datos = pagina().datos()!;
+    const f = leerFiltros(PARAMETROS);
+    expect(kpisEntidad(datos, f, {}, '01').map((k) => k.amount)).toEqual(['14 / 24', '4', '76', 'Elaborado']);
+    expect(pendientesOa(datos, f, {}).total).toBe(13);
+    const calendario = calendarioDeFase(faseEntidad(datos, 2), datos.fechaCorte);
+    expect(calendario.etapas.map((e) => [e.texto, e.detalle])).toEqual([
+      ['01/05 – 21/05 · 21 días', 'Concluida'],
+      ['22/05 – 15/06 · 25 días', 'En curso · vence 15/06'],
+      ['01/05 – 30/06 · 61 días', 'En curso · vence 30/06'],
     ]);
-    expect(filas[2]['urgente']).toBe('Sí');
+  }));
 
-    pagina.cambiarPestana('necesidades');
-    expect(pagina.config().charts).toBeUndefined();
-    expect(pagina.resultado()!.rows.length).toBeGreaterThan(0);
+  it('con un área usuaria muestra su vista; el estado y la selección acotan las áreas', fakeAsync(() => {
+    pasar();
+    pagina().consultar({ ...PARAMETROS, area: '0040' });
+    pasar();
+    expect(pagina().config().resultNote).toContain('vista del Área usuaria 0040');
+    expect(pagina().resultado()?.rows.length).toBe(1);
+    expect(pagina().pendientes()).toBeNull();
+
+    pagina().consultar({ ...PARAMETROS, estado: 'Elaborado' });
+    pasar();
+    expect(pagina().resultado()?.rows.length).toBe(4);
+    pagina().consultar(PARAMETROS);
+    pagina().cambiarSeleccion('estado', '4');
+    expect(pagina().resultado()?.rows.length).toBe(14);
   }));
 });

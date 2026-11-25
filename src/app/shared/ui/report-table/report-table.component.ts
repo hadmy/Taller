@@ -1,4 +1,8 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+
+import { IconComponent } from '../icon/icon.component';
+import { StatusTagComponent, StatusTagTone } from '../status-tag/status-tag.component';
 
 export interface ReportTableColumn {
   key: string;
@@ -11,14 +15,24 @@ export interface ReportTableColumn {
   width?: number;
   /** Queda fija a la derecha al desplazar la tabla (Figma «Fixed»). Solo la última columna. */
   fixed?: boolean;
-  /** `link` pinta el valor como enlace y emite `linkClicked` al pulsarlo. */
-  kind?: 'text' | 'link';
+  /** `link` pinta el valor como enlace y emite `linkClicked` al pulsarlo; `status`, como etiqueta de estado. */
+  kind?: 'text' | 'link' | 'status';
+  /** Con `status`, el tono de la etiqueta según el valor. */
+  tones?: Record<string, StatusTagTone>;
+}
+
+/** Columna por la que se ordena la tabla: 1 ascendente, -1 descendente. */
+export interface ReportTableSort {
+  key: string;
+  dir: 1 | -1;
 }
 
 export type ReportTableRow = Record<string, string>;
 
 /** Celda de la primera fila de la cabecera: un grupo que abarca varias columnas o una columna sin grupo. */
 interface CeldaCabecera {
+  /** Clave de la columna; vacía en un grupo. */
+  key: string;
   label: string;
   colspan: number;
   /** 2 para una columna sin grupo: ocupa las dos filas de la cabecera. */
@@ -67,6 +81,7 @@ interface CeldaCabecera {
 @Component({
   selector: 'siaf-report-table',
   standalone: true,
+  imports: [IconComponent, NgTemplateOutlet, StatusTagComponent],
   host: { class: 'block min-w-0' },
   template: `
     <div
@@ -78,6 +93,9 @@ interface CeldaCabecera {
       <table class="w-full min-w-full border-collapse text-left text-sm" [attr.aria-label]="ariaLabel">
         <thead>
           <tr>
+            @if (selectable) {
+              <th class="h-10 w-12 px-siaf-sm py-siaf-sm" scope="col" [attr.rowspan]="hayGrupos ? 2 : null"><span class="sr-only">Selección</span></th>
+            }
             @for (celda of filaSuperior; track $index) {
               <th
                 class="h-10 px-siaf-md py-siaf-sm text-xs font-bold uppercase leading-normal text-[var(--sys-color-text-neutral-high)]"
@@ -89,9 +107,10 @@ interface CeldaCabecera {
                 [attr.scope]="celda.rowspan === 2 ? 'col' : 'colgroup'"
                 [style.width.px]="celda.width"
                 [style.min-width.px]="celda.width"
+                [attr.aria-sort]="ariaOrden(celda.key)"
                 data-cabecera-superior
               >
-                <span class="block truncate">{{ celda.label }}</span>
+                <ng-container [ngTemplateOutlet]="titulo" [ngTemplateOutletContext]="{ key: celda.key, label: celda.label, right: celda.align === 'right' }" />
               </th>
             }
           </tr>
@@ -105,9 +124,10 @@ interface CeldaCabecera {
                   scope="col"
                   [style.width.px]="columna.width ?? null"
                   [style.min-width.px]="columna.width ?? null"
+                  [attr.aria-sort]="ariaOrden(columna.key)"
                   data-cabecera-columna
                 >
-                  <span class="block truncate">{{ columna.label }}</span>
+                  <ng-container [ngTemplateOutlet]="titulo" [ngTemplateOutletContext]="{ key: columna.key, label: columna.label, right: columna.align === 'right' }" />
                 </th>
               }
             </tr>
@@ -116,6 +136,18 @@ interface CeldaCabecera {
         <tbody>
           @for (fila of rows; track trackBy(fila, $index)) {
             <tr class="border-b border-[var(--sys-color-divider-default)] bg-surface">
+              @if (selectable) {
+                <td class="h-12 w-12 px-siaf-sm py-siaf-sm">
+                  <input
+                    class="size-4"
+                    type="checkbox"
+                    [attr.aria-label]="'Seleccionar ' + (columns[0] ? fila[columns[0].key] : '')"
+                    [checked]="selectedKeys.has(fila[rowKey])"
+                    (change)="selectionChange.emit({ key: fila[rowKey], selected: $any($event.target).checked })"
+                    data-seleccion-fila
+                  />
+                </td>
+              }
               @for (columna of columns; track columna.key) {
                 <td
                   class="h-12 px-siaf-md py-siaf-sm align-middle text-sm leading-normal tracking-[0.0249px] text-[var(--sys-color-text-neutral-medium)]"
@@ -133,6 +165,8 @@ interface CeldaCabecera {
                     >
                       {{ fila[columna.key] }}
                     </button>
+                  } @else if (columna.kind === 'status' && fila[columna.key]) {
+                    <siaf-status-tag [tone]="columna.tones?.[fila[columna.key]] ?? 'default'" appearance="solid" size="small">{{ fila[columna.key] }}</siaf-status-tag>
                   } @else {
                     {{ fila[columna.key] }}
                   }
@@ -141,7 +175,7 @@ interface CeldaCabecera {
             </tr>
           } @empty {
             <tr>
-              <td class="px-siaf-md py-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="columns.length || 1" role="status">
+              <td class="px-siaf-md py-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="(columns.length || 1) + (selectable ? 1 : 0)" role="status">
                 {{ emptyMessage }}
               </td>
             </tr>
@@ -149,6 +183,25 @@ interface CeldaCabecera {
         </tbody>
       </table>
     </div>
+
+    <ng-template #titulo let-key="key" let-label="label" let-right="right">
+      @if (sortable && key) {
+        <button
+          class="flex w-full min-w-0 items-center gap-siaf-xxs rounded-siaf-sm text-xs font-bold uppercase leading-normal text-[var(--sys-color-text-neutral-high)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+          [class.justify-end]="right"
+          type="button"
+          [attr.title]="label"
+          (click)="ordenar(key)"
+        >
+          <span class="truncate">{{ label }}</span>
+          @if (sort?.key === key) {
+            <siaf-icon class="shrink-0" [name]="sort?.dir === 1 ? 'arrow_upward' : 'arrow_downward'" [size]="14" />
+          }
+        </button>
+      } @else {
+        <span class="block truncate">{{ label }}</span>
+      }
+    </ng-template>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -162,6 +215,17 @@ export class ReportTableComponent {
   @Input() ariaLabel = 'Resultado del reporte';
   @Input() emptyMessage = 'No se encontraron resultados con los filtros aplicados.';
 
+  /** Títulos que ordenan al pulsarlos; la pantalla ordena las filas y entrega `sort`. */
+  @Input() sortable = false;
+  @Input() sort: ReportTableSort | null = null;
+
+  /** Casilla por fila; necesita `rowKey`. */
+  @Input() selectable = false;
+  /** Claves (`rowKey`) de las filas marcadas. */
+  @Input() selectedKeys: ReadonlySet<string> = new Set();
+
+  @Output() selectionChange = new EventEmitter<{ key: string; selected: boolean }>();
+  @Output() sortChange = new EventEmitter<ReportTableSort>();
   @Output() linkClicked = new EventEmitter<{ row: ReportTableRow; column: ReportTableColumn }>();
 
   /**
@@ -184,13 +248,13 @@ export class ReportTableComponent {
   /** Grupos contiguos en una celda; con grupos, las columnas sueltas ocupan las dos filas. */
   get filaSuperior(): CeldaCabecera[] {
     if (!this.hayGrupos) {
-      return this.columns.map((c) => ({ label: c.label, colspan: 1, rowspan: 1, align: c.align ?? 'left', width: c.width ?? null, fixed: !!c.fixed }));
+      return this.columns.map((c) => ({ key: c.key, label: c.label, colspan: 1, rowspan: 1, align: c.align ?? 'left', width: c.width ?? null, fixed: !!c.fixed }));
     }
     const celdas: CeldaCabecera[] = [];
     for (let i = 0; i < this.columns.length; i++) {
       const columna = this.columns[i];
       if (!columna.group) {
-        celdas.push({ label: columna.label, colspan: 1, rowspan: 2, align: columna.align ?? 'left', width: columna.width ?? null, fixed: !!columna.fixed });
+        celdas.push({ key: columna.key, label: columna.label, colspan: 1, rowspan: 2, align: columna.align ?? 'left', width: columna.width ?? null, fixed: !!columna.fixed });
         continue;
       }
       let fin = i;
@@ -198,6 +262,7 @@ export class ReportTableComponent {
       const grupo = this.columns.slice(i, fin + 1);
       const anchos = grupo.map((c) => c.width);
       celdas.push({
+        key: '',
         label: columna.group,
         colspan: grupo.length,
         rowspan: 1,
@@ -212,6 +277,15 @@ export class ReportTableComponent {
 
   get columnasAgrupadas(): ReportTableColumn[] {
     return this.columns.filter((c) => !!c.group);
+  }
+
+  ordenar(key: string): void {
+    this.sortChange.emit({ key, dir: this.sort?.key === key && this.sort.dir === 1 ? -1 : 1 });
+  }
+
+  ariaOrden(key: string): 'ascending' | 'descending' | null {
+    if (!key || this.sort?.key !== key) return null;
+    return this.sort.dir === 1 ? 'ascending' : 'descending';
   }
 
   trackBy(fila: ReportTableRow, indice: number): string | number {

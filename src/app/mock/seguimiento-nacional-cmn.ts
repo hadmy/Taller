@@ -191,8 +191,17 @@ function generar(): EntidadGenerada[] {
   return entidades;
 }
 
+/** El 2024 repite la situación del 2025 con sus fechas un año antes: no cambia los datos que ya se generan. */
+function periodoAnterior(fase?: number): SeguimientoNacional | null {
+  const base = seguimientoNacional('2025', fase);
+  if (!base) return null;
+  const unAnioAntes = (s: string): string => `${Number(s.slice(0, 4)) - 1}${s.slice(4)}`;
+  return { ...base, periodo: '2024', fases: base.fases.map((f) => ({ ...f, inicio: unAnioAntes(f.inicio), fin: unAnioAntes(f.fin) })) };
+}
+
 /** Situación nacional en la fase `fase` del periodo `periodo` (por defecto, el 2026 y su fase vigente). */
 export function seguimientoNacional(periodo = '2026', fase?: number): SeguimientoNacional | null {
+  if (periodo === '2024') return periodoAnterior(fase);
   const config = PERIODOS[periodo];
   if (!config) return null;
   const numero = fase ?? config.vigente;

@@ -6,7 +6,7 @@ import { DateTimePickerComponent } from '../../ui/date-time-picker/date-time-pic
 import { FocoDirective } from '../../ui/foco/foco.directive';
 import { IconComponent } from '../../ui/icon/icon.component';
 import { SidePanelAnimacion } from '../../ui/side-panel-animacion';
-import { TextFieldComponent } from '../../ui/text-field/text-field.component';
+import { TextFieldComponent, TextFieldOption } from '../../ui/text-field/text-field.component';
 
 /** ¿El valor cuenta como ingresado? Una lista vacía o un texto vacío no. */
 export function tieneValor(valor: string | string[] | undefined): boolean {
@@ -104,8 +104,10 @@ let siguienteId = 0;
                       [label]="campo.label"
                       [required]="!!campo.required"
                       [autoSuccess]="false"
-                      [options]="campo.options ?? []"
+                      [options]="opciones(campo)"
                       [value]="texto(campo.key)"
+                      [error]="error(campo)"
+                      (focusout)="alSalir(campo, $event)"
                       (valueChange)="cambiar(campo.key, $event)"
                     />
                   }
@@ -154,15 +156,36 @@ export class QueryParametersPanelComponent implements OnChanges {
   private readonly borrador = signal<QueryReportParameters>({});
   private readonly campos = signal<readonly QueryReportParameterField[]>([]);
 
+  /** Campos obligatorios que se dejaron vacíos: muestran «Campo obligatorio». */
+  private readonly tocados = signal<ReadonlySet<string>>(new Set());
+
   readonly hayValores = computed(() => Object.values(this.borrador()).some((v) => tieneValor(v)));
   readonly completo = computed(() => this.hayValores() && this.campos().every((c) => !c.required || tieneValor(this.borrador()[c.key])));
 
   ngOnChanges(changes: SimpleChanges): void {
     if ('fields' in changes) this.campos.set(this.fields);
     if ('open' in changes) {
-      if (this.open) this.borrador.set({ ...(this.values ?? {}) });
+      if (this.open) {
+        this.borrador.set({ ...(this.values ?? {}) });
+        this.tocados.set(new Set());
+      }
       this.anim.actualizar(this.open);
     }
+  }
+
+  error(campo: QueryReportParameterField): string {
+    return campo.required && this.tocados().has(campo.key) && !tieneValor(this.borrador()[campo.key]) ? 'Campo obligatorio' : '';
+  }
+
+  /** El foco salió del campo (no hacia su propia lista de opciones). */
+  alSalir(campo: QueryReportParameterField, evento: FocusEvent): void {
+    const destino = evento.relatedTarget as Node | null;
+    if (!campo.required || (evento.currentTarget as HTMLElement).contains(destino)) return;
+    this.tocados.update((actual) => new Set(actual).add(campo.key));
+  }
+
+  opciones(campo: QueryReportParameterField): TextFieldOption[] {
+    return campo.optionsFor?.(this.borrador()) ?? campo.options ?? [];
   }
 
   texto(clave: string): string {
@@ -176,11 +199,17 @@ export class QueryParametersPanelComponent implements OnChanges {
   }
 
   cambiar(clave: string, valor: string | number | string[]): void {
-    this.borrador.update((actual) => ({ ...actual, [clave]: Array.isArray(valor) ? valor : String(valor) }));
+    const nuevo: QueryReportParameters = { ...this.borrador(), [clave]: Array.isArray(valor) ? valor : String(valor) };
+    // Lo que ya no está entre las opciones de un campo dependiente se quita.
+    for (const campo of this.campos()) {
+      if (campo.optionsFor && tieneValor(nuevo[campo.key]) && !campo.optionsFor(nuevo).some((o) => o.value === nuevo[campo.key])) delete nuevo[campo.key];
+    }
+    this.borrador.set(nuevo);
   }
 
   limpiar(): void {
     this.borrador.set({});
+    this.tocados.set(new Set());
   }
 
   aplicar(): void {

@@ -24,6 +24,8 @@ const TOKEN_ALERTA = '--sys-color-bg-feedback-dark-danger';
 const LARGO_LINEA_HORIZONTAL = 16;
 /** En vertical, las etiquetas largas también se parten (en vez de inclinarse), en líneas de hasta 22 caracteres. */
 const LARGO_LINEA_VERTICAL = 22;
+/** Desde más de estas categorías, en vertical las etiquetas van inclinadas. */
+const CATEGORIAS_INCLINADAS = 14;
 
 /**
  * Parte una etiqueta larga en líneas de hasta `largo` caracteres, por palabras (una palabra más larga queda sola en su
@@ -225,7 +227,7 @@ export class BarChartComponent extends GraficoBase<'bar'> {
   }
 
   get seriesDibujadas(): SerieDibujada[] {
-    return this.series.map((serie, i) => ({ name: serie.name, values: serie.values, token: tokenDeSerie(i) }));
+    return this.series.map((serie, i) => ({ name: serie.name, values: serie.values, token: serie.token ?? tokenDeSerie(i) }));
   }
 
   get comparativo(): boolean {
@@ -317,7 +319,7 @@ export class BarChartComponent extends GraficoBase<'bar'> {
   protected datos(): ChartData<'bar'> {
     const cantidad = Math.max(this.series.length, 1);
     const ultima = this.series.length - 1;
-    const colores = this.series.map((_, i) => this.colorDe(tokenDeSerie(i)));
+    const colores = this.series.map((serie, i) => this.colorDe(serie.token ?? tokenDeSerie(i)));
     this.textoSobreSerie = this.stacked ? colores.map((color) => colorDeTextoSobre(this.host.nativeElement, color)) : [];
     return {
       labels: [...this.etiquetas],
@@ -382,6 +384,8 @@ export class BarChartComponent extends GraficoBase<'bar'> {
         callback: (valor: string | number) => formatearValor(Number(valor), this.valueSuffix),
       },
     };
+    // Muchas barras verticales: todas llevan su nombre, inclinado, en una línea.
+    const denso = !this.horizontal && this.etiquetas.length > CATEGORIAS_INCLINADAS;
     const ejeCategorias = {
       afterFit: ajustarEje,
       stacked: this.stacked,
@@ -390,12 +394,14 @@ export class BarChartComponent extends GraficoBase<'bar'> {
       ticks: {
         display: !this.comparativo,
         // En horizontal cada barra lleva su nombre: no se saltean etiquetas (el alto lo elige la pantalla).
-        autoSkip: !this.horizontal,
+        autoSkip: !this.horizontal && !denso,
+        ...(denso ? { minRotation: 45, maxRotation: 45 } : {}),
         color: colorTexto,
         font: fuente,
         padding: 12,
         callback: (_valor: string | number, indice: number) => {
           const texto = (this.etiquetas[indice] ?? '').toUpperCase();
+          if (denso) return texto;
           // En vertical, las líneas pueden ser algo más largas: cada categoría tiene más ancho que alto.
           return partirEtiqueta(texto, this.horizontal ? LARGO_LINEA_HORIZONTAL : LARGO_LINEA_VERTICAL);
         },

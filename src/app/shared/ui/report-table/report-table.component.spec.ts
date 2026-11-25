@@ -81,4 +81,25 @@ describe('ReportTableComponent', () => {
     expect(aviso.colSpan).toBe(5);
     expect(aviso.textContent).toContain('No se encontraron resultados');
   });
+
+  it('`status` pinta una etiqueta, los títulos ordenan y las filas se marcan', () => {
+    montar([{ key: 'secuencia', label: 'Secuencia', kind: 'status', tones: { '000001': 'success' } }], filas);
+    const orden: unknown[] = [];
+    const marcas: unknown[] = [];
+    fixture.componentInstance.sortChange.subscribe((o) => orden.push(o));
+    fixture.componentInstance.selectionChange.subscribe((m) => marcas.push(m));
+    fixture.componentRef.setInput('sortable', true);
+    fixture.componentRef.setInput('sort', { key: 'secuencia', dir: 1 });
+    fixture.componentRef.setInput('selectable', true);
+    fixture.detectChanges();
+
+    expect(el().querySelector('siaf-status-tag')?.textContent).toContain('000001');
+    const titulo = el().querySelector<HTMLTableCellElement>('[data-cabecera-superior]')!;
+    expect(titulo.getAttribute('aria-sort')).toBe('ascending');
+    titulo.querySelector('button')!.click();
+    expect(orden).toEqual([{ key: 'secuencia', dir: -1 }]);
+    const casilla = el().querySelectorAll<HTMLInputElement>('[data-seleccion-fila]')[1];
+    casilla.click();
+    expect(marcas).toEqual([{ key: '000002', selected: true }]);
+  });
 });

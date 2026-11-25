@@ -14,8 +14,20 @@ export interface QueryReportParameterField {
   type: 'date' | 'select' | 'select-multiple';
   options?: TextFieldOption[];
   required?: boolean;
+  /** Opciones según lo ya elegido en el panel (por ejemplo, el subgrupo del nivel); reemplazan a `options`. */
+  optionsFor?: (values: QueryReportParameters) => TextFieldOption[];
   /** Ícono de Material Icons de su tarjeta en «Parámetros aplicados». */
   icon: string;
+  /** Nombre corto de su tarjeta; por defecto, `label`. */
+  appliedLabel?: string;
+  /** Con `emptyParameterLabel`, no muestra su tarjeta cuando está vacío. */
+  hideWhenEmpty?: boolean;
+  /** Nunca muestra su tarjeta: va junto a otro campo que lo nombra en `appliedWith`. */
+  hideApplied?: boolean;
+  /** Clave de otro campo cuyo valor se muestra en la misma tarjeta. */
+  appliedWith?: string;
+  /** Texto de su tarjeta cuando está vacío; por defecto, `emptyParameterLabel`. */
+  emptyLabel?: string;
 }
 
 /** Valores aplicados: la fecha (aaaa-mm-dd, como la entrega `siaf-date-time-picker`), el valor elegido o la lista. */
@@ -119,7 +131,20 @@ export type QueryReportExportFormat = 'excel' | 'csv' | 'pdf';
  */
 export interface QueryReportConfig {
   title: string;
+  /** Línea bajo el título («Favorito: …»). */
+  subtitle?: string;
   breadcrumbs: BreadcrumbItem[];
+  /** Texto de los parámetros vacíos en «Parámetros aplicados» («Todos»); sin él, no se muestran. */
+  emptyParameterLabel?: string;
+  /** Línea bajo el título del resultado («Fecha de corte de datos: …»). */
+  resultNote?: string;
+  /** La vista de gráficas la pinta la pantalla en el espacio `[reportCharts]` (con `viewChanged` sabe cuándo). */
+  customCharts?: boolean;
+  searchPlaceholder?: string;
+  /** Los títulos de la tabla ordenan las filas. */
+  sortable?: boolean;
+  /** Casilla por fila; «Exportar» lleva solo las marcadas, si hay. */
+  selectable?: boolean;
   parameterFields: QueryReportParameterField[];
   columns: QueryReportColumn[];
   /** Clave que identifica cada fila del resultado. */

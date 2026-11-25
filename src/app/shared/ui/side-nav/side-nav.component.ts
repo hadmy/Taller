@@ -145,6 +145,8 @@ export class SideNavComponent implements OnChanges {
   @Input() cancelLabel = 'Cancelar';
   @Input() confirmLabel = 'Aceptar';
   @Input() confirmDisabled = false;
+  /** Con `false`, el botón de cancelar solo emite `canceled` (por ejemplo «Limpiar todo»). */
+  @Input() closeOnCancel = true;
 
   /** La X, Escape, el fondo oscuro o Cancelar (este último, salvo con `embedded`). */
   @Output() closed = new EventEmitter<void>();
@@ -160,6 +162,6 @@ export class SideNavComponent implements OnChanges {
 
   cancelar(): void {
     this.canceled.emit();
-    if (!this.embedded) this.closed.emit();
+    if (!this.embedded && this.closeOnCancel) this.closed.emit();
   }
 }
